@@ -87,3 +87,62 @@ check later.
 ### What the next phase needs from you
 - Nothing beyond the go-ahead. Phase 1 writes `SPEC.md`: design, rules, voice UX,
   visual design, the frozen gate, and the decision log D-01 to D-49.
+
+---
+
+## Phase 1 — SPEC.md: design, decisions, change log
+
+**Date:** 2026-10-31
+**Goal:** fix the design and the measuring stick in writing before any agent code
+exists, so every later change has a decision to point at.
+
+### What was done
+Wrote `SPEC.md`, 14 sections:
+1. Goal and constraints
+2. Architecture: the model listens, code talks
+3. Module contracts
+4. Every API rule and where we enforce it before the write
+5. Voice UX rules, each mapped to its enforcement
+   - 5b. Visual design: tokens, type, signatures, accessibility floor
+6. Fixture traceability for all 14 given fixtures
+7. The frozen gate
+   - 7b. Evaluation results, seeded with the baseline
+8. LLM setup for OpenAI and Azure
+9. Deployment
+   - 9b. Data model with PII classes, retention and a data-flow diagram
+10. Telemetry and alerts, each with an owner and an action
+11. Improvement loop
+12. Known limits and next steps
+13. Decision log: 49 entries, D-20 and D-25 marked superseded
+14. Change log: rows for Phases 0 and 1
+
+### Files
+- New: `SPEC.md`.
+- Changed: `BUILD_LOG.md` (this entry).
+
+### Decisions
+- No new decisions. D-01 to D-49 were recorded as planned.
+- D-48 (spend guards) is worded as "a small prepaid model credit" rather than a dollar
+  figure, to keep the repo neutral.
+
+### Commands and results
+| Check | Result |
+|---|---|
+| Forbidden-term and placeholder scan (company names, methodology terms, time spent, TBD/TODO) | clean; the only hits are "until green" (tests) and "the last hour" (alert windows) |
+| Decision rows | 49 |
+| Model calls | none this phase |
+
+### Deviations from the plan
+- None. The gate definition in §7 matches the plan: pass^3 on every suite, judge
+  included, reported split, and never lowered.
+
+### Open issues and risks
+- §6 traceability and §4 enforcement describe the intended behaviour. They become true
+  as Phases 3–9 build the agent, and the replay test in Phase 8 checks §6 line by line.
+- §7b only has the baseline so far.
+
+### What the next phase needs from you
+- Nothing beyond the go-ahead. Phase 2 adds pydantic plus the pinned ruff and mypy;
+  the Makefile; the fixture folders `fixtures/extra/` and the first own fixtures 20–29;
+  and the frozen gate target. No model calls, except a load check of the new fixtures
+  at zero tokens.
