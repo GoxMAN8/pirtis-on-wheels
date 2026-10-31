@@ -91,3 +91,4 @@ nightly gate job, and three alerts. One `make` command per step; see
 | [docs/using-the-app.md](docs/using-the-app.md) | the live app: the link, signing in, a tour |
 | [BUILD_LOG.md](BUILD_LOG.md) | phase by phase: what was built, what failed and why, every decision |
 | [reports/](reports/) | the raw output behind every number |
+| [docs/pdf/](docs/pdf/) | the same documents as PDFs, diagrams drawn: readme, using the app, architecture, evaluation, spec, deploy, build log. Rebuilt with `python3 docs/tools/make_pdfs.py` after an edit |
