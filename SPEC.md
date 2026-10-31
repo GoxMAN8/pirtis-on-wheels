@@ -305,10 +305,27 @@ A private deployment on Azure, from one container image with two workloads:
   from 0 to 1
 - **the gate:** a nightly Container Apps Job, also startable by hand
 
-Written in Terraform (OpenTofu-compatible) under `deploy/`:
+Written in Terraform (OpenTofu-compatible) under `deploy/`, kept deliberately minimal
+(D-57). There are nine resources:
+- resource group
+- Log Analytics
+- Container Apps environment
+- registry
+- managed identity (pull only)
+- storage account
+- **one Azure Files share, mounted into both workloads at `/data`**
+- the app and the job
+
+Plus alerts. There's no Key Vault, no Blob containers and no Tables.
+
 - **Where:** an EU region.
-- **Identity:** a managed identity for the registry, Key Vault and storage; the model
-  key lives only in Key Vault.
+- **Identity:** a managed identity used only to pull the image from the registry.
+- **Secrets:** the model key and the hash salt are Container App secrets, set by
+  `az containerapp secret set`; never in Terraform, state or the repo.
+- **The share's link to the environment:** Container Apps still needs the storage
+  account key for an SMB mount (managed-identity mounts are in preview). It's piped from
+  `az storage account keys list` straight into `az containerapp env storage set` and
+  never stored.
 - **Images:** deployed by digest.
 - **Access:** an ingress IP allow-list plus a per-minute request cap.
 - **Logs:** Log Analytics with 30-day retention.
@@ -317,11 +334,17 @@ Commands, idle cost and teardown are in `deploy/README.md`.
 
 ### 9b. Data model and flows
 
-We persist only data we own; the rental data stays in the kit's in-memory API (D-38).
-All entities are versioned pydantic models (`schema_version = 1`). Each is stored as a
-JSON document in Blob storage, with an Azure Table row as its index.
+We persist only data we own; the rental data stays in the kit's in-memory API (D-58).
+All entities are versioned pydantic models (`schema_version = 1`).
 
-| Entity | Table keys | Indexed fields | Document | PII | Retention |
+**Storage:** each record is its own JSON file at
+`<data>/<entity>/<partition>/<key>.json`. Locally `<data>` is `python/var/`; in Azure
+it's an Azure Files share mounted at `/data`, so the same code runs in both.
+- Files are written atomically and there's no shared index file, so the playground and
+  the gate job can write at the same time.
+- Retention is pruning by date, done by the gate job.
+
+| Entity | Partition / key | Fields | Also in the file | PII | Retention |
 |---|---|---|---|---|---|
 | Session | day / `session_id` | `agent_version`, `caller_phone_hash`, `started`, `turns`, `status` | transcript + bookings snapshot | personal | 30 days |
 | Feedback | `agent_version` / `turn_id` | `verdict`, `note`, `promoted_fixture` | transcript snapshot | personal | 30 days |
@@ -336,7 +359,7 @@ flowchart LR
   decide -- one strict-JSON call --> llm[(gpt-4o-mini)]
   decide -- reads, then writes on consent --> api[(Rental API, in memory)]
   decide -- TurnRecord, no content --> logs[(Log Analytics)]
-  sim -- Session, Feedback, HumanRating, TurnRecord --> store[(Blob + Table)]
+  sim -- Session, Feedback, HumanRating, TurnRecord --> store[("/data: one JSON file per record (Azure Files share)")]
   gatejob[Gate job] -- GateRun, TurnRecord --> store
   admin[Admin console] -- reads --> store
   classDef untrusted stroke-dasharray: 4 3
@@ -406,6 +429,8 @@ Every change to the prompt or the policy changes `agent_version`, and needs a ga
 **Next steps:**
 - real telephony: call automation and streaming speech in front of `decide`
 - remote Terraform state and CI on every push
+- a managed-identity mount for the file share once it's generally available, removing
+  the storage key from the environment
 - an alert on intent drift
 - sign-in for the console
 - fixtures sourced from real calls
@@ -445,7 +470,7 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | D-24 | 2026-10-31 | Voice UX is a first-class section; every rule has a test | A phone agent is judged by how it sounds | — | accepted |
 | D-25 | 2026-10-31 | A single playground page | — | — | superseded by D-40 |
 | D-26 | 2026-10-31 | One versioned `TurnRecord` per turn, no content, OpenTelemetry names via a renderer, silent by default | Observability without personal data | logging transcripts | accepted |
-| D-27 | 2026-10-31 | Azure: one image, a playground app (0–1) and a nightly gate job; Terraform; EU region; managed identity; key only in Key Vault | Private, cheap when idle, no stored secrets | a VM; keys in config | accepted |
+| D-27 | 2026-10-31 | Azure: one image, a playground app (0–1) and a nightly gate job; Terraform; EU region; managed identity; key only in Key Vault | Private, cheap when idle, no stored secrets | a VM; keys in config | superseded by D-57 |
 | D-28 | 2026-10-31 | Access: an IP allow-list, a per-minute cap, one replica | Every visit costs model calls | sign-in (more moving parts) | accepted |
 | D-29 | 2026-10-31 | Alerts: gate regression, agent errors, slow turns; each with an owner and an action; fired once at launch | An untested alert is no alert | — | accepted |
 | D-30 | 2026-10-31 | Improvement loop: feedback → human-promoted fixture → gate → fix → change log → deploy | Failures become permanent tests | automatic promotion | accepted |
@@ -456,7 +481,7 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | D-35 | 2026-10-31 | The window search tries offsets 0, +1, −1, +2, −2 …, never before today | The natural alternative is often the day before | forward-only search | accepted (A) |
 | D-36 | 2026-10-31 | Extractor evaluation against gold call states, 3 runs, field by field | Separates understanding errors from judge noise | end-to-end only | accepted (A) |
 | D-37 | 2026-10-31 | A `note` action records the decision, intent and version in each result | Traceable runs; the judge ignores it | — | accepted (A) |
-| D-38 | 2026-10-31 | Data layer for our own data only: pydantic entities in Blob, an index in Table, local files for development, no database server | Persistence without a standing cost | Postgres; SQLite over a file share | accepted |
+| D-38 | 2026-10-31 | Data layer for our own data only: pydantic entities in Blob, an index in Table, local files for development, no database server | Persistence without a standing cost | Postgres; SQLite over a file share | superseded by D-58 |
 | D-39 | 2026-10-31 | Promoted fixtures use seed personas only | No personal data in git | — | accepted |
 | D-40 | 2026-10-31 | Two UIs on one standard-library server: caller simulator (`/`) and admin console (`/admin`); vanilla JS; charts with Observable Plot + d3 vendored; fonts vendored | No build chain; works offline | a React/Vite app; hand-rolled charts | accepted |
 | D-41 | 2026-10-31 | Visual identity "smoke sauna": hot/cold colour logic, the type above, one signature per UI, accessibility floor | A distinctive, subject-true design | generic dashboard styling | accepted |
@@ -466,6 +491,8 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | D-45 | 2026-10-31 | Hidden-style and red-team fixtures written by hand; red team always at 1.0 | Safety and privacy are not negotiable | — | accepted |
 | D-46 | 2026-10-31 | Human evaluation: scenario cards, seed personas, five-item rubric; failures become fixtures | Real people find what fixtures miss | — | accepted |
 | D-47 | 2026-10-31 | Judge calibration: judge–human and rater–rater agreement (Cohen's κ) reported; the kit's judge unchanged | Know how far to trust judge failures | — | accepted |
+| D-57 | 2026-10-31 | Minimal Azure: nine resources (resource group, Log Analytics, Container Apps environment, registry, a pull-only managed identity, a storage account, one Azure Files share, the app, the job) plus alerts. Secrets as Container App secrets set by CLI; the share linked to the environment by piping the storage key from `az` to `az`, never stored | You asked for the smallest infrastructure; one mounted share replaces Blob, Table, Key Vault, lifecycle policies and three role assignments. The storage key is the cost: managed-identity SMB mounts are preview (SMB OAuth, Kerberos, an extra role); upgrade when GA | Blob + Table + Key Vault (D-27, D-38); a managed-identity mount in preview | accepted |
+| D-58 | 2026-10-31 | One `FileStore`, files as rows: each record its own JSON file at `<data>/<entity>/<partition>/<key>.json`, written atomically; no shared index; retention by pruning. `PIRTIS_DATA_DIR` is `python/var` locally and `/data` (the mounted share) in Azure | The same code locally and in the cloud; two writers (the app and the job) can't corrupt a shared file over SMB; no REST client to write or test | Blob + Table via REST (D-38); SQLite on the share (fragile over SMB) | accepted |
 | D-48 | 2026-10-31 | Spend guards for a small prepaid model credit: targeted runs, full gates at phase ends, cost printed and shown, a credit check before full gates, a slim nightly suite | Exhausted credit returns 429, which would look like agent bugs | — | accepted |
 | D-49 | 2026-10-31 | Pydantic v2 at our boundaries (model output, stored entities, playground requests); the strict schema generated from the same class; dataclasses for internals | One source of truth for schema and validation; untrusted model output is checked at the edge | a hand-written parser | accepted |
 | D-50 | 2026-10-31 | Documentation: three architecture views (containers, data flow with sensitivity labels, trust boundaries and numbered crossings, sequences with failure paths) plus a deployment view, in Mermaid with evidence paths, commit stamps, *Not built* lists and `[CONFIRM]` for unknowns, checked by a shape checker; evaluation graphs in Mermaid; screenshots only for UI. A change to a container, store or crossing updates its diagram in the same commit | Diagrams that diff stay true; reviewers ask where data goes | images and draw.io exports | accepted |
@@ -492,3 +519,4 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | 2026-10-31 | 7 | Gold call states for the 20 model-facing fixtures; the extractor eval (`make eval-extract`); sharper prompt rules; sanity bounds and an answer cap; quote checks in code for unit and consent; booking notes without site or car details; `agent_version`. Extractor pass^3 went 10/20 (1 run) → 12/20 → **20/20**; the frozen gate still passes 72/72 | Measure and fix the model's understanding apart from the policy and the judge | D-36, D-54, D-55, D-56 |
 | 2026-10-31 | 8 | `decide` restructured around an `Outcome`; a `note` ends every turn; `telemetry.py` builds and emits one content-free `TurnRecord` per turn, with an OpenTelemetry rendering; a `NullHandler` silences library logging. One-run gate: all 24 cases pass, with one note in every result | Observability without personal data, and traceable runs | D-26, D-37 |
 | 2026-10-31 | 9 | Gate report with pass^k split into deterministic and judge (D-21's reporting), now the tail of `make gate`. Extractor eval and the full gate re-run: 20/20 and **24/24 cases passing all 3 runs (72 runs), deterministic 24/24, judge 24/24**. Voice-UX audit: every rule in §5 mapped to named tests; three gaps closed (price in every read-back, a rebuilt reply after a barge-in, no reply ever naming another customer) | Prove each voice rule, and report the gate the way D-21 promised | D-21, D-24 |
+| 2026-10-31 | plan | Azure kept to a minimum. Instead of Blob + Table + Key Vault + lifecycle policies, one Azure Files share is mounted into the app and the job at `/data`, and the data layer is one `FileStore` (a JSON file per record) that runs the same locally. Secrets become Container App secrets set by CLI | Your request for the smallest infrastructure; less to build, secure and explain | D-27 → D-57, D-38 → D-58 |

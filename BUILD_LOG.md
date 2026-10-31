@@ -1045,3 +1045,45 @@ $6.
   - zero-token tests throughout
 
   No model calls.
+
+---
+
+## Plan change after Phase 9 — minimal Azure, one mounted file share
+
+**Date:** 2026-10-31
+**Why:** you asked to keep the Azure infrastructure to a minimum and to use storage
+attached to the container if possible.
+
+**What I checked first:** Azure Container Apps can mount an **Azure Files share** into
+a container as a volume. Current Microsoft documentation recommends managed identity
+for new SMB mounts, but that is still **preview**, and it needs SMB OAuth, Kerberos and
+an extra role. Mounts using the storage account key remain fully supported.
+
+**What changed in the plan:**
+| | Before | Now |
+|---|---|---|
+| Data | Blob containers + Tables + lifecycle policies + a REST client (`AzureStore`) | **one Azure Files share mounted at `/data`**; one `FileStore`, a JSON file per record, the same code locally (`python/var/`) |
+| Secrets | Key Vault + managed-identity roles | Container App secrets set by `az containerapp secret set` |
+| Identity | four role assignments | one: pull the image from the registry |
+| Retention | lifecycle policies + pruning | pruning by date in the gate job |
+| Resources | about fourteen | **nine** + alerts |
+
+**The one trade-off, stated plainly:** the share's link to the Container Apps
+environment needs the storage account key. `make storage-link` pipes it from
+`az storage account keys list` straight into `az containerapp env storage set`; it is
+never written to Terraform state, a file or the repo. The upgrade path is a
+managed-identity mount once that's generally available (listed in SPEC §12).
+
+**Design detail that makes a shared folder safe:** two containers (the playground and
+the gate job) write to the same share over SMB. So there's no shared index file: every
+record is its own file, written atomically (a temp file, then rename), and queries
+scan a directory. Nothing can be half-written or interleaved.
+
+**Recorded:**
+- SPEC decisions **D-57** (minimal Azure) and **D-58** (files as rows on a mounted
+  share), which supersede D-27 and D-38
+- SPEC §9 (deployment), §9b (data model and diagram), §12 (next steps) and the change
+  log
+- The plan's Phases 10, 14, 15 and 16 are updated to match.
+
+No code changed and no model calls were made.
