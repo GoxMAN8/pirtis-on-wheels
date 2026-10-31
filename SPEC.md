@@ -612,7 +612,20 @@ extractor eval and a gate run.
 
 **Known limits:**
 - If speech-to-text drops Lithuanian diacritics from a name, identification fails and
-  the caller is transferred.
+  the caller is transferred. The kit's API matches names letter for letter, and the
+  agent may not read the customer list before the caller is identified, so this can't be
+  repaired safely in the agent (trying spelling variants against the API would be
+  guessing an identity). The fix belongs in the speech recogniser: a vocabulary hint
+  with the customers' and saunas' names. In the simulator, *Check speech before sending*
+  lets a tester correct a misheard word first.
+- **English only.** The turn gate's patterns, the quote checks' word lists, the reply
+  templates and numbers said as words are all English. The model's part would follow
+  another language; the code's part wouldn't. Lithuanian callers would need Lithuanian
+  replies and word lists. Where a pattern misses a phrase, the turn falls back to the
+  model or to one more question, never to a wrong booking (README, decisions 2, 4, 6).
+- The 59 metamorphic variants, including 14 written as speech-to-text hears a call,
+  have not been run against the agent yet, so how it copes with noisy speech is not
+  measured beyond our own cases.
 - A move by one day is checked conservatively.
 - The agent package needs pydantic, installed by `uv sync`.
 - Terraform state is local.
@@ -649,7 +662,11 @@ extractor eval and a gate run.
   not seen by the next call (each call has its own API, as each fixture does).
 
 **Next steps:**
-- real telephony: call automation and streaming speech in front of `decide`
+- run the 59 variants (`make variants-accept`, then `make gate`); the 14 speech-noise ones
+  say whether a correction layer is needed at all
+- real telephony: call automation and streaming speech in front of `decide`, with a
+  vocabulary hint (customer and sauna names) for the speech recogniser
+- Lithuanian: replies and word lists per language, the model's part unchanged
 - remote, encrypted Terraform state and CI on every push, with an image scan
 - Key Vault references for the Container App secrets, so the state never sees their
   values
@@ -780,3 +797,4 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | 2026-10-31 | 14 | The container image and the gate job. `gate-job` runs the frozen gate in one process with the kit's Runner: the nightly suite (given + red team) by default, every suite on request. It saves the gate run with the extractor's pass^k beside it, stores turn records with source `gate` (never logged), prunes past retention, prints one JSON line and exits 1 on failure; `llm_errors` tells an outage from a regression. `deploy/Dockerfile`: two stages, bases pinned by digest, locked dependencies, uid 10001, read-only code, an allow-listed build context; 224 MB, built for arm64 and amd64. Running it found every turn logged twice, once per stream; fixed in both entry points (D-82). **In the container, with the real model, the nightly job passed 21/21 cases, 63/63 runs, extractor 18/18**, one line on stdout. 654 tests (11 new) | One image for both cloud workloads, and a gate the cloud can run and alert on without a shell | D-80 – D-82 |
 | 2026-10-31 | 15 | Azure, live in Germany West Central: 15 resources in Terraform, the app (0–1) behind a sign-in with accounts we create (D-83, at your request; replaces the allow-list), the nightly gate job, an action group and three alerts on the one-line events (D-84). A deploy asks whether the gate holds first (D-85). In Azure the gate job passed 21/21 cases, 63/63 runs, extractor 18/18, and wrote to the share as the non-root user. The alert test fired the gate-regression alert end to end; its email arrived. The live image is built from this phase's commit. An adversarial review found 11 issues, none reaching data; 10 fixed test-first and re-probed live, the state treated as a secret (D-86). 686 tests (32 new) | Run privately in the cloud where testers can sign in, watched by alerts with owners | D-83 – D-86 |
 | 2026-10-31 | 16 | Documentation and the final run. `docs/architecture/` (containers, data flow with nine labelled stores, five trust boundaries and five tabled crossings, two sequences with their unhappy branches, deployment), checked for shape with 0 errors and 0 warnings. `docs/evaluation.md` with graphs, `docs/using-the-app.md` (the live link, sign-in, a tour), screenshots, the READMEs. The final gate on the unchanged agent failed 45/46 on a judge flip in fixture 01; fixed in the wording (D-87), then **46/46 cases, 138/138 runs** on bd98c5cf8006. Extractor 41/41. 692 tests | Readable without running it, and a final run that holds | D-87 |
+| 2026-10-31 | after 16 | Follow-ups after a documentation review. Docs: `docs/data-science.md` (every metric's method and limits), the README led by its core technical decisions, separate guides for testers (`docs/guide-caller.md`) and admins (`docs/guide-admin.md`). Console: `ops/cases.py` says where each case comes from, and the Reliability view, thermal view and replay list keep the kit's 14 apart from ours by kind. Simulator: the sign-in page says it is waiting while the app wakes; *Check speech before sending* puts recognised speech in the box to fix first. The agent is unchanged (`bd98c5cf8006`) | Reviewers read the kit's results and ours separately; a tester shouldn't blame the agent for the browser's speech errors | — |

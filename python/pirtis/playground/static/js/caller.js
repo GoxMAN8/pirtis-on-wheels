@@ -97,6 +97,12 @@ const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null;
 let heard = "";
 let cutIn = false;
+// "Check speech before sending": the browser's recogniser mishears, Lithuanian names
+// above all, and a tester shouldn't have to blame the receptionist for it. When on,
+// what was heard goes into the text box to fix, and is sent with Say it; a line that
+// was spoken over the receptionist still counts as cutting in.
+const REVIEW_KEY = "pirtis-review-speech";
+let pendingCutIn = false;
 
 function listen() {
   if (rec || S.busy || !S.call || S.call.status !== "open") return;
@@ -123,8 +129,17 @@ function listen() {
     rec = null;
     setListening(false);
     const text = heard.trim();
-    if (text) send(text, cutIn);
-    else $("interim").textContent = "";
+    if (!text) {
+      $("interim").textContent = "";
+    } else if ($("review").checked) {
+      pendingCutIn = cutIn;
+      $("text").value = text;
+      $("interim").textContent = "Check what was heard, fix any word, then press Say it.";
+      $("text").focus();
+      $("text").setSelectionRange(text.length, text.length);
+    } else {
+      send(text, cutIn);
+    }
   };
   rec.start();
   setListening(true);
@@ -136,7 +151,7 @@ function stopListening() {
 
 function setListening(on) {
   $("mic").setAttribute("aria-pressed", String(on));
-  $("mic").textContent = on ? "Listening… let go to send" : "Hold to talk";
+  $("mic").textContent = on ? `Listening… let go to ${$("review").checked ? "check" : "send"}` : "Hold to talk";
   $("stove").classList.toggle("listening", on);
   smoke.set(on ? 0.9 : 0.5);
 }
@@ -145,7 +160,15 @@ if (!Recognition) {
   $("mic").disabled = true;
   $("mic").textContent = "No microphone here";
   $("mic").title = "This browser can't listen. Type what you'd say instead.";
+  $("review-wrap").hidden = true;
 } else {
+  try {
+    $("review").checked = localStorage.getItem(REVIEW_KEY) === "1";
+  } catch { /* storage blocked: the option starts off */ }
+  $("review").addEventListener("change", () => {
+    try { localStorage.setItem(REVIEW_KEY, $("review").checked ? "1" : "0"); } catch { /* not kept */ }
+  });
+  $("text").addEventListener("input", () => { if (!$("text").value.trim()) pendingCutIn = false; });
   const mic = $("mic");
   mic.addEventListener("pointerdown", (e) => { e.preventDefault(); listen(); });
   mic.addEventListener("pointerup", stopListening);
@@ -220,9 +243,11 @@ async function send(text, barge = false) {
     $("interim").textContent = "";
     showError("");
     render(view);
+    return true;
   } catch (e) {
     $("interim").textContent = "";
     showError(e.message);
+    return false;
   } finally {
     S.busy = false;
     setBusy(false);
@@ -576,7 +601,7 @@ $("rate-open").addEventListener("click", showRating);
 $("say").addEventListener("submit", (e) => {
   e.preventDefault();
   const text = $("text").value.trim();
-  if (text) send(text);
+  if (text) send(text, pendingCutIn).then((ok) => { if (ok) pendingCutIn = false; });
 });
 $("quiet").addEventListener("click", () => post("/api/silence", { seconds: 8 }));
 $("hangup").addEventListener("click", () => post("/api/hangup"));

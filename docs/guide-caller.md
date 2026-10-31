@@ -17,8 +17,14 @@ python && make playground`, then open <http://127.0.0.1:8000>; no sign-in.
      since new customers can't sign up by phone
 2. **Speak or type.**
    - **Type** in the box and press *Say it*. This always works.
-   - **Hold to talk** works in Chrome, Edge and Safari, not Firefox. Your browser sends
-     your voice to its own speech service, so type if you'd rather not.
+   - **Hold to talk** works in Chrome, Edge and Safari, not Firefox. Hold the button
+     (or Space) while you speak; let go to send. English only. Your browser sends your
+     voice to its own speech service, so type if you'd rather not.
+   - **Check speech before sending:** tick it and what the browser heard goes into the
+     box instead of straight to the receptionist. Fix any misheard word, then press
+     *Say it*. Use it for names: the browser often drops Lithuanian letters ("Egle" for
+     "Eglė"), and then the receptionist can't find the customer. The choice is
+     remembered.
    - **Replies are spoken aloud;** untick *Speak replies* to silence them.
 3. **Watch the booking card.** Each detail comes out of the fog as the receptionist
    hears it: dates, number of people, the car's towing limit, power at the site, the
