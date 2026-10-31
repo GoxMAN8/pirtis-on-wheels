@@ -6,3 +6,4 @@ deploy/terraform/.terraform*
 *.tfstate*
 deploy/.image-digest
 INITIAL_INSTRUCTIONS.md
+.claude/launch.json

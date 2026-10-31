@@ -1,0 +1,168 @@
+/* Pirtis on Wheels: the playground's design system.
+   The subject is the Lithuanian smoke sauna (dūminė pirtis): soot-blackened timber,
+   ember light, drifting steam, then the cold plunge. Hot means live, failing or slow;
+   cold means calm, passed, healthy. Two themes: Soot (dark, default) and Steam (light).
+   Chart colours were validated with the dataviz palette checks (reports/phase-11). */
+
+@font-face { font-family: "Big Shoulders Display"; font-weight: 800; font-display: swap;
+  src: url(fonts/big-shoulders-display-latin-800.woff2) format("woff2");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Big Shoulders Display"; font-weight: 800; font-display: swap;
+  src: url(fonts/big-shoulders-display-latin-ext-800.woff2) format("woff2");
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "Atkinson Hyperlegible Next"; font-weight: 400; font-display: swap;
+  src: url(fonts/atkinson-hyperlegible-next-latin-400.woff2) format("woff2");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Atkinson Hyperlegible Next"; font-weight: 400; font-display: swap;
+  src: url(fonts/atkinson-hyperlegible-next-latin-ext-400.woff2) format("woff2");
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "Atkinson Hyperlegible Next"; font-weight: 700; font-display: swap;
+  src: url(fonts/atkinson-hyperlegible-next-latin-700.woff2) format("woff2");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Atkinson Hyperlegible Next"; font-weight: 700; font-display: swap;
+  src: url(fonts/atkinson-hyperlegible-next-latin-ext-700.woff2) format("woff2");
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 400; font-display: swap;
+  src: url(fonts/ibm-plex-mono-latin-400.woff2) format("woff2");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 400; font-display: swap;
+  src: url(fonts/ibm-plex-mono-latin-ext-400.woff2) format("woff2");
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 500; font-display: swap;
+  src: url(fonts/ibm-plex-mono-latin-500.woff2) format("woff2");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 500; font-display: swap;
+  src: url(fonts/ibm-plex-mono-latin-ext-500.woff2) format("woff2");
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+
+/* ---- tokens: Soot (dark) by default ---- */
+:root {
+  color-scheme: dark;
+  --page: #1c191b;      /* soot: charred timber, warm, never neutral black */
+  --panel: #262224;
+  --raised: #2e292c;    /* smoke */
+  --line: #3a3437;
+  --ink: #e7ecee;       /* steam */
+  --ink-2: #b9b4b6;
+  --muted: #8e8a8c;     /* ash */
+  --ember: #f0743a;     /* glow and light; rarely a flat fill */
+  --ember-text: #f48a57;
+  --plunge: #2f8f8b;
+  --pass: #1e9c94;      /* chart marks, validated */
+  --fail: #e2662c;
+  --hatch: rgba(226, 102, 44, 0.9);
+  --glass: rgba(46, 41, 44, 0.42);
+  --glass-edge: rgba(231, 236, 238, 0.14);
+  --fog: rgba(231, 236, 238, 0.07);
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 12px 32px rgba(0, 0, 0, 0.35);
+
+  --f-display: "Big Shoulders Display", "Arial Narrow", sans-serif;
+  --f-body: "Atkinson Hyperlegible Next", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --r: 6px;
+  --gap: 16px;
+}
+@media (prefers-color-scheme: light) {
+  :root:where(:not([data-theme="dark"])) {
+    color-scheme: light;
+    --page: #e7ecee; --panel: #f7f9fa; --raised: #ffffff; --line: #cdd5d8;
+    --ink: #1c191b; --ink-2: #4a4548; --muted: #615c5f;
+    --ember: #c24e18; --ember-text: #b0450f; --plunge: #00796d;
+    --pass: #00897b; --fail: #cf5520; --hatch: rgba(207, 85, 32, 0.9);
+    --glass: rgba(255, 255, 255, 0.5); --glass-edge: rgba(28, 25, 27, 0.12);
+    --fog: rgba(28, 25, 27, 0.06);
+    --shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 12px 28px rgba(28, 25, 27, 0.12);
+  }
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --page: #e7ecee; --panel: #f7f9fa; --raised: #ffffff; --line: #cdd5d8;
+  --ink: #1c191b; --ink-2: #4a4548; --muted: #615c5f;
+  --ember: #c24e18; --ember-text: #b0450f; --plunge: #00796d;
+  --pass: #00897b; --fail: #cf5520; --hatch: rgba(207, 85, 32, 0.9);
+  --glass: rgba(255, 255, 255, 0.5); --glass-edge: rgba(28, 25, 27, 0.12);
+  --fog: rgba(28, 25, 27, 0.06);
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 12px 28px rgba(28, 25, 27, 0.12);
+}
+
+/* ---- base ---- */
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; } /* a layout's display rule must never un-hide */
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--page); color: var(--ink);
+  font: 400 1rem/1.5 var(--f-body);
+  font-feature-settings: "kern";
+}
+h1, h2, h3 { margin: 0; font-weight: 700; }
+p { margin: 0; }
+a { color: var(--ink); text-underline-offset: 3px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; border-radius: 3px; }
+.mono, code, kbd { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.stamp { font-family: var(--f-display); font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; line-height: 0.95; }
+.muted { color: var(--muted); }
+.visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.skip { position: absolute; left: 8px; top: -40px; background: var(--raised); padding: 8px 12px; border-radius: var(--r); z-index: 10; }
+.skip:focus { top: 8px; }
+
+/* ---- controls ---- */
+.btn {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px;
+  border: 1px solid var(--line); border-radius: var(--r); background: var(--raised);
+  cursor: pointer; font-weight: 700; font-size: 0.9375rem; white-space: nowrap;
+}
+.btn:hover { border-color: var(--muted); }
+.btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+.btn.primary { background: var(--ember); border-color: var(--ember); color: #1c191b; }
+:root[data-theme="light"] .btn.primary { color: #fff; }
+@media (prefers-color-scheme: light) { :root:where(:not([data-theme="dark"])) .btn.primary { color: #fff; } }
+.btn.ghost { background: transparent; }
+.btn.quiet { background: transparent; border-color: transparent; color: var(--ink-2); padding: 0 8px; }
+.btn.quiet:hover { color: var(--ink); border-color: var(--line); }
+.field { display: grid; gap: 4px; font-size: 0.875rem; color: var(--ink-2); }
+.field input, .field select, input.text, textarea.text {
+  min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r);
+  background: var(--panel); color: var(--ink); font-size: 1rem;
+}
+input[type="range"] { accent-color: var(--ember); }
+input[type="checkbox"] { accent-color: var(--ember); width: 18px; height: 18px; }
+.theme-toggle { min-width: 40px; justify-content: center; }
+
+/* ---- shared surfaces ---- */
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px;
+  border: 1px solid var(--line); font-size: 0.8125rem; font-weight: 700; white-space: nowrap;
+}
+.chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.chip.hot::before { background: var(--fail); box-shadow: 0 0 8px var(--fail); }
+.chip.cold::before { background: var(--pass); }
+.chip.hatched::before { background: repeating-linear-gradient(45deg, var(--hatch) 0 2px, transparent 2px 4px); border: 1px solid var(--fail); }
+.empty { color: var(--muted); padding: 24px; text-align: center; }
+.error-line { color: var(--ember-text); font-weight: 700; }
+
+/* ---- charts (Observable Plot) ---- */
+.chart svg { overflow: visible; font-family: var(--f-mono); font-size: 11px; color: var(--muted); max-width: 100%; height: auto; }
+/* Plot's own sheet sets --plot-background on the svg; ours must win there, not on a parent */
+.chart svg { --plot-background: var(--raised); }
+.chart g[aria-label="tip"] { color: var(--ink); }
+.chart g[aria-label="tip"] path { stroke: var(--line); }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.8125rem; color: var(--ink-2); }
+.legend .key { display: inline-flex; align-items: center; gap: 6px; }
+.swatch { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+.swatch.pass { background: var(--pass); }
+.swatch.fail { background: var(--fail); }
+.swatch.judge { background: repeating-linear-gradient(45deg, var(--hatch) 0 2px, transparent 2px 4px); border: 1px solid var(--fail); }
+.swatch.none { border: 1px dashed var(--line); }
+.swatch.turnaround { background: repeating-linear-gradient(135deg, var(--hatch) 0 1.5px, transparent 1.5px 5px); border: 1px solid var(--fail); }
+.swatch.blocked { background: repeating-linear-gradient(45deg, var(--muted) 0 1.5px, transparent 1.5px 4px), repeating-linear-gradient(135deg, var(--muted) 0 1.5px, transparent 1.5px 4px); border: 1px solid var(--muted); }
+.swatch.free { border: 1px solid var(--line); }
+table.data { border-collapse: collapse; width: 100%; font-size: 0.8125rem; }
+table.data th, table.data td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+table.data th { color: var(--muted); font-weight: 700; }
+table.data td.num, table.data th.num { text-align: right; font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+}

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pirtis on Wheels · Admin console</title>
+  <link rel="preload" href="/static/fonts/ibm-plex-mono-latin-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/big-shoulders-display-latin-800.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" href="/static/admin.css">
+</head>
+<body class="admin">
+  <a class="skip" href="#view">Skip to the content</a>
+  <div class="shell">
+    <nav class="side" aria-label="Views">
+      <p class="side-brand"><span class="stamp">Pirtis on Wheels</span><span class="muted">Admin console</span></p>
+      <ul class="side-nav">
+        <li><a href="#reliability" data-view="reliability">Reliability</a></li>
+        <li><a href="#conversations" data-view="conversations">Conversations</a></li>
+        <li><a href="#traces" data-view="traces">Traces</a></li>
+        <li><a href="#feedback" data-view="feedback">Feedback</a></li>
+        <li><a href="#fleet" data-view="fleet">Fleet</a></li>
+      </ul>
+      <div class="side-foot">
+        <a href="/">Caller simulator</a>
+        <button class="btn quiet theme-toggle" id="theme" type="button"></button>
+        <p class="mono muted" id="version"></p>
+      </div>
+    </nav>
+    <main id="view" class="view" tabindex="-1"></main>
+  </div>
+  <div id="tip" class="cell-tip" role="tooltip" hidden></div>
+  <script src="/static/vendor/d3.min.js"></script>
+  <script src="/static/vendor/plot.umd.min.js"></script>
+  <script type="module" src="/static/js/admin.js"></script>
+</body>
+</html>

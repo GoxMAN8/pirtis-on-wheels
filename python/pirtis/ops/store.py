@@ -57,8 +57,10 @@ class FileStore:
     def query[E: Entity](
         self, cls: type[E], partition: str | None = None, since: datetime | None = None
     ) -> list[E]:
-        """Records of one kind, oldest first; optionally one partition, or from a time."""
-        found = [e for e, _ in self._scan(cls, partition)]
+        """Records of one kind, oldest first; optionally one partition, or from a time.
+        For a kind filed by day, folders before that day aren't read at all."""
+        first = since.astimezone(UTC).date().isoformat() if since and cls.DAILY else None
+        found = [e for e, _ in self._scan(cls, partition, first)]
         if since is not None:
             found = [e for e in found if e.when() >= since]
         return sorted(found, key=lambda e: e.when())
@@ -76,9 +78,13 @@ class FileStore:
             removed[cls.KIND] = len(old)
         return removed
 
-    def _scan[E: Entity](self, cls: type[E], partition: str | None = None) -> list[tuple[E, Path]]:
+    def _scan[E: Entity](
+        self, cls: type[E], partition: str | None = None, first: str | None = None
+    ) -> list[tuple[E, Path]]:
         base = self.root / cls.KIND
         dirs = [base / _name(partition)] if partition is not None else sorted(base.glob("*"))
+        if first is not None:
+            dirs = [d for d in dirs if d.name >= first]
         out = []
         for p in (p for d in dirs for p in sorted(d.glob("*.json"))):
             e = self._read(cls, p)

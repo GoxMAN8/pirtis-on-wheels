@@ -1,0 +1,78 @@
+# Phase 11 · browser checks of both pages (the desktop app's built-in browser)
+# commit: feat(playground): caller simulator and admin console · 2026-10-31
+# server: make playground (uv run playground --port 8765), store python/var/, gpt-4o-mini live
+# screenshots of the final state: screens/ (Soot = dark theme, Steam = light theme)
+
+What was checked, what was found, and what changed. Every defect below was fixed in this
+phase and re-checked in the browser; the ones with logic behind them also got a test.
+
+CALLER SIMULATOR
+ 1. Dial screen (Soot). Renders; the display face carries ė in Eglė Butkutė and Paulauskienė.
+    FOUND: the booking card showed before any call. `.call {display: grid}` beat the
+    browser's [hidden] rule. FIXED: one global `[hidden] {display: none !important}`.
+ 2. Live call as Jonas Jonaitis, typed, four turns (live-calls.txt):
+    "the weekend after next, six of us" -> identified, dates resolved to Sat 10 - Sun 11 Oct
+    -> tow asked -> "about two and a half tonnes" -> power asked -> "no power" -> Didžioji
+    offered with full read-back (unit, dates, people, €420) -> "yes, book it" -> booked,
+    text message shown with bk_101. Each fact condensed out of the fog as it was learned.
+    FOUND: the card had no "asking next" for power. FIXED (+ test: power is asked next
+    when an electric sauna fits).
+    FOUND: a long status chip pushed the card title onto two lines. FIXED: the head wraps.
+    FOUND: a fogged value was nearly invisible, so rows looked empty. FIXED: a longer
+    placeholder that blurs into a visible smear of steam.
+ 3. Transcript drawer: thumbs on every receptionist line except the code-spoken greeting;
+    one 👍 and one 👎 with a note, both saved and shown in the admin console.
+ 4. Reload with #call=<id>: the call resumed from disk; old lines were not spoken again.
+ 5. Test controls: replayed fixture `turnaround` through the real harness, live, judge
+    included: passed, 1 model call, 2.06 s. FOUND: "1 model calls". FIXED.
+ 6. Unknown number, keyboard only: Tab x8 reaches it (skip link, admin link, theme, five
+    callers) with a visible ember focus ring; Enter starts the call and focus moves to the
+    text box; the typed line was passed to new customers live, chip hot, inputs replaced
+    by "Make another call".
+
+ADMIN CONSOLE
+ 7. Reliability: version tiles (8a552e2b0636 24/24 over 72 runs, gate holds; the naive
+    kit agent 4/14, gate fails, failures listed) and the thermal view (baseline column hot,
+    judge-only failures hatched, current version cold). Hover tip and click detail work.
+    FOUND: the lead showed raw backticks. FIXED: a code element.
+    FOUND: "Ours" sorted above the kit's cases. FIXED: suites in a fixed order (+ test).
+ 8. Conversations: tiles, funnel, intent mix this week vs the week before with the drift
+    badge ("too few turns" below 30 a window), latency ECDF with p50/p95, tokens per
+    model turn, API calls by status.
+    FOUND: Plot's tooltip was white with pale text. Plot's own sheet sets
+    --plot-background on the svg, beating the inherited value. FIXED on the svg.
+    FOUND: duplicate latency ticks (1.9, 1.9, 2.0). FIXED: a scale transform to seconds.
+    FOUND: fractional call counts on axes. FIXED: whole numbers only.
+ 9. A direct link to #conversations failed: "Cannot access 'conv' before initialization"
+    (routing ran before the module's later state existed). FIXED: routing starts at the
+    end of the module; every view was then opened by direct link.
+10. Traces: one turn as Heard -> Understood -> Decided -> Called -> Said.
+    FOUND: a quote the agent had rejected was shown as the caller's evidence (the model
+    copied "Didžioji" from our own offer line; the agent dropped the sauna but the quote
+    text stays in the state). FIXED in the trace (struck through, "not the caller's
+    words, so ignored") and on the caller's card (+ test).
+    FOUND: at desktop width the five columns were ~130 px and values wrapped per letter.
+    FIXED: the turn list moved above; field names stack over values.
+11. Feedback: the flagged line with its note and the good one, each linked to its trace.
+12. Fleet: six weeks per sauna, booked / turnaround / in for service / free, never who;
+    the what-if gives the rule mirror's reasons in words and outlines the asked days.
+    FOUND: "September" and "October" overlapped. FIXED: a month label spans its own days.
+
+BOTH PAGES
+13. Steam theme: all views; the switch persists and wins over the system setting.
+14. Phone width (375 px): the caller page fits exactly.
+    FOUND: the admin page was 713 px, then 1,246 px on Fleet: a chip that can't wrap and
+    1fr grid tracks that grow to their content. FIXED: minmax(0, 1fr) tracks and a
+    wrapping badge; the calendar scrolls in its own box with the sauna names pinned.
+    Re-checked: every admin view 375 px wide.
+15. Console: no errors on any page after the fixes.
+16. Privacy: privacy-scan.txt (every admin read endpoint, live data present: 0 names,
+    phones or customer ids).
+
+NOT CHECKED IN A BROWSER (said plainly)
+ - Voice: "Hold to talk" (the browser's speech recognition) and spoken replies. Replies
+   were muted during these checks so nothing played aloud on this machine, and speech
+   input needs a person at a microphone. Both are wired and degrade to typing; a person
+   should try them once (Chrome or Safari; Firefox has no speech recognition).
+ - Reduced motion: the pane can't emulate the setting. In code: the smoke canvas doesn't
+   start, CSS animations and transitions are cut to nothing, and fog uses no blur.

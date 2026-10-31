@@ -1,0 +1,30 @@
+# Phase 11 · live calls in the caller simulator (gpt-4o-mini), summarised from the stored sessions
+# commit: feat(playground): caller simulator and admin console · 2026-10-31
+# agent_version 8a552e2b0636 · seed customers only (synthetic) · typed, not spoken
+
+== call 20261031-a1452f1f · status open · 4 turns
+  caller : Hi, it's Jonas Jonaitis. Could we get a sauna for the weekend after next, there'll be six of us?
+  decided: Ask · intent book · 1 model call · 1935/123 tokens · 2312 ms
+  api    : units.list 200, customers.identify 200
+  said   : What car will you tow it with, and how much can it tow, braked?
+  caller : It's a Volvo, it can tow about two and a half tonnes braked.
+  decided: Ask · intent book · 1 model call · 1985/137 tokens · 1878 ms
+  api    : units.list 200, bookings.list 200, units.availability 200
+  said   : Is there mains power where the sauna is going?
+  caller : No, it's a field at our summer place, no power there.
+  decided: Offer · intent book · 1 model call · 2047/136 tokens · 1985 ms
+  api    : units.list 200, bookings.list 200, units.availability 200
+  said   : I can offer Didžioji, Saturday the tenth to Sunday the eleventh of October, for six people. That's four hundred and twenty euros. Shall I book it?
+  caller : Yes please, book it.
+  decided: Booked · intent book · 1 model call · 2125/151 tokens · 2047 ms
+  api    : units.list 200, bookings.list 200, units.availability 200, bookings.create 200
+  said   : That's booked: Didžioji, Saturday the tenth to Sunday the eleventh of October, for six people. The total is four hundred and twenty euros, and I'll text you the details.  [+ sms +37062223344]
+
+== call 20261031-c8cc190c · status transferred · 1 turns
+  caller : Hello, I'm Ona Onaitė, I'd like to rent a sauna next weekend.
+  decided: Handoff · intent book · 1 model call · 1926/120 tokens · 1522 ms
+  api    : units.list 200, customers.identify 200
+  said   : I can't find an account under that name and number, and new customers are set up by a colleague. I'll put you through now.  [+ transfer new_customers]
+
+model tokens across these calls: 10018 in / 667 out ≈ $0.0019
+plus one fixture replay through the harness from the test drawer (turnaround: passed, 1 model call, 2.06 s, judge included)

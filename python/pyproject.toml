@@ -10,6 +10,7 @@ dependencies = [
 
 [project.scripts]
 harness = "pirtis.cmd.harness:main"
+playground = "pirtis.playground.server:main"
 
 [dependency-groups]
 dev = [
@@ -42,7 +43,7 @@ select = ["E", "F", "I", "UP", "B"]
 python_version = "3.12"
 strict = true
 warn_unreachable = true
-files = ["pirtis/agent", "pirtis/ops"]
+files = ["pirtis/agent", "pirtis/ops", "pirtis/playground"]
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]

@@ -1,0 +1,54 @@
+# Phase 11 · chart palette, validated (dataviz validate_palette.js)
+# commit: feat(playground): caller simulator and admin console · 2026-10-31
+# state colours (thermal view, API status, fleet): two hues, the judge-only state is a hatch, not a third hue
+
+$ validate_palette.js "#1E9C94,#E2662C" --mode dark --surface "#262224" --pairs all
+
+Palette (dark, surface #262224, categorical): 2 slots
+  [PASS] Lightness band         all 2 inside L 0.48–0.67
+  [PASS] Chroma floor           all 2 >= 0.1
+  [PASS] CVD separation         worst all-pairs #E2662C↔#1E9C94 ΔE 13.7 (protan) · tritan 32.0
+  [PASS] Normal-vision floor    worst all-pairs #E2662C↔#1E9C94 ΔE 26.2 (normal)
+  [PASS] Contrast vs surface    all 2 >= 3:1
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ validate_palette.js "#00897B,#CF5520" --mode light --surface "#F7F9FA" --pairs all
+
+Palette (light, surface #F7F9FA, categorical): 2 slots
+  [PASS] Lightness band         all 2 inside L 0.43–0.77
+  [PASS] Chroma floor           all 2 >= 0.1
+  [PASS] CVD separation         worst all-pairs #CF5520↔#00897B ΔE 12.0 (protan) · tritan 30.8
+  [PASS] Normal-vision floor    worst all-pairs #CF5520↔#00897B ΔE 25.6 (normal)
+  [PASS] Contrast vs surface    all 2 >= 3:1
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+# rejected first try: a third hue (amber) for judge-only failures
+$ validate_palette.js "#2F8F8B,#C9962E,#F0743A" --mode dark --surface "#262224" --pairs all
+
+Palette (dark, surface #262224, categorical): 3 slots
+  [FAIL] Lightness band         outside band: [["#C9962E",0.704],["#F0743A",0.696]]
+  [FAIL] Chroma floor           below floor (reads gray): [["#2F8F8B",0.088]]
+  [FAIL] CVD separation         worst all-pairs #F0743A↔#C9962E ΔE 0.6 (deutan) · tritan 10.0
+  [FAIL] Normal-vision floor    worst all-pairs #F0743A↔#C9962E ΔE 10.2 (normal) — below 15, hard to tell apart even with full color vision
+  [PASS] Contrast vs surface    all 3 >= 3:1
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+# the two-week intent comparison: ink vs ash, filled vs hollow marks. A neutral pair by design,
+# so the hue checks (band, chroma) do not apply; separation and contrast do:
+$ validate_palette.js "#E7ECEE,#8E8A8C" --mode dark --surface "#262224"
+  [PASS] CVD separation         worst adjacent #8E8A8C↔#E7ECEE ΔE 30.2 (deutan) · tritan 30.2
+  [PASS] Normal-vision floor    worst adjacent #8E8A8C↔#E7ECEE ΔE 30.3 (normal)
+  [PASS] Contrast vs surface    all 2 >= 3:1
+$ validate_palette.js "#1C191B,#615C5F" --mode light --surface "#F7F9FA"
+  [PASS] CVD separation         worst adjacent #615C5F↔#1C191B ΔE 26.2 (protan) · tritan 26.3
+  [PASS] Normal-vision floor    worst adjacent #615C5F↔#1C191B ΔE 26.3 (normal)
+  [PASS] Contrast vs surface    all 2 >= 3:1

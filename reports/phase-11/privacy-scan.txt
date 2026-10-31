@@ -1,0 +1,12 @@
+# Phase 11 · privacy scan of every admin read endpoint, with live calls stored (Jonas Jonaitis, Ona Onaitė)
+# commit: feat(playground): caller simulator and admin console · 2026-10-31
+# counts any seed or caller name, any +3706 phone, any customer id in the response body
+
+GET  /api/conversations?days=7 bytes=1039   names/phones/ids found=0
+GET  /api/turns?days=7         bytes=3024   names/phones/ids found=0
+GET  /api/fleet                bytes=7592   names/phones/ids found=0
+GET  /api/gate-runs            bytes=1097   names/phones/ids found=0
+GET  /api/thermal              bytes=2644   names/phones/ids found=0
+POST /api/what-if              bytes=1020   names/phones/ids found=0
+
+The same scan runs in the test suite on every change: test_server.py::test_the_admin_console_never_receives_a_name_or_a_phone

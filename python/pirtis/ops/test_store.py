@@ -129,7 +129,7 @@ def test_content_is_only_where_the_spec_says() -> None:
         for cls in ENTITIES
     }
     assert personal == {
-        "session": {"transcript", "bookings"},
+        "session": {"transcript", "bookings", "steps"},
         "feedback": {"transcript", "note"},
         "rating": set(),
         "gate_run": set(),
@@ -157,6 +157,15 @@ def test_query_by_partition_and_date(tmp_path: Path) -> None:
     ]  # oldest first
     today = (NOW).date().isoformat()
     assert [s.session_id for s in store.query(Session, partition=today)] == ["s0"]
+
+
+def test_a_date_query_never_opens_older_day_folders(tmp_path: Path) -> None:
+    store = FileStore(tmp_path)
+    store.put(turn(1, NOW))
+    old = tmp_path / "turn" / "2026-01-01"
+    old.mkdir()
+    (old / "t9.json").write_text("{not json")  # reading it would raise
+    assert [t.turn_id for t in store.query(Turn, since=NOW - timedelta(days=1))] == ["t1"]
 
 
 def test_prune_keeps_each_kind_for_its_retention(tmp_path: Path) -> None:

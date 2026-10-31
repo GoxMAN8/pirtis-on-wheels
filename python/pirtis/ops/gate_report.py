@@ -32,17 +32,18 @@ class RunRow:
     wall_ms: int
 
 
-def load(dir: Path) -> list[RunRow]:
-    """One row per run from <dir>/<suite>/<fixture>/run-<n>/result.json."""
+def load(dir: Path, suite: str | None = None) -> list[RunRow]:
+    """One row per run from <dir>/<suite>/<fixture>/run-<n>/result.json; or, given a
+    suite, from that one suite's folder, <dir>/<fixture>/run-<n>/result.json."""
     rows = []
-    for p in sorted(dir.glob("*/*/run-*/result.json")):
+    for p in sorted(dir.glob("*/run-*/result.json" if suite else "*/*/run-*/result.json")):
         r = json.loads(p.read_text())
         failures = [str(f) for f in r.get("failures") or []]
         judge = [f for f in failures if f.startswith("judge:")]
         llm = r.get("llm") or {}
         rows.append(
             RunRow(
-                suite=p.parents[2].name,
+                suite=suite or p.parents[2].name,
                 fixture=str(r.get("fixture", p.parents[1].name)),
                 run=int(r.get("run", 0)),
                 passed=bool(r.get("passed")),

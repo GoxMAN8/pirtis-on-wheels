@@ -10,5 +10,8 @@ Test lists are re-runnable: check out that commit and run the command.
 | `gate-*.txt` | the harness table for a gate run: per fixture, result, model calls, tokens, time, and every failure reason |
 | `live-*.txt` | a targeted live run, summarised from its trace files: what the model extracted, the API calls, what was said, the judge's verdicts |
 | `*-demo.txt` | a zero-token run of new code on real data; the script that produced it sits beside it |
+| `browser-checks.txt`, `screens/` | what was checked in a real browser, every defect found there and its fix; screenshots of the final state |
+| `palette.txt` | the chart colours run through the palette validator, both themes |
+| `privacy-scan.txt` | every admin read endpoint scanned for names, phones and customer ids, with live data stored |
 
 Phase 1 produced documents only, so it has no folder.

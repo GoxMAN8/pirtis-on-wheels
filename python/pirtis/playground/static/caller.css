@@ -1,0 +1,132 @@
+/* The caller simulator. One signature: the fogged-glass booking card, whose details
+   condense out of the steam as the receptionist learns them. Everything else stays
+   quiet: soot, one ember line, and the smoke behind. */
+
+body.caller {
+  min-height: 100vh;
+  background:
+    radial-gradient(120% 60% at 50% 115%, rgba(240, 116, 58, 0.13), transparent 60%),
+    var(--page);
+}
+#smoke { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+.top, main { position: relative; z-index: 1; }
+
+.top {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 16px 24px; max-width: 1240px; margin: 0 auto;
+}
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand .stamp { font-size: 1.5rem; }
+.top-nav { display: flex; align-items: center; gap: 12px; }
+
+main { max-width: 1240px; margin: 0 auto; padding: 0 24px 64px; }
+
+/* before the call */
+.dial { padding: 6vh 0 24px; max-width: 760px; }
+.dial-title { font-size: clamp(3rem, 9vw, 6.5rem); }
+.dial-lead { margin: 16px 0 32px; font-size: 1.125rem; color: var(--ink-2); max-width: 52ch; }
+.personas { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.persona {
+  width: 100%; text-align: left; padding: 16px 18px; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--glass-edge); background: var(--glass);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  display: grid; gap: 4px;
+}
+.persona:hover { border-color: var(--ember); }
+.persona .name { font-family: var(--f-display); font-weight: 800; font-size: 1.75rem; text-transform: uppercase; line-height: 1; }
+.persona .phone { font-family: var(--f-mono); font-size: 0.8125rem; color: var(--muted); }
+.persona.unknown .name { color: var(--ink-2); }
+.fine { margin-top: 24px; font-size: 0.8125rem; }
+
+/* the call */
+.call { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(300px, 1fr); gap: 40px; align-items: start; padding-top: 4vh; }
+.stage { display: flex; flex-direction: column; gap: 18px; min-height: 62vh; justify-content: flex-end; }
+.who { display: flex; align-items: center; gap: 10px; color: var(--ink-2); font-size: 0.9375rem; }
+.line {
+  font-size: clamp(1.5rem, 2.6vw, 2.25rem); line-height: 1.28; max-width: 32ch;
+  text-wrap: pretty; min-height: 3.9em;
+}
+.line .speaker { display: block; font-size: 0.8125rem; color: var(--muted); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 8px; }
+.interim { min-height: 1.5em; color: var(--muted); font-style: italic; }
+.stove {
+  height: 3px; border-radius: 3px; width: 100%;
+  background: linear-gradient(90deg, transparent, var(--ember) 30%, var(--ember) 70%, transparent);
+  opacity: 0.35; transition: opacity 400ms ease, box-shadow 400ms ease;
+}
+.stove.speaking { opacity: 1; box-shadow: 0 0 18px 2px var(--ember); animation: coals 1.6s ease-in-out infinite; }
+.stove.listening { opacity: 0.8; background: linear-gradient(90deg, transparent, var(--pass) 30%, var(--pass) 70%, transparent); }
+@keyframes coals { 50% { box-shadow: 0 0 26px 4px var(--ember); } }
+
+.say { display: flex; gap: 10px; }
+.say .text { flex: 1; min-width: 0; min-height: 48px; font-size: 1.0625rem; background: var(--glass); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-color: var(--glass-edge); }
+.say .btn { min-height: 48px; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 0.9375rem; color: var(--ink-2); cursor: pointer; }
+#mic[aria-pressed="true"] { border-color: var(--pass); color: var(--pass); }
+.call.closed .say, .call.closed .controls { display: none; }
+
+/* the fogged-glass booking card */
+.card {
+  position: sticky; top: 24px; padding: 22px 22px 18px; border-radius: 12px;
+  background: var(--glass); border: 1px solid var(--glass-edge); box-shadow: var(--shadow);
+  backdrop-filter: blur(16px) saturate(120%); -webkit-backdrop-filter: blur(16px) saturate(120%);
+}
+.card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin-bottom: 8px; }
+.card-title { font-size: 1.75rem; white-space: nowrap; }
+.facts { margin: 0; }
+.fact { display: grid; grid-template-columns: 6.5rem 1fr; gap: 12px; padding: 12px 0; border-top: 1px solid var(--glass-edge); align-items: baseline; }
+.fact dt { font-size: 0.8125rem; color: var(--muted); font-weight: 700; }
+.fact dd { margin: 0; min-width: 0; }
+.fact .value {
+  font-family: var(--f-display); font-weight: 800; font-size: 1.75rem; line-height: 1; text-transform: uppercase;
+  letter-spacing: 0.01em; display: block;
+  transition: filter 1100ms ease, opacity 1100ms ease, letter-spacing 1100ms ease;
+}
+.fact.fog .value { filter: blur(7px); opacity: 0.22; letter-spacing: 0.12em; user-select: none; }
+.fact .next { display: inline-block; margin-top: 6px; font-size: 0.75rem; font-weight: 700; color: var(--ember-text); border: 1px solid currentColor; border-radius: 999px; padding: 1px 8px; }
+.fact .evidence { display: block; margin-top: 6px; font-size: 0.8125rem; color: var(--ink-2); font-style: italic; max-height: 0; overflow: hidden; opacity: 0; transition: max-height 300ms ease, opacity 300ms ease; }
+.fact.has-evidence { cursor: help; }
+.fact.has-evidence:hover .evidence, .fact.has-evidence:focus-within .evidence, .fact.has-evidence.open .evidence { max-height: 6em; opacity: 1; }
+.fact .ev-btn { all: unset; cursor: pointer; display: block; width: 100%; }
+.fact .ev-btn:focus-visible { outline: 2px solid var(--ember); outline-offset: 4px; border-radius: 3px; }
+.fact.small .value { font-family: var(--f-body); font-weight: 700; font-size: 1.125rem; text-transform: none; letter-spacing: 0; }
+.sms { margin-top: 14px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--glass-edge); background: var(--fog); }
+.sms-label { font-size: 0.75rem; color: var(--muted); font-weight: 700; margin-bottom: 4px; }
+.sms-text { font-size: 0.8125rem; white-space: pre-wrap; }
+
+/* drawers */
+.drawers { margin-top: 40px; display: grid; gap: 10px; }
+.drawers details { border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); }
+.drawers summary { cursor: pointer; padding: 12px 16px; font-weight: 700; }
+.transcript { list-style: none; margin: 0; padding: 0 16px 16px; display: grid; gap: 8px; }
+.turn { display: grid; grid-template-columns: 7rem 1fr auto; gap: 12px; align-items: start; padding: 8px 0; border-top: 1px solid var(--line); }
+.turn .who-l { font-size: 0.8125rem; font-weight: 700; color: var(--muted); }
+.turn.assistant .who-l { color: var(--ember-text); }
+.turn.system { color: var(--muted); font-family: var(--f-mono); font-size: 0.8125rem; }
+.turn .cut { color: var(--muted); font-size: 0.8125rem; }
+.rate { display: flex; gap: 4px; align-items: center; }
+.rate .btn { min-height: 32px; padding: 0 8px; }
+.rate .btn[aria-pressed="true"] { border-color: var(--ember); }
+.rate-note { display: flex; gap: 6px; margin-top: 6px; }
+.rate-note input { flex: 1; min-height: 32px; }
+.tests { padding: 0 16px 16px; display: grid; gap: 16px; }
+.replay { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+.replay .field { flex: 1; min-width: 220px; }
+.replay-out, .last-turn { font-size: 0.875rem; }
+.replay-out .verdict { font-weight: 700; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; font-size: 0.8125rem; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font-family: var(--f-mono); }
+
+@media (max-width: 860px) {
+  .call { grid-template-columns: 1fr; gap: 24px; }
+  .stage { min-height: 0; }
+  .card { position: static; }
+  .turn { grid-template-columns: 1fr auto; }
+  .turn .who-l { grid-column: 1 / -1; }
+  .top { padding: 12px 16px; }
+  main { padding: 0 16px 48px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fact.fog .value { filter: none; opacity: 0.35; }
+}

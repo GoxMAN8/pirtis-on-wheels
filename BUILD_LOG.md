@@ -1208,3 +1208,164 @@ stdlib server).
 - Checks in the built-in browser: both themes, keyboard only, reduced motion and phone
   width.
 - A few live playground turns, about $0.01.
+
+---
+
+## Phase 11 — the playground: a caller simulator and an admin console
+
+**Date:** 2026-10-31
+**Goal:** a way to call the receptionist and to see what it did: a caller-side page that
+makes the booking visible, and an operator console for reliability, conversations,
+traces, feedback and the fleet. Smoke-sauna identity; data-science views; no names in
+anything an operator browses.
+
+**Headline: 432 tests pass (40 new), and a live booking went end to end in the browser**
+(Jonas, six people, the weekend after next, no mains power → Didžioji offered with a
+full read-back → booked, text message with bk_101). 16 defects were found by using the
+pages in a real browser and fixed in this phase.
+
+### How it was built
+- **Server side, test-first:** `test_calls.py`, `test_analytics.py` and
+  `test_server.py` were written before the code and failed at collection. Then
+  `calls.py`, `analytics.py` and `server.py`.
+- **Test mistakes found on the way:** two in `test_calls.py`. One passed `intent`
+  twice. One expected a single `bookings.list`, but the agent rereads the caller's
+  bookings before every search (D-14).
+- **mypy strict:** 15 typing slips in the new tests, and one untyped list of lambdas
+  in `analytics.py`. All were fixed by typing them, with no `type: ignore` anywhere.
+- **Pages:** written after the server, then checked and fixed in the desktop app's
+  built-in browser. That pass found 16 defects (`reports/phase-11/browser-checks.txt`).
+- **Order of work:** the dataviz method ran before any chart was coloured. The form
+  came first, then colour, then the validator.
+
+### What was built
+- **`pirtis/playground/calls.py`: live calls.** A call opens with the fixtures' greeting
+  and runs turn by turn:
+  1. The caller's line is appended with timings, so silence and barge-ins mean what
+     they mean in the fixtures.
+  2. `decide` and the kit's handlers run exactly as the harness runs them.
+  3. The calls that establish facts are appended to the transcript (D-61), then our
+     lines.
+  4. The call is saved after every turn, as a `Session` plus a `Turn` record.
+  - **Resume:** after a restart, a call is rebuilt by replaying its own writes into a
+    fresh API, with ids and versions checked (D-62).
+  - **The card's call state** is the one the agent accepted. The model's answer is
+    re-validated by the agent's own `extract` with a scripted model (D-63).
+  - Hang-up, feedback, and the card with "asking … next".
+- **`pirtis/playground/analytics.py`:** every function reads only turn records, gate
+  runs or the seed.
+  - the funnel, with exits
+  - the two-window intent mix and PSI (D-64)
+  - the latency ECDF
+  - the fleet calendar
+  - the what-if (the rule mirror's codes in words)
+  - the thermal matrix
+- **`pirtis/playground/server.py`:** stdlib `ThreadingHTTPServer` and a JSON API.
+  - Request bodies are pydantic models that refuse unknown fields.
+  - A per-minute cap on requests that can spend tokens.
+  - A content security policy (CSP) with no inline script.
+  - Static files that can't escape their folder.
+  - Turn records on stdout as JSON, and a JSON access log.
+- **`pirtis/ops/record_gate.py`:** saves a gate run's traces as a `GateRun`, reading
+  the agent version from the turns' notes. `make gate` now runs it. The Phase 9 gate
+  and the naive baseline were saved locally to give the thermal view real history.
+- **The caller simulator (`/`):**
+  - who's calling: four seed customers or an unknown number
+  - the receptionist's line, large
+  - type, or hold to talk
+  - the fogged-glass booking card: each fact condenses as it is learned, and your own
+    words show behind it
+  - a text-message preview
+  - transcript with 👍/👎 and a note
+  - a test drawer: anger, barge-in, replay a fixture through the real harness, the
+    last turn's numbers and a link to its trace
+  - sending while the receptionist is still speaking counts as a barge-in
+  - smoke rises from the stove, thicker while someone speaks
+- **The admin console (`/admin`):**
+  - **Reliability:** version tiles and the thermal view, with hover, detail and a
+    table view.
+  - **Conversations:** tiles, funnel, intent drift, latency ECDF, tokens, API calls.
+  - **Traces:** Heard → Understood → Decided → Called → Said; a rejected quote is
+    struck through.
+  - **Feedback:** the queue of rated lines.
+  - **Fleet:** the calendar and the what-if.
+- **Design system (`static/app.css`):** Soot and Steam themes (system setting plus a
+  switch that wins). Self-hosted Big Shoulders Display, Atkinson Hyperlegible Next and
+  IBM Plex Mono, with Latin Extended. Validated chart colours (D-65). A visible ember
+  focus ring.
+- **Vendored:** d3 7.9.0 and Observable Plot 0.6.17 (ISC), and the three font families
+  at fontsource 5.3.0 (OFL), with their licences beside them.
+- **`Session` gains `steps`** (personal), and `FileStore` skips day folders older than
+  a date query.
+
+### Commands and results
+| Command | Result |
+|---|---|
+| tests before the code | collection errors: no modules `calls`, `analytics`, `server`, as intended |
+| `make check` | ruff clean, strict mypy (38 files) clean, **432 tests passed**, 0 failed |
+| `validate_palette.js` (both themes) | pass and fail colours clear every check; the first try with amber for judge-only failures failed (ΔE 0.6 for deuteranopes) |
+| live calls in the browser | 2 calls, 5 model turns, p50 2.0 s, ≈ $0.0019; one fixture replay (turnaround, passed, judge included) |
+| privacy scan (live data) | 0 names, phones or customer ids in any admin read endpoint |
+
+`agent_version` is `8a552e2b0636` before and after: no agent code changed.
+
+**Reports:** `reports/phase-11/`
+- `pytest.txt` (432 tests by name)
+- `browser-checks.txt` and `screens/` (16 screenshots, both themes, phone width)
+- `live-calls.txt`, `palette.txt`, `privacy-scan.txt`
+
+### Decisions
+- **D-61:** the transcript keeps the calls that establish facts; repeated lookups stay
+  in the step.
+- **D-62:** a call resumes by replaying its own writes, with ids and versions checked.
+- **D-63:** the card and trace show the call state the agent accepted. A quote counts
+  as evidence only when its fact survived.
+- **D-64:** intent drift is shown as two windows side by side with the PSI band, or
+  "too few" under 30 turns.
+- **D-65:** validated chart colours, and a hatch, not a third hue, for judge-only
+  failures.
+
+### Deviations from the plan
+- **Intent mix as two windows instead of intents per day** (D-64): it shows exactly
+  what PSI measures, without eight hues.
+- **The extractor accuracy heatmap moves to Phase 14.** It needs the extractor's
+  per-field results stored, which the gate job will do.
+- **The receptionist's line is set in Atkinson, not the display face.** It's read at
+  length, and the condensed face was harder to read in a sentence.
+- **Smoke thickens while someone speaks** (the receptionist, or you holding the mic),
+  not with measured mic loudness. That avoids a second microphone stream next to
+  speech recognition.
+- **Feedback capture and the Feedback view are built here; promotion to a fixture is
+  Phase 12.** The plan listed capture in both phases.
+- **A thermal cell opens a detail with the command that reproduces it**
+  (`make trace ID=…`), not a stored trace. Gate runs keep per-run rows, not turn
+  traces, until the gate job (Phase 14).
+- **Added beyond the plan:**
+  - `POST /api/hangup`
+  - `record_gate` and its use in `make gate`
+  - `.claude/launch.json` for the desktop app, kept out of git
+
+### Spend
+≈ $0.003 this phase (5 live turns and one replay with its judge); ≈ $0.31 in total of
+the $6.
+
+### Open issues and risks
+- **Voice in and out weren't exercised in a browser.** Replies were muted so nothing
+  played aloud here, and speech input needs a person at a microphone. Both are wired
+  and fall back to typing. Worth one try by a person, in Chrome or Safari.
+- **Reduced motion was checked in code only;** the browser pane can't emulate the
+  setting.
+- **One server process holds live calls in memory.** That's fine at one replica (D-28).
+  Two replicas would need a call to be pinned to one of them, or rebuilt from disk on
+  every turn, which already works.
+
+### What the next phase needs from you
+The go-ahead for **Phase 12: the improvement loop**. A flagged line becomes a test case
+through a human form:
+- it pre-fills the transcript
+- you set the expected action, the booking change and the judge lines
+- it enforces seed personas (D-39)
+- it writes `fixtures/extra/NN_<slug>.yaml` and marks the feedback as promoted
+
+Then the loop runs red → fix → green, with its commands in SPEC §11. Zero tokens, apart
+from one gate run on the promoted case.

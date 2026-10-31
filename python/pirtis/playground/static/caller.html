@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pirtis on Wheels · Caller simulator</title>
+  <link rel="preload" href="/static/fonts/big-shoulders-display-latin-800.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/atkinson-hyperlegible-next-latin-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" href="/static/caller.css">
+</head>
+<body class="caller">
+  <a class="skip" href="#main">Skip to the call</a>
+  <canvas id="smoke" aria-hidden="true"></canvas>
+
+  <header class="top">
+    <p class="brand"><span class="stamp">Pirtis on Wheels</span> <span class="muted">caller simulator</span></p>
+    <nav class="top-nav">
+      <a href="/admin">Admin console</a>
+      <button class="btn quiet theme-toggle" id="theme" type="button"></button>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section id="dial" class="dial" aria-labelledby="dial-title">
+      <h1 id="dial-title" class="stamp dial-title">Who's calling?</h1>
+      <p class="dial-lead">Ring the rental's receptionist as one of its customers, or from a number it has never seen. Speak where your browser can listen, or type.</p>
+      <ul id="personas" class="personas"></ul>
+      <p id="dial-error" class="error-line" role="alert" hidden></p>
+      <p class="fine muted">A demo with made-up customers. Calls are kept for 30 days so they can be reviewed.</p>
+    </section>
+
+    <section id="call" class="call" hidden aria-label="The call">
+      <div class="stage">
+        <p class="who"><span id="who"></span> <span id="status" class="chip"></span></p>
+        <p id="line" class="line" aria-live="polite"></p>
+        <p id="interim" class="interim" aria-hidden="true"></p>
+        <div id="stove" class="stove" aria-hidden="true"></div>
+
+        <form id="say" class="say">
+          <label class="visually-hidden" for="text">What you say</label>
+          <input id="text" class="text" autocomplete="off" maxlength="500" placeholder="Say something to the receptionist">
+          <button class="btn primary" type="submit" id="send">Say it</button>
+        </form>
+        <div class="controls">
+          <button class="btn" id="mic" type="button" aria-pressed="false">Hold to talk</button>
+          <button class="btn" id="quiet" type="button">Stay quiet 8 s</button>
+          <button class="btn ghost" id="hangup" type="button">Hang up</button>
+          <label class="toggle"><input type="checkbox" id="speak" checked> Speak replies</label>
+        </div>
+        <p id="call-error" class="error-line" role="alert" hidden></p>
+      </div>
+
+      <aside id="card" class="card" aria-label="Your booking, as the receptionist has it">
+        <div class="card-head">
+          <h2 class="stamp card-title">Your booking</h2>
+          <span id="card-status" class="chip"></span>
+        </div>
+        <dl id="facts" class="facts"></dl>
+        <div id="sms" class="sms" hidden>
+          <p class="sms-label">Text message</p>
+          <p id="sms-text" class="sms-text mono"></p>
+        </div>
+      </aside>
+    </section>
+
+    <section class="drawers" id="drawers" hidden>
+      <details id="transcript-drawer">
+        <summary>Transcript</summary>
+        <ol id="transcript" class="transcript"></ol>
+      </details>
+      <details id="test-drawer">
+        <summary>Test controls</summary>
+        <div class="tests">
+          <label class="field">How angry you sound <span class="mono" id="anger-value">0.0</span>
+            <input type="range" id="anger" min="0" max="1" step="0.1" value="0">
+          </label>
+          <label class="toggle"><input type="checkbox" id="barge"> Cut in on the receptionist's last line with your next one</label>
+          <div class="replay">
+            <label class="field">Replay a fixture through the real harness
+              <select id="fixture"></select>
+            </label>
+            <button class="btn" type="button" id="replay">Replay</button>
+          </div>
+          <div id="replay-out" class="replay-out" aria-live="polite"></div>
+          <div id="last-turn" class="last-turn"></div>
+        </div>
+      </details>
+    </section>
+  </main>
+
+  <script type="module" src="/static/js/caller.js"></script>
+</body>
+</html>

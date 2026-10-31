@@ -12,7 +12,7 @@ RUNS ?= 3
 NEED ?= 3
 SUITES ?= ../fixtures ../fixtures/extra $(wildcard ../fixtures/variants)
 ID ?=
-OURS := pirtis/agent pirtis/ops
+OURS := pirtis/agent pirtis/ops pirtis/playground
 
 .PHONY: install lint format typecheck test check gate eval-extract trace
 
@@ -50,6 +50,7 @@ gate:
 			--trace runs/gate/$$name | tee runs/gate/$$name.txt || status=1; \
 	done; \
 	uv run python -m pirtis.ops.gate_report --dir runs/gate --json runs/gate/summary.json; \
+	uv run python -m pirtis.ops.record_gate --dir runs/gate; \
 	exit $$status
 
 trace:
@@ -59,3 +60,8 @@ trace:
 eval-extract:
 	@mkdir -p runs
 	uv run python -m pirtis.ops.extract_eval --runs $(RUNS) $(if $(ID),--id $(ID)) --json runs/extract-eval.json
+
+# The caller simulator (/) and the admin console (/admin) on http://127.0.0.1:8000.
+# Calls, feedback and gate runs are kept in var/ (PIRTIS_DATA_DIR).
+playground:
+	uv run playground

@@ -39,6 +39,7 @@ class Entity(BaseModel):
 
     KIND: ClassVar[str]
     RETENTION_DAYS: ClassVar[int]
+    DAILY: ClassVar[bool] = False  # partitioned by UTC day, so a date query can skip folders
 
     schema_version: Annotated[Literal[1], NONE] = 1
 
@@ -58,6 +59,7 @@ class Session(Entity):
 
     KIND = "session"
     RETENTION_DAYS = 30
+    DAILY = True
 
     session_id: Annotated[str, PSEUDO]
     started: Annotated[AwareDatetime, NONE]
@@ -66,7 +68,8 @@ class Session(Entity):
     turns: Annotated[int, NONE]
     status: Annotated[Literal["open", "ended", "transferred"], NONE]
     transcript: Annotated[dict[str, Any], PERSONAL]
-    bookings: Annotated[list[dict[str, Any]], PERSONAL]
+    bookings: Annotated[list[dict[str, Any]], PERSONAL]  # the ones this call made or changed
+    steps: Annotated[list[dict[str, Any]], PERSONAL] = []  # per turn: state, actions, API calls
 
     def partition(self) -> str:
         return _day(self.started)
@@ -188,6 +191,7 @@ class Turn(Entity):
 
     KIND = "turn"
     RETENTION_DAYS = 90
+    DAILY = True
 
     telemetry_version: Annotated[int, NONE]
     ts: Annotated[AwareDatetime, NONE]

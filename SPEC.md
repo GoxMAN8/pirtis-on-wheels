@@ -87,7 +87,11 @@ Around the agent, never imported by it:
 - `pirtis/ops/`: the data layer (`model.py`, the five records; `store.py`, the
   `FileStore`), the gate report and the extractor eval; later the gate job and the
   variant generator
-- `pirtis/playground/`: caller simulator and admin console
+- `pirtis/playground/`: the caller simulator and admin console on one stdlib server.
+  `calls.py` runs a call turn by turn (decide and the handlers exactly as the harness
+  does) and keeps it on disk; `analytics.py` computes the admin views from content-free
+  records and the seed; `server.py` is the JSON API and static files; `static/` holds
+  the two pages, vendored d3 and Observable Plot (ISC) and self-hosted fonts (OFL)
 
 ---
 
@@ -148,20 +152,28 @@ means live activity, failures and slow turns; cold means calm, passed and health
 | `ember` | `#F0743A` | hot: speaking, failures, latency (glow, rarely a flat fill) |
 | `plunge` | `#2F8F8B` | cold: passed, healthy, booked |
 
-- **Charts:** diverging `plunge → ash → ember`; sequential `soot → ember`. Every pair is
-  checked for WCAG AA before use.
+- **Chart colours** are validated, not eyeballed (`reports/phase-11/palette.txt`, D-65):
+  pass `#1E9C94` (Soot) / `#00897B` (Steam), fail `#E2662C` / `#CF5520`, each pair
+  clear of colour-blind confusion and ≥ 3:1 on its surface. A judge-only failure is the
+  fail colour with a hatch, never a third hue (amber failed the check). The two-week
+  intent comparison uses ink against ash with filled and hollow dots. Every chart has a
+  hover tip and a table view.
 - **Type** (self-hosted, Latin Extended for ė ž š ū ą č ę į ų): **Big Shoulders
   Display** for unit names, headline numbers and view titles only; **Atkinson
-  Hyperlegible Next** for body text and transcripts; **IBM Plex Mono** for data.
+  Hyperlegible Next** for body text, transcripts and the receptionist's spoken line
+  (legibility first for anything read at length); **IBM Plex Mono** for data.
 - **Themes:** *Soot* (dark) and *Steam* (light), following the system setting with a
   switch.
 - **Signatures:**
   - **Caller side, the fogged-glass booking card:** details condense out of fog as the
-    receptionist understands them; your own words behind each detail show on hover.
+    receptionist understands them; your own words behind a detail show on hover or tap,
+    and only when the agent kept that detail (D-63). The fact asked next is labelled.
   - **Admin side, the thermal view:** fixtures × runs × versions shown as a
     thermal-camera image, where hot spots are failures you click through to their trace.
-- **Floor:** visible keyboard focus; `prefers-reduced-motion` makes the smoke and fog
-  static; usable at phone width.
+- **Motion:** only the caller side moves: smoke rises from the stove, thicker while
+  the receptionist speaks or you hold to talk. The admin console is still.
+- **Floor:** visible keyboard focus; `prefers-reduced-motion` stops the smoke and the
+  fog's blur; no page scrolls sideways at 375 px (wide content scrolls in its own box).
 
 ---
 
@@ -354,7 +366,7 @@ code runs in both.
 
 | Entity | Partition / key | Fields | Also in the file | PII | Retention |
 |---|---|---|---|---|---|
-| Session | UTC day / `session_id` | `agent_version`, `caller_phone_hash`, `started`, `turns`, `status` | transcript + bookings snapshot | personal | 30 days |
+| Session | UTC day / `session_id` (the id starts with the day, so a call is found without a scan) | `agent_version`, `caller_phone_hash`, `started`, `turns`, `status` | the transcript, the bookings this call made or changed, and each turn's step (the call state the agent accepted, actions, effects, API calls) | personal | 30 days |
 | Feedback | `agent_version` / `turn_id` | `verdict`, `note`, `promoted_fixture`, `created` | transcript snapshot | personal | 30 days |
 | HumanRating | `scenario_id` / `session_id~rater` | `goal_achieved`, four 1–5 scores (`natural`, `numbers_clear`, `one_question`, `turn_taking`), `note`, `created` | — | pseudonymous | 1 year |
 | GateRun | `agent_version` / run time as `YYYYMMDDTHHMMSSZ` | the gate report's totals: `passed`, cases, runs, k, pass^k (all, deterministic, judge), model calls, tokens, cost, p50/p95, failed; extractor pass^k when the job ran it | every run (suite, fixture, run, verdicts, calls, tokens, time) | none | 1 year |
@@ -369,7 +381,7 @@ code runs in both.
 - **A privacy class on every field** (D-60): *personal* (what someone said or wrote
   about a call), *pseudonymous* (links to a person only through another record: ids,
   the phone hash, a rater's initials) or *none*. A test pins the personal fields to
-  exactly Session's transcript and bookings and Feedback's transcript and note.
+  exactly Session's transcript, bookings and steps, and Feedback's transcript and note.
 
 ```mermaid
 flowchart LR
@@ -404,7 +416,10 @@ flowchart LR
 - outcome: `fallback`, `transfer_reason`, and `phone_hash` (a salted hash of the
   digits; the salt comes from `PIRTIS_HASH_SALT`)
 
-It holds no transcript text and no names. A sample is in
+The playground stores every turn's record (`source = playground`) and prints it as one
+JSON line on stdout, with one access-log line per request (path without its query);
+those lines are what the cloud's log queries read. It holds no transcript text and no
+names. A sample is in
 `reports/phase-08/turn-record-sample.json`. Field names render to OpenTelemetry GenAI
 attributes (`gen_ai.request.model`, `gen_ai.usage.input_tokens`, …) through one
 renderer, so a convention change touches one function.
@@ -423,8 +438,10 @@ also shows **intent-mix drift**: the PSI of the last 7 days against the 7 before
 
 ## 11. Improvement loop
 
-1. **Capture:** 👍/👎 and a note on any receptionist line in the caller simulator.
-2. **Review:** the admin console's Feedback view lists the 👎 items per agent version.
+1. **Capture:** 👍/👎 and a note on any receptionist line in the caller simulator, or
+   *Flag this turn* in a trace; saved as `Feedback` with a snapshot of the call.
+2. **Review:** the admin console's Feedback view lists rated lines, newest first, each
+   with its reply, its note and a link to its trace.
 3. **Promote:** a person turns a failure into a test case. The form pre-fills the
    transcript; you set the expected action, the booking change and judge statements,
    and it enforces seed personas. Nothing is promoted automatically.
@@ -444,6 +461,10 @@ Every change to the prompt or the policy changes `agent_version`, and needs a ga
 - A move by one day is checked conservatively.
 - The agent package needs pydantic, installed by `uv sync`.
 - Terraform state is local.
+- Voice in the simulator relies on the browser's speech APIs: speech input works in
+  Chrome, Edge and Safari, not Firefox; typing always works.
+- The fleet calendar and each simulated call start from the seed; one call's booking is
+  not seen by the next call (each call has its own API, as each fixture does).
 
 **Next steps:**
 - real telephony: call automation and streaming speech in front of `decide`
@@ -523,6 +544,11 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | D-51 | 2026-10-31 | Replies state "not" facts explicitly ("I can help with that once I know who's calling", "I can't share anyone's details") and cover both readings of an "or" ("What car will you tow it with, and how much can it tow?") | The judge can flip the polarity of negated criteria and can read "or" as "and"; explicit wording makes the reply unambiguous. Confirmed on 01, 21 and 05: 3/3 each after the change | relying on silence; rerunning until green | accepted |
 | D-59 | 2026-10-31 | Store names: every partition and key is percent-encoded, dots included; a gate run is keyed by its UTC time as `YYYYMMDDTHHMMSSZ`; a stored turn is keyed `session_id~turn_id`; retention is a constant on each record class | Azure Files refuses `:` in names; a key like `../x` must not leave its folder; the agent's turn id repeats across gate runs of one fixture; one place for each retention | sanitising to `_` (two keys could collide); keying turns on `turn_id` (gate runs overwrite each other); retention passed in by the caller | accepted |
 | D-60 | 2026-10-31 | Every stored field carries a privacy class (`personal`, `pseudonymous`, `none`) in its pydantic metadata, and a test pins which fields are personal | The data-flow view, retention and the "no names in analytics" check need to know where personal data sits, field by field, and a new field can't arrive unclassified | one class per entity | accepted |
+| D-61 | 2026-10-31 | A simulated call's transcript records the API calls that establish facts: `customers.identify` and the `bookings.*` reads and writes, as the fixtures do. The catalogue and availability lookups the agent repeats every turn are kept in that turn's step, not the transcript | The agent is stateless and reads identification from the transcript; repeating the lookups in it would grow every prompt by ~300 characters a turn for nothing the model needs | every call in the transcript; none | accepted |
+| D-62 | 2026-10-31 | A call resumes after a restart by replaying its own writes from the stored transcript into a fresh API, checking each replayed booking's id and version against what was recorded | The same state and the same booking ids, without reaching into the API's private counters, and a loud failure if they ever diverge | restoring a bookings snapshot (a fresh API restarts its id counter, so ids could collide) | accepted |
+| D-63 | 2026-10-31 | The playground shows the call state the agent accepted: the model's answer is captured on its way through and re-validated by the agent's own `extract` with a scripted model. A quote counts as the caller's evidence only when the fact it backs survived | No second model call and no copy of the validation; found in the browser: the agent drops a fact whose quote isn't the caller's words but keeps the quote text, which then looked like evidence | showing the raw model output; a second extraction call | accepted |
+| D-64 | 2026-10-31 | Intent drift is shown as this window against the one before, intent by intent, with the PSI band; below 30 turns in either window the badge says too few to judge instead of a number | The chart shows exactly what PSI measures; PSI on a handful of turns is noise | intent per day as stacked bars (needs eight hues, and hides the comparison) | accepted |
+| D-65 | 2026-10-31 | Chart colours are the validated steps per theme (pass `#1E9C94`/`#00897B`, fail `#E2662C`/`#CF5520`); a judge-only failure is a hatch on the fail colour; the brand tokens stay for chrome and glow | The palette check failed a third hue (amber against ember, ΔE 0.6 for deuteranopes) and the original plunge (chroma below the floor) | amber for judge-only failures | accepted |
 
 ---
 
@@ -542,3 +568,4 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | 2026-10-31 | 9 | Gate report with pass^k split into deterministic and judge (D-21's reporting), now the tail of `make gate`. Extractor eval and the full gate re-run: 20/20 and **24/24 cases passing all 3 runs (72 runs), deterministic 24/24, judge 24/24**. Voice-UX audit: every rule in §5 mapped to named tests; three gaps closed (price in every read-back, a rebuilt reply after a barge-in, no reply ever naming another customer) | Prove each voice rule, and report the gate the way D-21 promised | D-21, D-24 |
 | 2026-10-31 | plan | Azure kept to a minimum. Instead of Blob + Table + Key Vault + lifecycle policies, one Azure Files share is mounted into the app and the job at `/data`, and the data layer is one `FileStore` (a JSON file per record) that runs the same locally. Secrets become Container App secrets set by CLI | Your request for the smallest infrastructure; less to build, secure and explain | D-27 → D-57, D-38 → D-58 |
 | 2026-10-31 | 10 | Data layer, test-first: five versioned records (Session, Feedback, HumanRating, GateRun, Turn) with a privacy class on every field, and one `FileStore` (a JSON file per record, atomic writes, queries by partition and date, pruning by each record's retention). A gate run is built from the gate report's rows and passes only at pass^3; a turn is built from the agent's own telemetry line. 25 new tests (392 in total); the Phase 9 gate traces stored and read back unchanged | Somewhere to keep calls, feedback, ratings and gate history for the UIs and the improvement loop, the same locally and on the mounted share | D-58, D-59, D-60 |
+| 2026-10-31 | 11 | The playground: one stdlib server with a caller simulator (pick a seed customer or an unknown number, speak or type; a fogged-glass booking card condenses as the receptionist learns each fact; thumbs on every reply; a test drawer with anger, barge-in and fixture replay) and an admin console (Reliability with the thermal view, Conversations, Traces, Feedback, Fleet with a what-if). Calls run turn by turn through `decide` and the kit's handlers, saved after every turn, resumed by replaying their writes. Analytics from content-free records only; a privacy scan proves it. `make gate` now saves each run (`record_gate`). Vendored d3 and Plot, self-hosted fonts, validated chart colours. 40 new tests (432 in total). Checked live in the browser: a full booking, an unknown caller, a replay, both themes, phone width, keyboard only; 16 defects found there and fixed | A way to call the agent and to see what it did, without spending the reviewer's time on terminals | D-40, D-41, D-42, D-61 – D-65 |
