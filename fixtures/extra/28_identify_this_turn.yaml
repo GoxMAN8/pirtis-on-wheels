@@ -1,0 +1,42 @@
+id: identify-this-turn
+expect:
+  action: say
+  bookings: []
+judge:
+  - "The reply asks how many people will use the sauna."
+transcript:
+  call_id: call_28
+  today: "2026-09-28"
+  now: 13.5
+  caller: {phone: "+37068881122"}
+  items:
+    - type: message
+      role: assistant
+      start: 0.5
+      end: 2.4
+      content: "Pirtis on Wheels, hello?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 2.9
+      end: 7.9
+      content: "hi, we'd like a sauna for the weekend after next please"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.6}]}
+    - type: message
+      role: assistant
+      start: 8.4
+      end: 11.1
+      content: "Sure. Can I get your full name first?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 11.6
+      end: 13.0
+      content: "Eglė Butkutė"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.6}]}

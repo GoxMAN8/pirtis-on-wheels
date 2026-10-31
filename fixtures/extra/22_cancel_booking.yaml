@@ -1,0 +1,61 @@
+id: cancel-booking
+expect:
+  action: say
+  bookings:
+    - {id: bk_88, status: cancelled}
+judge:
+  - "The reply says the booking has been cancelled."
+transcript:
+  call_id: call_22
+  today: "2026-09-28"
+  now: 19.4
+  caller: {phone: "+37069876543"}
+  items:
+    - type: message
+      role: assistant
+      start: 0.5
+      end: 2.4
+      content: "Pirtis on Wheels, hello?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 2.9
+      end: 9.8
+      content: "hi, it's Rasa Paulauskienė. I need to cancel one of our bookings, the big sauna"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.5}]}
+    - type: function_call
+      call_id: c1
+      name: customers.identify
+      arguments: '{"phone": "+37069876543", "name": "Rasa Paulauskienė"}'
+      start: 9.9
+    - type: function_call_output
+      call_id: c1
+      output: '{"ok": true, "customer_id": "cus_31"}'
+      end: 10.1
+    - type: function_call
+      call_id: c2
+      name: bookings.list
+      arguments: '{"customer_id": "cus_31"}'
+      start: 10.2
+    - type: function_call_output
+      call_id: c2
+      output: '[{"customer_id": "cus_31", "unit_id": "unit_vidutine", "start": "2026-09-30", "end": "2026-10-02", "people": 6, "site": {"power_available": true}, "tow_capacity_kg": 1800, "id": "bk_77", "version": 1, "status": "booked", "total": 480}, {"customer_id": "cus_31", "unit_id": "unit_didzioji", "start": "2026-10-06", "end": "2026-10-07", "people": 8, "site": {"power_available": true}, "tow_capacity_kg": 2500, "id": "bk_88", "version": 2, "status": "booked", "total": 420}]'
+      end: 10.4
+    - type: message
+      role: assistant
+      start: 10.9
+      end: 16.1
+      content: "Thanks Rasa. That's Didžioji, Tuesday the sixth to Wednesday the seventh of October. Shall I cancel it?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 16.6
+      end: 19.0
+      content: "yes. yes please, cancel it"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Determination, score: 0.4}, {name: Calmness, score: 0.4}]}

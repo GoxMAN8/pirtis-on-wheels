@@ -1,0 +1,37 @@
+id: silence-after-check-in
+expect:
+  action: end_call
+  bookings: []
+transcript:
+  call_id: call_26
+  today: "2026-09-28"
+  now: 29.6
+  caller: {phone: "+37061234567"}
+  items:
+    - type: message
+      role: assistant
+      start: 0.5
+      end: 2.4
+      content: "Pirtis on Wheels, hello?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 2.9
+      end: 7.8
+      content: "hi, um, I wanted to ask about the saunas"
+      is_final: true
+      speech_final: true
+      confidence: 0.84
+      prosody: {emotions: [{name: Calmness, score: 0.5}]}
+    - type: message
+      role: assistant
+      start: 8.3
+      end: 11.0
+      content: "Of course. Can I get your full name first?"
+      interrupted: false
+    - type: message
+      role: assistant
+      start: 18.0
+      end: 20.4
+      content: "Are you still there? No rush if you need a moment."
+      interrupted: false

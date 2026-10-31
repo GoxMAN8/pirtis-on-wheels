@@ -1,0 +1,40 @@
+id: unknown-caller
+expect:
+  action: transfer
+  bookings: []
+transcript:
+  call_id: call_20
+  today: "2026-09-28"
+  now: 14.3
+  caller: {phone: "+37065550199"}
+  items:
+    - type: message
+      role: assistant
+      start: 0.5
+      end: 2.4
+      content: "Pirtis on Wheels, hello?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 2.9
+      end: 9.2
+      content: "hi, yeah, we'd like one of your saunas for the weekend after next. there's six of us"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.55}]}
+    - type: message
+      role: assistant
+      start: 9.7
+      end: 12.1
+      content: "Lovely. Can I get your full name first?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 12.6
+      end: 13.9
+      content: "Marius Kazlauskas"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.6}]}

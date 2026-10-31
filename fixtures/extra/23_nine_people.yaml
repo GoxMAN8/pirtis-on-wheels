@@ -1,0 +1,52 @@
+id: nine-people
+expect:
+  action: say
+  bookings: []
+judge:
+  - "The reply makes clear that none of the saunas can take nine people."
+  - "The reply does not say that a booking has been made."
+transcript:
+  call_id: call_23
+  today: "2026-09-28"
+  now: 20.3
+  caller: {phone: "+37061234567"}
+  items:
+    - type: message
+      role: assistant
+      start: 0.5
+      end: 2.4
+      content: "Pirtis on Wheels, hello?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 2.9
+      end: 9.6
+      content: "hi, Tomas Petrauskas. we want a sauna for the weekend after next, there's power at the house"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.55}]}
+    - type: function_call
+      call_id: c1
+      name: customers.identify
+      arguments: '{"phone": "+37061234567", "name": "Tomas Petrauskas"}'
+      start: 9.7
+    - type: function_call_output
+      call_id: c1
+      output: '{"ok": true, "customer_id": "cus_12"}'
+      end: 9.9
+    - type: message
+      role: assistant
+      start: 10.4
+      end: 13.2
+      content: "Thanks Tomas. How many of you will there be?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 13.7
+      end: 19.9
+      content: "nine. nine of us, it's my dad's sixtieth. and the pickup tows two and a half tonnes"
+      is_final: true
+      speech_final: true
+      confidence: 0.88
+      prosody: {emotions: [{name: Excitement, score: 0.4}, {name: Calmness, score: 0.35}]}

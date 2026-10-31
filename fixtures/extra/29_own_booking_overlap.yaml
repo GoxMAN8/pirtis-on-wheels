@@ -1,0 +1,52 @@
+id: own-booking-overlap
+expect:
+  action: say
+  bookings: []
+judge:
+  - "The reply tells the caller she already has a booking on those dates."
+  - "The reply does not say that a booking has been made."
+transcript:
+  call_id: call_29
+  today: "2026-09-28"
+  now: 19.9
+  caller: {phone: "+37069876543"}
+  items:
+    - type: message
+      role: assistant
+      start: 0.5
+      end: 2.4
+      content: "Pirtis on Wheels, hello?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 2.9
+      end: 11.6
+      content: "hi, Rasa Paulauskienė. could we get the small one, the Mažoji, for the sixth and seventh? just four of us this time"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.55}]}
+    - type: function_call
+      call_id: c1
+      name: customers.identify
+      arguments: '{"phone": "+37069876543", "name": "Rasa Paulauskienė"}'
+      start: 11.7
+    - type: function_call_output
+      call_id: c1
+      output: '{"ok": true, "customer_id": "cus_31"}'
+      end: 11.9
+    - type: message
+      role: assistant
+      start: 12.4
+      end: 15.4
+      content: "Thanks Rasa. What will you tow it with?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 15.9
+      end: 19.4
+      content: "the Octavia. fifteen hundred, braked"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.6}]}

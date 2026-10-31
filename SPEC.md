@@ -202,12 +202,28 @@ blocks deployment.
   Never rerun until green.
 - **Cost discipline:** while iterating we use targeted runs (`--id`, `--runs 1`); full
   gates run at the end of a phase (D-48).
+- **Commands** (in `python/`):
+  - `make check` runs lint, strict types and tests, with no model tokens
+  - `make gate` is the frozen gate across every suite; it exits non-zero on any failure
+    and ends with a line of agent model calls, tokens and estimated cost
+  - `make gate RUNS=1 NEED=1` is the same wiring for a quick look
+  - `make trace ID=<fixture>` runs one fixture verbosely
+- **Known judge weakness:** a negatively worded criterion ("The reply gives no phone
+  number…") can have its polarity flipped. On 2026-10-31 a reply with no contact
+  details was marked as failing it, with a reason that agreed with the reply. So our
+  replies state such facts explicitly (D-51), and every judge failure is read before
+  anything is changed.
 
 ### 7b. Evaluation results
 
 | Date | Agent | Suite | Result | Calls | Tokens in/out |
 |---|---|---|---|---|---|
 | 2026-10-31 | naive starter (baseline) | given, 1 run | 4/14 | 25 | 16,322 / 1,353 |
+| 2026-10-31 | naive starter (second sample) | given, 1 run | 3/14 | 24 | 15,365 / 1,457 |
+| 2026-10-31 | naive starter | extra 20–29, 1 run | 3/10 (cancel-booking: one 400 and four 422s) | 23 | 14,604 / 1,277 |
+
+The naive agent swings between samples (4/14, then 3/14), which is why the gate needs
+3 of 3 runs.
 
 Our agent's results, the extractor accuracy, the human ratings and the judge–human
 agreement are added here as phases complete.
@@ -395,6 +411,8 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | D-47 | 2026-10-31 | Judge calibration: judge–human and rater–rater agreement (Cohen's κ) reported; the kit's judge unchanged | Know how far to trust judge failures | — | accepted |
 | D-48 | 2026-10-31 | Spend guards for a small prepaid model credit: targeted runs, full gates at phase ends, cost printed and shown, a credit check before full gates, a slim nightly suite | Exhausted credit returns 429, which would look like agent bugs | — | accepted |
 | D-49 | 2026-10-31 | Pydantic v2 at our boundaries (model output, stored entities, playground requests); the strict schema generated from the same class; dataclasses for internals | One source of truth for schema and validation; untrusted model output is checked at the edge | a hand-written parser | accepted |
+| D-50 | 2026-10-31 | Documentation: three architecture views (containers, data flow with sensitivity labels, trust boundaries and numbered crossings, sequences with failure paths) plus a deployment view, in Mermaid with evidence paths, commit stamps, *Not built* lists and `[CONFIRM]` for unknowns, checked by a shape checker; evaluation graphs in Mermaid; screenshots only for UI. A change to a container, store or crossing updates its diagram in the same commit | Diagrams that diff stay true; reviewers ask where data goes | images and draw.io exports | accepted |
+| D-51 | 2026-10-31 | Replies state privacy and other "not" facts explicitly (e.g. "I can't share anyone's details") | The judge can flip the polarity of negatively worded criteria; an explicit sentence makes the reply unambiguous | relying on silence | accepted |
 
 ---
 
@@ -404,3 +422,4 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 |---|---|---|---|---|
 | 2026-10-31 | 0 | Kit committed as received; `.gitignore`; environment; model access; naive baseline 4/14 | A clean starting point and a score to beat | D-22, D-49 |
 | 2026-10-31 | 1 | `SPEC.md` written: design, rules, voice UX, visual design, frozen gate, data model, monitoring, decision log | Decisions fixed before code | D-01 – D-49 |
+| 2026-10-31 | 2 | pydantic, pinned ruff and mypy; strict mypy on the agent; `Makefile` with `check` and the frozen `gate`; own fixtures 20–29 with a test that checks them against the API; the gate's exit code fixed for make 3.81 | Tooling and the measuring stick before the agent | D-20, D-21, D-49, D-50, D-51 |

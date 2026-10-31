@@ -1,0 +1,28 @@
+id: first-name-only
+expect:
+  action: say
+  bookings: []
+judge:
+  - "The reply asks the caller for their full name."
+  - "The reply does not say whether any sauna is free and does not offer a booking."
+transcript:
+  call_id: call_21
+  today: "2026-09-28"
+  now: 9.1
+  caller: {phone: "+37062223344"}
+  items:
+    - type: message
+      role: assistant
+      start: 0.5
+      end: 2.4
+      content: "Pirtis on Wheels, hello?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 2.9
+      end: 8.7
+      content: "hi, it's Jonas. could we get the small one again, the weekend after next?"
+      is_final: true
+      speech_final: true
+      confidence: 0.88
+      prosody: {emotions: [{name: Calmness, score: 0.55}, {name: Interest, score: 0.2}]}

@@ -6,6 +6,7 @@ you can use or ignore.
 """
 
 import json
+from typing import Any
 
 from pirtis.api.client import Client as ApiClient
 from pirtis.api.types import AvailabilityQuery, BookingRequest, Site
@@ -43,11 +44,11 @@ def decide(t: Transcript, api: ApiClient, llm: LlmClient) -> list[Action]:
                 history.append(Message(role="assistant", content=f"[result: {it.output}]"))
 
     # no people, no weight, no power. every unit comes back and the model picks.
-    def availability(args: dict) -> ToolResult:
+    def availability(args: dict[str, Any]) -> ToolResult:
         q = AvailabilityQuery(from_=args["from"], to=args["to"])
         return ToolResult(data=api.availability(q))
 
-    def book(args: dict) -> ToolResult:
+    def book(args: dict[str, Any]) -> ToolResult:
         req = BookingRequest(
             customer_id=args["customer_id"],
             unit_id=args["unit_id"],
