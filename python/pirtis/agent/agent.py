@@ -12,18 +12,16 @@ The model listens; code talks. handlers, in actions.py, carry the actions out.
 
 import logging
 
-from pirtis.agent.policy import Handoff, next_step
+from pirtis.agent.policy import Handoff, Sorry, asked_again, next_step
 from pirtis.agent.speech import render, tone
 from pirtis.agent.turn import gate
 from pirtis.agent.understand import UnderstandError, extract
 from pirtis.api.client import Client as ApiClient
 from pirtis.api.types import ApiError
 from pirtis.llm.client import Client as LlmClient
-from pirtis.transcript.types import Action, Transcript, say
+from pirtis.transcript.types import Action, Transcript
 
 log = logging.getLogger(__name__)
-
-SORRY = "Sorry, I didn't catch that. Could you say it again?"
 
 
 def decide(t: Transcript, api: ApiClient, llm: LlmClient) -> list[Action]:
@@ -39,7 +37,9 @@ def decide(t: Transcript, api: ApiClient, llm: LlmClient) -> list[Action]:
         return render(next_step(t, state, api, units), voice)
     except UnderstandError as e:
         log.warning("understanding failed: %s", e)
-        return [say(SORRY, *voice)]
+        if asked_again(t):  # the second time in a row, a person takes over
+            return render(Handoff("front_desk", "two misunderstandings in a row"), voice)
+        return render(Sorry(), voice)
     except ApiError as e:
         log.warning("api error: %s", e)
         return render(Handoff("bookings_support", f"api error {e.status} {e.code}"), voice)

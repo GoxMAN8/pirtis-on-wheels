@@ -4,7 +4,7 @@ expect:
   bookings: []
 judge:
   - "The reply tells the caller she already has a booking on those dates."
-  - "The reply does not say that a booking has been made."
+  - "The reply does not say that a new booking was made for the sauna she asked for."
 transcript:
   call_id: call_29
   today: "2026-09-28"

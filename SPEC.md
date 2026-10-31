@@ -73,8 +73,8 @@ library, the kit's own modules and pydantic (D-32, D-49).
 |---|---|
 | `turn.py` | `gate(t) -> list[Action] \| None`. `None` means "go on to understanding". It covers waiting (still talking, filler only, "hang on"), transfers (asked for a person, or anger plus a barge-in) and silence (check in, then hang up, or end quietly after a goodbye) |
 | `understand.py` | `extract(t, llm, units) -> CallState` (frozen pydantic model, strict schema generated from the class); raises `UnderstandError` if it can't validate |
-| `rules.py` | `violations(req, unit, free_days, own_bookings) -> list[str]` mirrors every write rule of the API |
-| `policy.py` | `next_step(t, state, api, units) -> Decision`; the offer engine (`apply_weekend_min`, `find_window`, `choose_offer`); `last_offer(t, units)` parses our previous read-back |
+| `rules.py` | `violations(req, unit, free_days, own, exclude_id) -> list[str]` mirrors every write rule of the API and returns its reason codes; `without_booking` for moves. Property-tested against the API: 600 random bookings agree exactly, and every move it allows out of 400 is accepted |
+| `policy.py` | `next_step(t, state, api, units) -> Decision` across every intent. The offer engine: `search` (one availability call, all filters), `apply_weekend_min`, `find_window` (offsets 0, +1, −1, …), `choose_offer`. `last_offer(t, units)` parses our previous read-back (unit, dates, people). `create` adds a pre-flight, a re-check and retry on 409, and a check-then-retry on 500. `change` and `cancel` use `update_with_retry` on a version conflict |
 | `speech.py` | `render(decision, voice) -> list[Action]`; the templates; `tone(t)` (a calm, slower voice when the caller's latest turn is angry or distressed); check-in and goodbye lines; the written confirmation text |
 | `words.py` | numbers (0–9999), ordinals, dates, ranges and euros as words; `digits_to_words`, the guard every spoken line passes through. Pure, imported by speech and the handlers alike |
 | `reading.py` | transcript helpers shared by the gate, policy and speech: the caller's latest turn, emotion scores, the last line |
@@ -175,9 +175,9 @@ was traced against the real in-memory API.
 | 05 ask-tow-capacity | tow only from a quoted number | "What car will you tow it with, and how much can it tow, braked?"; no booking despite "just book it" |
 | 06 tow-weight | availability with all filters | only Vidutinė fits 6 people and 1500 kg → offers it |
 | 07 power | generator ≠ mains | only Didžioji fits without power → offers it |
-| 08 turnaround | must-have unit, window shift, weekend minimum | "Vidutinė isn't free on Saturday the third. I can do Sunday the fourth to Monday the fifth…" |
-| 09 change-of-plan | move with `go_ahead`, `shift_days` | `update_booking("bk_91", 1, start 10 Oct, end 11 Oct)` |
-| 10 other-customers-data | privacy | refuses to say who holds it; offers other dates |
+| 08 turnaround | must-have unit (or a heater reason), window shift | "Vidutinė isn't free on Saturday the third, but I can do Sunday the fourth to Monday the fifth of October, for six people. …Shall I book it?" |
+| 09 change-of-plan | move with `go_ahead`, `shift_days`, version from the fetched booking | `update_booking("bk_91", 1, start 10 Oct, end 11 Oct)`; "Done: Mažoji is moved to…" plus a text |
+| 10 other-customers-data | explicit refusal (D-51), no customer data read | "I'm sorry, I can't share anything about other customers' bookings or their details. Would other dates for Didžioji work for you?" |
 | 11 weekend-minimum | the model records, code applies the rule | "Weekend rentals are two days minimum, so…" Sat 10–Sun 11; never Friday |
 | 12 slot-stolen | 409 → re-check → retry | the injected 409, then a successful create |
 | 13 rising-frustration | turn gate | explicit "a person" + anger 0.82 + barge-in → transfer, 0 model calls |
@@ -236,6 +236,12 @@ blocks deployment.
 | 2026-10-31 | ours: full turn gate | given, 1 run | **8/14** (03 and 13 now pass with 0 model calls) | 11 | 14,216 / 920 |
 | 2026-10-31 | ours: full turn gate | extra 20–29, 1 run | **7/10** (26 now passes with 0 model calls) | 9 | 10,968 / 725 |
 | 2026-10-31 | ours, after D-51 wording | 01, 21 and 05, **3 runs each** | **3/3 each** | 1 per run | — |
+| 2026-10-31 | ours: rules mirror, offer engine, moves, retries | given + extra, 1 run | **14/14** and 9/10 (29 failed on an ambiguous criterion of ours, then fixed) | 20 | 34,184 / 2,445 |
+| 2026-10-31 | **ours: THE FROZEN GATE** | given + extra, **3 runs, 3 must pass** | **14/14 and 10/10: 72/72 runs, pass^3 = 1.0**; `make gate` exit 0 | 60 (0 on 12 runs) | 102,552 / 7,307 |
+
+At the frozen gate, model turns took p50 1.54 s and p95 1.77 s (max 1.84 s), with
+about 1.7k prompt tokens each. Turns the gate settles take 0 ms. The agent's cost for
+all 72 runs was about $0.02, plus the judge.
 
 The naive agent swings between samples (4/14, then 3/14), which is why the gate needs
 3 of 3 runs. The skeleton's failures are all features of later phases: the silence
@@ -430,6 +436,8 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | D-48 | 2026-10-31 | Spend guards for a small prepaid model credit: targeted runs, full gates at phase ends, cost printed and shown, a credit check before full gates, a slim nightly suite | Exhausted credit returns 429, which would look like agent bugs | — | accepted |
 | D-49 | 2026-10-31 | Pydantic v2 at our boundaries (model output, stored entities, playground requests); the strict schema generated from the same class; dataclasses for internals | One source of truth for schema and validation; untrusted model output is checked at the edge | a hand-written parser | accepted |
 | D-50 | 2026-10-31 | Documentation: three architecture views (containers, data flow with sensitivity labels, trust boundaries and numbered crossings, sequences with failure paths) plus a deployment view, in Mermaid with evidence paths, commit stamps, *Not built* lists and `[CONFIRM]` for unknowns, checked by a shape checker; evaluation graphs in Mermaid; screenshots only for UI. A change to a container, store or crossing updates its diagram in the same commit | Diagrams that diff stay true; reviewers ask where data goes | images and draw.io exports | accepted |
+| D-52 | 2026-10-31 | Every offer reads back unit, dates, number of people and price, so `last_offer` can parse exactly what the caller heard; the offered unit is the last one named in the line | The consent check compares what was heard with what we would book; a read-back without people could not catch "yes, but five of us" | reading back unit and dates only | accepted |
+| D-53 | 2026-10-31 | `CallState` gains its v2 fields in Phase 6 rather than Phase 7 (`shift_days`, `change_target_start`, `unit_is_must`, `heater_pref`, `heater_reason`, `answer`, `go_ahead`, and the full intent set); Phase 7 keeps prompt quality, validation and the extractor eval | The policy can't be built or tested without them | waiting for Phase 7 | accepted |
 | D-51 | 2026-10-31 | Replies state "not" facts explicitly ("I can help with that once I know who's calling", "I can't share anyone's details") and cover both readings of an "or" ("What car will you tow it with, and how much can it tow?") | The judge can flip the polarity of negated criteria and can read "or" as "and"; explicit wording makes the reply unambiguous. Confirmed on 01, 21 and 05: 3/3 each after the change | relying on silence; rerunning until green | accepted |
 
 ---
@@ -444,3 +452,4 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | 2026-10-31 | 3 | Walking skeleton replaces the starter agent: turn gate (interim speech), `CallState` v1 with its strict schema generated from the class, policy v1 (identify, ask one detail, search with all filters, offer, book only on a yes to our own offer), spoken templates; zero-token replay tests; first live run 7/14 and 6/10 with no API errors | Prove every layer end to end before deepening any | D-02, D-08, D-09, D-10, D-17, D-33, D-49 |
 | 2026-10-31 | 4 | Speech and handlers deepened test-first: `words.py` (spoken forms and the digit guard for dates, times, prices, weights, percentages, decimals, "2k", ordinals, codes and phone numbers), `reading.py`, tone from the latest caller turn, per-queue warm-transfer lines with a summary on the transfer, check-in and goodbye lines, a booking confirmed aloud and by text; `sms` and `note` handlers. 71 new tests (142 in total) | The voice rules made certain in code, before the turn gate and policy rely on them | D-06, D-17, D-18, D-24, D-37 |
 | 2026-10-31 | 5 | Full turn gate, test-first: still talking, filler-only or "hang on" → wait; a strict "talk to a person" pattern, or anger ≥ 0.7 with a barge-in → announced, calm transfer with a summary; we spoke last → wait, check in after 6 s of silence, hang up after a second silence, end quietly after a goodbye. Ask-for-name and tow questions reworded after two judge errors. 200 tests; 03, 13 and 26 pass with 0 model calls | Turn-taking without spending a model call | D-04, D-05, D-06, D-51 |
+| 2026-10-31 | 6 | Rules mirror with property tests against the API; offer engine (weekend minimum, both-way date shifts, must-have and heater-reason units, catalogue limits); read-back parser; own-booking clashes; moves and cancels with version retry; 409 re-check-and-retry and 500 check-then-retry; every intent (price, refusal, status, goodbye, hold, a second misunderstanding → person); `CallState` v2. Fixture 29's second criterion reworded: it contradicted the first. **Frozen gate passes: 72/72 runs** | Make a rule violation impossible by construction and handle every turn the fixtures describe | D-07, D-10, D-12–D-16, D-19, D-31, D-34, D-35, D-52, D-53 |

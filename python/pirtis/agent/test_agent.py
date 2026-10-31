@@ -35,11 +35,18 @@ def state(**kw: Any) -> dict[str, Any]:
         "people": None,
         "start": None,
         "end": None,
+        "shift_days": None,
+        "change_target_start": None,
         "tow_quote": None,
         "tow_kg": None,
         "power": None,
         "unit": None,
+        "unit_is_must": False,
+        "heater_pref": None,
+        "heater_reason": None,
+        "answer": None,
         "accepted_offer": False,
+        "go_ahead": False,
     }
     return {**base, **kw}
 
@@ -73,11 +80,86 @@ GOLD: dict[str, dict[str, Any]] = {
         power=True,
         unit="unit_didzioji",
     ),
+    "turnaround": state(
+        full_name="Jonas Jonaitis",
+        people=6,
+        start="2026-10-03",
+        end="2026-10-04",
+        tow_quote="the Passat, two thousand",
+        tow_kg=2000,
+        power=True,
+        unit="unit_vidutine",
+        unit_is_must=True,
+        heater_pref="electric",
+        heater_reason="the wood smoke sets off my asthma",
+    ),
+    "change-of-plan": state(
+        intent="change",
+        full_name="Tomas Petrauskas",
+        shift_days=7,
+        change_target_start="2026-10-03",
+        unit="unit_mazoji",
+        go_ahead=True,
+    ),
+    "other-customers-data": state(
+        intent="other_customer_info",
+        full_name="Tomas Petrauskas",
+        people=8,
+        start="2026-10-06",
+        end="2026-10-07",
+        unit="unit_didzioji",
+    ),
+    "weekend-minimum": state(
+        full_name="Jonas Jonaitis",
+        people=4,
+        start="2026-10-10",
+        end="2026-10-10",
+        tow_quote="the Passat, two thousand",
+        tow_kg=2000,
+        unit="unit_mazoji",
+    ),
+    "slot-stolen": state(
+        full_name="Eglė Butkutė",
+        people=4,
+        start="2026-10-10",
+        end="2026-10-11",
+        tow_quote="the Hilux, it tows three tonnes",
+        tow_kg=3000,
+        unit="unit_mazoji",
+        accepted_offer=True,
+        go_ahead=True,
+    ),
+    "cancel-booking": state(
+        intent="cancel",
+        full_name="Rasa Paulauskienė",
+        unit="unit_didzioji",
+        change_target_start="2026-10-06",
+        accepted_offer=True,
+        go_ahead=True,
+    ),
+    "sunday-only": state(
+        full_name="Jonas Jonaitis",
+        people=4,
+        start="2026-10-11",
+        end="2026-10-11",
+        tow_quote="the Passat, it does two thousand",
+        tow_kg=2000,
+        unit="unit_mazoji",
+    ),
+    "own-booking-overlap": state(
+        full_name="Rasa Paulauskienė",
+        people=4,
+        start="2026-10-06",
+        end="2026-10-07",
+        tow_quote="fifteen hundred, braked",
+        tow_kg=1500,
+        unit="unit_mazoji",
+    ),
 }
 
 
 def fixture(id: str) -> Fixture:
-    for f in load_fixtures(FIXTURES):
+    for f in load_fixtures(FIXTURES) + load_fixtures(FIXTURES / "extra"):
         if f.id == id:
             return f
     raise LookupError(id)

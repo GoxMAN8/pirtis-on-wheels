@@ -6,7 +6,26 @@ from pathlib import Path
 
 import pytest
 
-from pirtis.agent.policy import Ask, Booked, Decision, Handoff, NoFit, Offer
+from pirtis.agent.policy import (
+    Ask,
+    Booked,
+    BookingsRead,
+    Cancelled,
+    ConfirmCancel,
+    ConfirmChange,
+    Decision,
+    Goodbye,
+    Handoff,
+    Hold,
+    Moved,
+    NoFit,
+    Offer,
+    OwnClash,
+    Price,
+    Refuse,
+    Reply,
+    Sorry,
+)
 from pirtis.agent.speech import (
     CALM,
     NEUTRAL,
@@ -181,8 +200,33 @@ def test_tone_follows_the_callers_latest_turn() -> None:
 
 
 SAMPLES: list[Decision] = [
-    *(Ask(slot) for slot in ("name", "dates", "people", "tow", "power")),
+    *(
+        Ask(slot)
+        for slot in ("name", "dates", "people", "tow", "power", "which_booking", "new_dates")
+    ),
     Offer(MAZOJI, "2026-10-06", "2026-10-07", 4, 240),
+    Offer(VIDUTINE, "2026-10-04", "2026-10-05", 6, 320, blocked_day="2026-10-03"),
+    Offer(MAZOJI, "2026-10-10", "2026-10-11", 4, 240, weekend_min=True),
+    OwnClash(BOOKING, MAZOJI),
+    Refuse(DIDZIOJI),
+    Refuse(None),
+    ConfirmChange(BOOKING, MAZOJI, "2026-10-13", "2026-10-14"),
+    Moved(BOOKING, MAZOJI),
+    ConfirmCancel(BOOKING, MAZOJI),
+    Cancelled(BOOKING, MAZOJI),
+    BookingsRead(((BOOKING, MAZOJI),)),
+    BookingsRead(()),
+    Price(MAZOJI, "2026-10-06", "2026-10-07", 240, (MAZOJI, DIDZIOJI, VIDUTINE)),
+    Price(MAZOJI, None, None, 0, (MAZOJI, DIDZIOJI, VIDUTINE)),
+    Price(None, None, None, 0, (MAZOJI, DIDZIOJI, VIDUTINE)),
+    Goodbye(),
+    Hold(),
+    Reply("We're based near Vilnius and deliver the trailer ready to heat."),
+    Sorry(),
+    NoFit("too_many", limit=8),
+    NoFit("too_light", limit=750),
+    NoFit("no_booking"),
+    NoFit("no_dates"),
     Offer(DIDZIOJI, "2026-10-03", "2026-10-04", 8, 420, instead_of=MAZOJI, why_not="capacity"),
     Offer(VIDUTINE, "2026-10-10", "2026-10-11", 6, 320, instead_of=DIDZIOJI, why_not="weight"),
     Offer(DIDZIOJI, "2026-10-10", "2026-10-11", 6, 420, instead_of=VIDUTINE, why_not="power"),

@@ -23,6 +23,9 @@ class UnderstandError(Exception):
     """The model's answer could not be read, or it did not validate."""
 
 
+HEATERS = ("wood", "electric")
+
+
 class CallState(BaseModel):
     """What the caller has told us so far, as the model heard it. Facts, never rules.
 
@@ -33,8 +36,25 @@ class CallState(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     gist: str = Field(description="At most 15 words: what the caller wants in their latest turn.")
-    intent: Literal["book", "other"] = Field(
-        description="book: the caller wants to rent a sauna. other: anything else."
+    intent: Literal[
+        "book",
+        "change",
+        "cancel",
+        "check_booking",
+        "price",
+        "other_customer_info",
+        "human",
+        "goodbye",
+        "hold",
+        "smalltalk",
+        "unclear",
+    ] = Field(
+        description="What the caller wants now. book: rent a sauna. change: move or change "
+        "their existing booking. cancel: cancel their existing booking. check_booking: ask "
+        "about their own booking. price: ask what something costs. other_customer_info: ask "
+        "who has a booking or for someone else's details. human: ask for a person. goodbye: "
+        "end the call. hold: ask us to wait a moment. smalltalk: anything else we can answer "
+        "briefly. unclear: you cannot tell."
     )
     full_name: str | None = Field(
         description="The caller's full name exactly as said, keeping letters like ė, ž, š; "
@@ -43,9 +63,20 @@ class CallState(BaseModel):
     people: int | None = Field(
         description="How many people. If they hedge ('seven, maybe eight'), the higher number."
     )
-    start: str | None = Field(description="First day, YYYY-MM-DD, read off the calendar.")
+    start: str | None = Field(
+        description="First day they asked for, YYYY-MM-DD, read off the calendar. For a change, "
+        "the new first day if they named one."
+    )
     end: str | None = Field(
         description="Last day, YYYY-MM-DD. The same as start when they asked for a single day."
+    )
+    shift_days: int | None = Field(
+        description="For a change: how many days to move their booking by, if they said so "
+        "('push it a week' is 7, 'a day earlier' is -1). Null otherwise."
+    )
+    change_target_start: str | None = Field(
+        description="For a change or cancel: the first day of the existing booking they mean, "
+        "YYYY-MM-DD, if the call shows it. Null otherwise."
     )
     tow_quote: str | None = Field(
         description="The caller's own words that give a number for what the car can tow, "
@@ -60,12 +91,29 @@ class CallState(BaseModel):
         "(a generator is not mains), null if not said."
     )
     unit: str | None = Field(description="The sauna the caller asked for by name or description.")
+    unit_is_must: bool = Field(
+        description="True if the caller said it has to be that sauna, e.g. for health "
+        "reasons or 'it has to be that one'."
+    )
+    heater_pref: str | None = Field(description="The heater type the caller wants, if they said.")
+    heater_reason: str | None = Field(
+        description="The caller's reason for that heater, if they gave one, in their words "
+        "(e.g. 'the wood smoke sets off my asthma'). Null otherwise."
+    )
+    answer: str | None = Field(
+        description="Only for smalltalk: one or two short sentences answering the caller, "
+        "using only facts given here. Never about bookings or availability. Null otherwise."
+    )
     accepted_offer: bool = Field(
-        description="True only if the receptionist's last message offered a specific sauna "
-        "and dates and the caller said yes to that offer."
+        description="True only if the receptionist's last message offered something "
+        "specific (a sauna and dates, or to move or cancel a booking) and the caller said yes."
+    )
+    go_ahead: bool = Field(
+        description="True if the caller explicitly told us to do it now ('just move it', "
+        "'yes, cancel it', 'book it')."
     )
 
-    @field_validator("start", "end")
+    @field_validator("start", "end", "change_target_start")
     @classmethod
     def _iso_date(cls, v: str | None) -> str | None:
         """An unreadable date becomes unknown, so we ask again rather than book it."""
@@ -86,6 +134,11 @@ class CallState(BaseModel):
     def _known_unit(cls, v: str | None, info: ValidationInfo) -> str | None:
         ids = (info.context or {}).get("unit_ids")
         return v if v is None or ids is None or v in ids else None
+
+    @field_validator("heater_pref")
+    @classmethod
+    def _known_heater(cls, v: str | None) -> str | None:
+        return v if v in HEATERS else None
 
     @model_validator(mode="before")
     @classmethod
@@ -250,7 +303,9 @@ def extract(t: Transcript, llm: LlmClient, units: Sequence[Unit]) -> CallState:
             ],
             temperature=0.0,
             response_format=ResponseFormat(
-                name="call_state", schema=strict_schema(CallState, {"unit": ids}), strict=True
+                name="call_state",
+                schema=strict_schema(CallState, {"unit": ids, "heater_pref": HEATERS}),
+                strict=True,
             ),
         )
     )
