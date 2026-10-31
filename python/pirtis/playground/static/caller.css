@@ -130,3 +130,26 @@ main { max-width: 1240px; margin: 0 auto; padding: 0 24px 64px; }
 @media (prefers-reduced-motion: reduce) {
   .fact.fog .value { filter: none; opacity: 0.35; }
 }
+
+/* scenario cards and the rating form (the human evaluation) */
+.cards { margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--glass-edge); display: grid; gap: 12px; max-width: 640px; }
+.cards-title { font-size: 1.125rem; }
+.card-pick { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+.card-pick .field { flex: 1 1 220px; min-width: 0; }
+.card-pick select { width: 100%; max-width: 100%; }  /* a long card title must not widen the page */
+.card-pick .btn { white-space: normal; text-align: left; }
+.card-pick select, .rate-panel input[type="text"], .rate-panel textarea { min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); color: var(--ink); }
+.card-preview, .scenario { border-left: 3px solid var(--ember); padding: 8px 14px; background: var(--fog); border-radius: 0 var(--r) var(--r) 0; font-size: 0.9375rem; display: grid; gap: 4px; }
+.card-preview .t, .scenario .t { font-weight: 700; }
+.card-preview ul, .scenario ul { margin: 0; padding-left: 18px; }
+.rate-panel { margin-top: 32px; padding: 20px; border-radius: 12px; border: 1px solid var(--glass-edge); background: var(--panel); display: grid; gap: 14px; max-width: 760px; }
+.rate-panel h2 { font-size: 1.25rem; }
+.rate-panel fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 6px; }
+.rate-panel legend { font-weight: 700; font-size: 0.9375rem; margin-bottom: 4px; }
+.scale { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.scale label { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 40px; border: 1px solid var(--line); border-radius: var(--r); cursor: pointer; font-family: var(--f-mono); }
+.scale input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.scale input:checked + span { color: var(--ember-text); font-weight: 700; }
+.scale label:has(input:checked) { border-color: var(--ember); background: var(--fog); }
+.scale label:has(input:focus-visible) { outline: 2px solid var(--ember); outline-offset: 2px; }
+.scale .ends { font-size: 0.75rem; color: var(--muted); }

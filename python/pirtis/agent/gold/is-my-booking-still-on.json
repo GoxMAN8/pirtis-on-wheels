@@ -1,0 +1,38 @@
+{
+  "fixture": "is-my-booking-still-on",
+  "suite": "extra",
+  "state": {
+    "gist": "",
+    "intent": "check_booking",
+    "full_name": "Rasa Paulauskienė",
+    "people": null,
+    "start": null,
+    "end": null,
+    "shift_days": null,
+    "change_target_start": null,
+    "tow_quote": null,
+    "tow_kg": null,
+    "power": null,
+    "unit_quote": null,
+    "unit": null,
+    "unit_is_must": false,
+    "heater_reason": null,
+    "heater_pref": null,
+    "answer": null,
+    "consent_quote": null,
+    "accepted_offer": false,
+    "go_ahead": false
+  },
+  "ignore": [
+    "gist",
+    "tow_quote",
+    "answer",
+    "unit_quote",
+    "consent_quote",
+    "unit",
+    "change_target_start",
+    "start",
+    "end"
+  ],
+  "one_of": []
+}

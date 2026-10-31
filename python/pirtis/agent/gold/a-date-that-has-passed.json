@@ -1,0 +1,45 @@
+{
+  "fixture": "a-date-that-has-passed",
+  "suite": "extra",
+  "state": {
+    "gist": "",
+    "intent": "book",
+    "full_name": "Eglė Butkutė",
+    "people": 4,
+    "start": "2026-09-20",
+    "end": "2026-09-20",
+    "shift_days": null,
+    "change_target_start": null,
+    "tow_quote": null,
+    "tow_kg": null,
+    "power": null,
+    "unit_quote": null,
+    "unit": null,
+    "unit_is_must": false,
+    "heater_reason": null,
+    "heater_pref": null,
+    "answer": null,
+    "consent_quote": null,
+    "accepted_offer": false,
+    "go_ahead": false
+  },
+  "ignore": [
+    "gist",
+    "tow_quote",
+    "answer",
+    "unit_quote",
+    "consent_quote",
+    "start",
+    "end"
+  ],
+  "one_of": [
+    [
+      {
+        "start": "2026-09-20"
+      },
+      {
+        "start": null
+      }
+    ]
+  ]
+}

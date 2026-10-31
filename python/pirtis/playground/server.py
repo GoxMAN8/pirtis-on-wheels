@@ -37,10 +37,12 @@ from pirtis.harness.fixture import Fixture, load_fixtures
 from pirtis.harness.run import Runner
 from pirtis.llm.client import Client as LlmClient
 from pirtis.llm.client import open_ai_from_env
-from pirtis.ops.model import Feedback, GateRun, Turn
+from pirtis.ops.human import load_cards, outcome_of
+from pirtis.ops.model import Calibration, Feedback, GateRun, HumanRating, Turn
 from pirtis.ops.store import FileStore, store_from_env
+from pirtis.ops.turns import seen_at
 from pirtis.playground import analytics
-from pirtis.playground.calls import UNKNOWN_PHONE, CallClosed, Calls, LiveCall, plain, seen_at
+from pirtis.playground.calls import UNKNOWN_PHONE, CallClosed, Calls, LiveCall, plain
 from pirtis.playground.promote import Expected, PromoteError, build, save
 from pirtis.transcript.types import Item
 
@@ -122,6 +124,18 @@ class PromoteBody(_Body):
     confirm: Literal[True]  # the reviewer vouches that everyone in the call is made up
 
 
+class RatingBody(_Body):
+    session_id: str = Field(max_length=32)
+    scenario_id: str = Field(max_length=40)
+    rater: str = Field(pattern=r"^[A-Za-z]{2,4}$")  # initials, never a name
+    goal_achieved: bool
+    natural: int = Field(ge=1, le=5)
+    numbers_clear: int = Field(ge=1, le=5)
+    one_question: int = Field(ge=1, le=5)
+    turn_taking: int = Field(ge=1, le=5)
+    note: str = Field(default="", max_length=500)
+
+
 class ReplayBody(_Body):
     fixture: str = Field(max_length=80)
 
@@ -184,6 +198,7 @@ class App:
         self.promote_dir = promote_dir  # None: promoted cases are downloaded, not written
         self.fixtures: dict[str, tuple[str, Fixture]] = {}
         self._index_fixtures()
+        self.cards = {c.id: c for c in load_cards()}
 
     def _index_fixtures(self) -> None:
         folders = [("given", FIXTURES), ("ours", FIXTURES / "extra")]
@@ -275,6 +290,51 @@ class App:
             "run": f"uv run harness --fixtures {_shown(path.parent) if path else '<folder>'} "
             f"--id {case.id} --runs 3 --need 3 -v",
         }
+
+    # human evaluation
+
+    def scenarios(self, q: dict[str, str]) -> Any:
+        phones = {c.name: c.phone for c in self.calls.seed.customers}
+        return {
+            "cards": [
+                {**c.model_dump(), "phone": phones.get(c.persona, UNKNOWN_PHONE)}
+                for c in self.cards.values()
+            ]
+        }
+
+    def rating(self, body: RatingBody) -> Any:
+        call = self._call(body.session_id)
+        if body.scenario_id not in self.cards:
+            raise HttpError(404, "no such scenario card")
+        self.store.put(
+            HumanRating(
+                scenario_id=body.scenario_id,
+                session_id=body.session_id,
+                rater=body.rater.upper(),  # one rater, one key, on a case-blind share too
+                agent_version=call.steps[-1]["agent_version"] if call.steps else AGENT_VERSION,
+                goal_achieved=body.goal_achieved,
+                natural=body.natural,
+                numbers_clear=body.numbers_clear,
+                one_question=body.one_question,
+                turn_taking=body.turn_taking,
+                note=body.note,
+                created=datetime.now(UTC),
+            )
+        )
+        return HTTPStatus.CREATED, {"ok": True}
+
+    def human_eval(self, q: dict[str, str]) -> Any:
+        ratings = self.store.query(HumanRating)
+        outcomes: dict[str, str | None] = {}
+        for sid in {r.session_id for r in ratings}:
+            call = self.calls.get(sid)  # gone after 30 days: no outcome to compare
+            outcomes[sid] = (
+                outcome_of(call.status, self.calls.card(call)["status"]) if call else None
+            )
+        calibrations = self.store.query(Calibration)
+        return analytics.human_eval(
+            ratings, list(self.cards.values()), outcomes, calibrations[-1] if calibrations else None
+        )
 
     def fixture_list(self, q: dict[str, str]) -> Any:
         return {
@@ -458,6 +518,8 @@ GET_ROUTES = {
     "fleet": App.fleet,
     "feedback": App.feedback_list,
     "health": App.health,
+    "scenarios": App.scenarios,
+    "human-eval": App.human_eval,
 }
 POST_ROUTES: dict[str, tuple[type[_Body], Any]] = {
     "session": (StartBody, App.start),
@@ -467,6 +529,7 @@ POST_ROUTES: dict[str, tuple[type[_Body], Any]] = {
     "feedback": (FeedbackBody, App.feedback_post),
     "replay": (ReplayBody, App.replay),
     "promote": (PromoteBody, App.promote),
+    "rating": (RatingBody, App.rating),
     "what-if": (WhatIfBody, App.what_if),
 }
 

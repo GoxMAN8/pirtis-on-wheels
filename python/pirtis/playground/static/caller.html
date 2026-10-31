@@ -26,6 +26,15 @@
       <h1 id="dial-title" class="stamp dial-title">Who's calling?</h1>
       <p class="dial-lead">Ring the rental's receptionist as one of its customers, or from a number it has never seen. Speak where your browser can listen, or type.</p>
       <ul id="personas" class="personas"></ul>
+      <section class="cards" aria-labelledby="cards-title">
+        <h2 id="cards-title" class="cards-title">Test with a scenario card</h2>
+        <p class="muted">For the human evaluation: a card gives you a goal, what you know and one twist. Rate the call when it ends.</p>
+        <div class="card-pick">
+          <label class="field">Card <select id="card-select"></select></label>
+          <button class="btn" id="card-call" type="button">Call with this card</button>
+        </div>
+        <div id="card-preview" class="card-preview"></div>
+      </section>
       <p id="dial-error" class="error-line" role="alert" hidden></p>
       <p class="fine muted">A demo with made-up customers. Calls are kept for 30 days so they can be reviewed.</p>
     </section>
@@ -33,6 +42,7 @@
     <section id="call" class="call" hidden aria-label="The call">
       <div class="stage">
         <p class="who"><span id="who"></span> <span id="status" class="chip"></span></p>
+        <div id="scenario" class="scenario" hidden></div>
         <p id="line" class="line" aria-live="polite"></p>
         <p id="interim" class="interim" aria-hidden="true"></p>
         <div id="stove" class="stove" aria-hidden="true"></div>
@@ -46,6 +56,7 @@
           <button class="btn" id="mic" type="button" aria-pressed="false">Hold to talk</button>
           <button class="btn" id="quiet" type="button">Stay quiet 8 s</button>
           <button class="btn ghost" id="hangup" type="button">Hang up</button>
+          <button class="btn" id="rate-open" type="button" hidden>Rate this call</button>
           <label class="toggle"><input type="checkbox" id="speak" checked> Speak replies</label>
         </div>
         <p id="call-error" class="error-line" role="alert" hidden></p>
@@ -63,6 +74,8 @@
         </div>
       </aside>
     </section>
+
+    <section id="rate" class="rate-panel" hidden aria-labelledby="rate-title"></section>
 
     <section class="drawers" id="drawers" hidden>
       <details id="transcript-drawer">

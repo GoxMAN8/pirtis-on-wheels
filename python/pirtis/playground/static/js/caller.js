@@ -4,7 +4,7 @@
 import { api, clear, currentTheme, el, fmt, initTheme, reducedMotion } from "./common.js";
 
 const $ = (id) => document.getElementById(id);
-const S = { call: null, personas: [], spoken: 0, rated: new Map(), busy: false };
+const S = { call: null, personas: [], spoken: 0, rated: new Map(), busy: false, cards: [], card: null, scored: false };
 
 initTheme($("theme"));
 
@@ -190,7 +190,7 @@ function personaFor(phone) {
 async function startCall(p) {
   try {
     const view = await api("/api/session", { phone: p.phone });
-    history.replaceState(null, "", `#call=${view.session_id}`);
+    history.replaceState(null, "", `#call=${view.session_id}${S.card ? `&card=${S.card.id}` : ""}`);
     S.spoken = 0;
     S.rated.clear();
     render(view);
@@ -276,6 +276,7 @@ function render(view) {
   renderTranscript(view);
   renderLastTurn(view);
   renderEnd(view);
+  renderScenario(view);
 }
 
 function renderEnd(view) {
@@ -452,6 +453,123 @@ $("replay").addEventListener("click", async () => {
   }
 });
 
+// ---- scenario cards and the rating form (the human evaluation) ----
+const RUBRIC = [
+  ["natural", "Sounded like a capable person on the phone"],
+  ["numbers_clear", "Prices, dates and figures were easy to follow"],
+  ["one_question", "Asked one thing at a time"],
+  ["turn_taking", "Waited, checked in and coped with interruptions"],
+];
+const RATER_KEY = "pirtis-rater";
+
+function remembered(value) {
+  try {
+    if (value === undefined) return localStorage.getItem(RATER_KEY) || "";
+    localStorage.setItem(RATER_KEY, value);
+  } catch {
+    return ""; // storage blocked: the form still works, the initials just aren't kept
+  }
+  return "";
+}
+
+function cardBlock(card) {
+  return [
+    el("p", { class: "t", text: card.title }),
+    el("p", {}, el("strong", { text: "Goal: " }), card.goal),
+    card.facts.length ? el("ul", {}, card.facts.map((f) => el("li", { text: f }))) : null,
+    el("p", {}, el("strong", { text: "Twist: " }), card.twist),
+  ];
+}
+
+async function loadCards() {
+  const { cards } = await api("/api/scenarios");
+  S.cards = cards;
+  const select = $("card-select");
+  clear(select, cards.map((c) => el("option", { value: c.id, text: `${c.title} (${c.persona === "unknown" ? "unknown number" : c.persona})` })));
+  const preview = () => {
+    const card = cards.find((c) => c.id === select.value);
+    clear($("card-preview"), card ? cardBlock(card) : []);
+    $("card-call").textContent = card ? `Call as ${card.persona === "unknown" ? "an unknown number" : card.persona}` : "Call";
+  };
+  select.addEventListener("change", preview);
+  preview();
+  $("card-call").addEventListener("click", () => {
+    const card = cards.find((c) => c.id === select.value);
+    if (!card) return;
+    S.card = card;
+    S.scored = false;
+    startCall({ phone: card.phone, label: card.persona, kind: card.persona === "unknown" ? "unknown" : "customer" });
+  });
+}
+
+function renderScenario(view) {
+  const box = $("scenario");
+  box.hidden = !S.card;
+  $("rate-open").hidden = !S.card || S.scored;
+  if (!S.card) return;
+  clear(box, cardBlock(S.card));
+  if (view.status !== "open" && !S.scored && $("rate").hidden) showRating();
+}
+
+function scale(name, label) {
+  return el("fieldset", {},
+    el("legend", { text: label }),
+    el("div", { class: "scale" },
+      el("span", { class: "ends", text: "poor" }),
+      [1, 2, 3, 4, 5].map((n) => el("label", {},
+        el("input", { type: "radio", name, value: String(n), required: true }),
+        el("span", { text: String(n) }))),
+      el("span", { class: "ends", text: "like a person" })));
+}
+
+function showRating() {
+  const panel = $("rate");
+  const rater = el("input", { type: "text", name: "rater", required: true, pattern: "[A-Za-z]{2,4}", maxlength: "4",
+    value: remembered(), "aria-describedby": "rater-hint", autocomplete: "off" });
+  const note = el("textarea", { name: "note", rows: "3", maxlength: "500", placeholder: "What stood out? (optional)" });
+  const out = el("p", { role: "status" });
+  const form = el("form", {},
+    el("label", { class: "field" }, "Your rater code", rater,
+      el("span", { class: "muted", id: "rater-hint", text: "Two to four letters, your initials. No names." })),
+    el("fieldset", {},
+      el("legend", { text: `Did the call reach the card's outcome? (${S.card.success})` }),
+      el("div", { class: "scale" },
+        [["true", "Yes"], ["false", "No"]].map(([v, t]) => el("label", {},
+          el("input", { type: "radio", name: "goal", value: v, required: true }), el("span", { text: t }))))),
+    RUBRIC.map(([k, label]) => scale(k, label)),
+    el("label", { class: "field" }, "Note", note),
+    el("div", { class: "controls" },
+      el("button", { class: "btn primary", type: "submit", text: "Save rating" }),
+      el("button", { class: "btn ghost", type: "button", text: "Not now", onclick: () => { panel.hidden = true; } })),
+    out);
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = new FormData(form);
+    const body = {
+      session_id: S.call.session_id, scenario_id: S.card.id, rater: String(f.get("rater")).trim(),
+      goal_achieved: f.get("goal") === "true", note: String(f.get("note") || "").trim(),
+      ...Object.fromEntries(RUBRIC.map(([k]) => [k, Number(f.get(k))])),
+    };
+    try {
+      await api("/api/rating", body);
+      remembered(body.rater);
+      S.scored = true;
+      clear(panel, el("h2", { id: "rate-title", text: "Thanks, your rating is saved" }),
+        el("p", { class: "muted", text: `${S.card.title}, rated by ${body.rater.toUpperCase()}. Pick another card from the first screen.` }),
+        el("button", { class: "btn primary", type: "button", text: "Next card", onclick: () => { history.replaceState(null, "", location.pathname); location.reload(); } }));
+      $("rate-open").hidden = true;
+    } catch (err) {
+      out.className = "error-line";
+      out.textContent = err.message;
+    }
+  });
+  clear(panel, el("h2", { id: "rate-title", text: "Rate this call" }), form);
+  panel.hidden = false;
+  panel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+$("rate-open").addEventListener("click", showRating);
+
 // ---- wiring ----
 $("say").addEventListener("submit", (e) => {
   e.preventDefault();
@@ -466,11 +584,13 @@ async function boot() {
     const { personas } = await api("/api/personas");
     S.personas = personas;
     clear($("personas"), personas.map((p) => el("li", {},
-      el("button", { class: `persona ${p.kind}`, type: "button", onclick: () => startCall(p) },
+      el("button", { class: `persona ${p.kind}`, type: "button", onclick: () => { S.card = null; startCall(p); } },
         el("span", { class: "name", text: p.kind === "unknown" ? "Unknown number" : p.label }),
         el("span", { class: "phone", text: p.kind === "unknown" ? "A number the rental has never seen" : `${p.phone} · on the books` })))));
     loadFixtures().catch(() => {});
-    const m = location.hash.match(/^#call=([\w-]+)$/);
+    await loadCards().catch(() => {});
+    const m = location.hash.match(/^#call=([\w-]+)(?:&card=([\w-]+))?$/);
+    if (m && m[2]) S.card = S.cards.find((c) => c.id === m[2]) || null;
     if (m) {
       try {
         const view = await api(`/api/session/${m[1]}`);

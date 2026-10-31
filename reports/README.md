@@ -13,5 +13,8 @@ Test lists are re-runnable: check out that commit and run the command.
 | `browser-checks.txt`, `screens/` | what was checked in a real browser, every defect found there and its fix; screenshots of the final state |
 | `palette.txt` | the chart colours run through the palette validator, both themes |
 | `privacy-scan.txt` | every admin read endpoint scanned for names, phones and customer ids, with live data stored |
+| `cases-runs.txt`, `loop-runs.txt` | every run of a set of cases, from their trace files: what was said and each failure's reason |
+| `variants-review.md` | the generated variants and the kit's verdict on each, as the reviewer sees it |
+| `reliability.txt`, `reliability.json` | pass^k for k = 1 to 5 per suite, from five runs of every case |
 
 Phase 1 produced documents only, so it has no folder.

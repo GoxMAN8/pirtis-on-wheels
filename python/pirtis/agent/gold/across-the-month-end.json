@@ -1,0 +1,34 @@
+{
+  "fixture": "across-the-month-end",
+  "suite": "extra",
+  "state": {
+    "gist": "",
+    "intent": "book",
+    "full_name": "Eglė Butkutė",
+    "people": 6,
+    "start": "2026-09-30",
+    "end": "2026-10-02",
+    "shift_days": null,
+    "change_target_start": null,
+    "tow_quote": "it tows three and a half tonnes",
+    "tow_kg": 3500,
+    "power": true,
+    "unit_quote": null,
+    "unit": null,
+    "unit_is_must": false,
+    "heater_reason": null,
+    "heater_pref": null,
+    "answer": null,
+    "consent_quote": null,
+    "accepted_offer": false,
+    "go_ahead": false
+  },
+  "ignore": [
+    "gist",
+    "tow_quote",
+    "answer",
+    "unit_quote",
+    "consent_quote"
+  ],
+  "one_of": []
+}

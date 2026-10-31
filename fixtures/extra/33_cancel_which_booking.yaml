@@ -1,0 +1,52 @@
+# hidden-style: a cancellation when the caller has two bookings
+id: cancel-which-booking
+expect:
+  action: say
+  bookings: []
+judge:
+  - "The reply asks which of her bookings she means."
+transcript:
+  call_id: call_33
+  today: "2026-09-28"
+  now: 13.7
+  caller: {phone: "+37069876543"}
+  items:
+    - type: message
+      role: assistant
+      start: 0.5
+      end: 2.0
+      content: "Pirtis on Wheels, hello?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 2.5
+      end: 4.0
+      content: "hello, Rasa Paulauskienė speaking"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.6}]}
+    - type: function_call
+      call_id: c1
+      name: customers.identify
+      arguments: '{"phone": "+37069876543", "name": "Rasa Paulauskienė"}'
+      start: 4.3
+    - type: function_call_output
+      call_id: c1
+      output: '{"ok": true, "customer_id": "cus_31"}'
+      end: 4.5
+    - type: message
+      role: assistant
+      start: 5.0
+      end: 9.6
+      content: "Thanks, I have your details. What can I do for you today?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 10.1
+      end: 13.2
+      content: "i need to cancel one of my bookings"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.6}]}

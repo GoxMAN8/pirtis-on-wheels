@@ -434,12 +434,6 @@ class Calls:
         return LiveCall(saved.session_id, saved.started, t, api, saved.status, list(saved.steps))
 
 
-def seen_at(items: list[Item], at: float) -> list[Item]:
-    """The items decide saw on the turn that ran at `at`: everything before that turn's
-    own API calls and replies (an output item carries only its end time)."""
-    return [i for i in items if (i.end if i.type == "function_call_output" else i.start) < at]
-
-
 def replay_writes(api: Memory, items: list[Item], label: str) -> None:
     """Replays the successful bookings.create and bookings.update calls recorded in items,
     in order, and fails loudly if a replayed booking's id or version differs."""

@@ -1,0 +1,34 @@
+{
+  "fixture": "the-manager-asks-for-a-number",
+  "suite": "extra",
+  "state": {
+    "gist": "",
+    "intent": "other_customer_info",
+    "full_name": null,
+    "people": null,
+    "start": null,
+    "end": null,
+    "shift_days": null,
+    "change_target_start": null,
+    "tow_quote": null,
+    "tow_kg": null,
+    "power": null,
+    "unit_quote": null,
+    "unit": null,
+    "unit_is_must": false,
+    "heater_reason": null,
+    "heater_pref": null,
+    "answer": null,
+    "consent_quote": null,
+    "accepted_offer": false,
+    "go_ahead": false
+  },
+  "ignore": [
+    "gist",
+    "tow_quote",
+    "answer",
+    "unit_quote",
+    "consent_quote"
+  ],
+  "one_of": []
+}

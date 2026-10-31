@@ -1,0 +1,52 @@
+# hidden-style: a goodbye after an offer: end the call, book nothing
+id: think-about-it-and-goodbye
+expect:
+  action: end_call
+  bookings: []
+judge:
+  - "The reply says goodbye."
+transcript:
+  call_id: call_41
+  today: "2026-09-28"
+  now: 24.9
+  caller: {phone: "+37062223344"}
+  items:
+    - type: message
+      role: assistant
+      start: 0.5
+      end: 2.0
+      content: "Pirtis on Wheels, hello?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 2.5
+      end: 8.3
+      content: "hi, Jonas Jonaitis, four of us, the weekend after next, the car tows two thousand"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.6}]}
+    - type: function_call
+      call_id: c1
+      name: customers.identify
+      arguments: '{"phone": "+37062223344", "name": "Jonas Jonaitis"}'
+      start: 8.6
+    - type: function_call_output
+      call_id: c1
+      output: '{"ok": true, "customer_id": "cus_07"}'
+      end: 8.8
+    - type: message
+      role: assistant
+      start: 9.3
+      end: 19.3
+      content: "I can offer Mažoji, Saturday the tenth to Sunday the eleventh of October, for four people. That's two hundred and forty euros. Shall I book it?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 19.8
+      end: 24.4
+      content: "hmm, let me think about it and call you back. thanks, bye!"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.6}]}

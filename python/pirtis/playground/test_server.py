@@ -2,6 +2,8 @@
 a privacy scan of everything the admin console reads."""
 
 import json
+import shutil
+import subprocess
 import threading
 import urllib.error
 import urllib.request
@@ -222,3 +224,52 @@ def test_without_a_folder_a_case_is_only_downloaded(tmp_path: Path) -> None:
                 "judge": ["The reply confirms the booking."], "confirm": True}  # fmt: skip
         status, out = c.post("/api/promote", body)
         assert status == 201 and out["written"] is False and out["yaml"].startswith("# Promoted")
+
+
+def test_scenario_cards_come_with_their_personas_phone(client: Client) -> None:
+    _, out = client.get("/api/scenarios")
+    cards = {c["id"]: c for c in out["cards"]}
+    assert len(cards) == 15
+    assert cards["first-booking"]["phone"] == "+37061234567"
+    assert cards["new-customer"]["phone"] == "+37060000000"
+
+
+def test_a_rating_is_kept_and_summed_up_per_card(client: Client) -> None:
+    _, empty = client.get("/api/human-eval")
+    assert empty["ratings"] == 0 and empty["calibration"] is None and len(empty["cards"]) == 15
+    sid = book(client)  # Jonas books Mažoji: the call's own record says "booked"
+    body = {
+        "session_id": sid, "scenario_id": "first-booking", "rater": "ab", "goal_achieved": True,
+        "natural": 4, "numbers_clear": 5, "one_question": 5, "turn_taking": 3, "note": "fine",
+    }  # fmt: skip
+    assert client.post("/api/rating", {**body, "natural": 6})[0] == 400
+    assert client.post("/api/rating", {**body, "rater": "Ana Smith"})[0] == 400
+    assert client.post("/api/rating", {**body, "scenario_id": "nope"})[0] == 404
+    assert client.post("/api/rating", body)[0] == 201
+    _, out = client.get("/api/human-eval")
+    row = next(c for c in out["cards"] if c["id"] == "first-booking")
+    assert (row["ratings"], row["goal"], row["system_outcome"], row["natural"]) == (
+        1,
+        1.0,
+        1.0,
+        4.0,
+    )
+    assert out["notes"] == [
+        {
+            "scenario": "first-booking",
+            "rater": "AB",
+            "note": "fine",
+            "created": out["notes"][0]["created"],
+        }
+    ]
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="needs node")
+def test_every_page_script_parses_as_a_module(tmp_path: Path) -> None:
+    """The browser loads these as ES modules; a plain `node --check x.js` may not parse
+    them that way, and once let a missing parenthesis through."""
+    for js in (Path(__file__).parent / "static" / "js").glob("*.js"):
+        copy = tmp_path / (js.stem + ".mjs")
+        copy.write_text(js.read_text())
+        done = subprocess.run(["node", "--check", str(copy)], capture_output=True, text=True)
+        assert done.returncode == 0, f"{js.name}: {done.stderr}"

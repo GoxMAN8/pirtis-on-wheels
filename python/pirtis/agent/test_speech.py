@@ -20,6 +20,7 @@ from pirtis.agent.policy import (
     Moved,
     NoFit,
     Offer,
+    OffTopic,
     OwnClash,
     Price,
     Refuse,
@@ -205,6 +206,7 @@ SAMPLES: list[Decision] = [
         for slot in (
             "name",
             "dates",
+            "past_dates",
             "people",
             "tow",
             "power",
@@ -230,6 +232,7 @@ SAMPLES: list[Decision] = [
     Price(None, None, None, 0, (MAZOJI, DIDZIOJI, VIDUTINE)),
     Goodbye(),
     Hold(),
+    OffTopic(),
     Reply("We're based near Vilnius and deliver the trailer ready to heat."),
     Sorry(),
     NoFit("too_many", limit=8),
@@ -313,3 +316,13 @@ def test_every_offer_reads_back_unit_dates_people_and_price() -> None:
 def test_an_identified_greeting_is_asked_what_it_needs() -> None:
     line = _spoken(render(Ask("need")))[0]
     assert "what can i do for you" in line.lower() and line.count("?") == 1
+
+
+def test_a_past_date_is_named_as_past() -> None:
+    line = _spoken(render(Ask("past_dates")))[0]
+    assert "passed" in line and line.endswith("?")
+
+
+def test_an_off_topic_request_hears_what_we_can_do() -> None:
+    line = _spoken(render(OffTopic()))[0]
+    assert "sauna" in line and line.count("?") == 1

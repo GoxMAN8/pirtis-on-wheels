@@ -27,7 +27,7 @@ const colors = () => ({
 });
 
 // ---- routing ----
-const VIEWS = { reliability, conversations, traces, feedback, fleet };
+const VIEWS = { reliability, conversations, traces, feedback, fleet, human };
 let painters = [];
 let current = () => Promise.resolve();
 
@@ -399,7 +399,11 @@ async function traces(sid, tid) {
   const done = render(...head("Traces",
     "One turn from the caller simulator, left to right: what decide heard, what the model understood (and the caller's words behind it), what the policy decided, what reached the API, and what was said."));
   if (!turns.length) return done(empty("No calls yet. Every turn of a call in the caller simulator shows up here.", el("a", { href: "/", text: "Make a call" })));
-  if (!sid || !tid) { sid = turns[0].session_id; tid = turns[0].turn_id; }
+  if (!tid) {  // a call without a turn: its latest turn (the list is newest first)
+    const t = turns.find((x) => x.session_id === sid) || turns[0];
+    sid = t.session_id;
+    tid = t.turn_id;
+  }
 
   const list = el("nav", { class: "turn-list panel", "aria-label": "Recent turns" }, turns.slice(0, 200).map((t) =>
     el("a", { href: `#traces/${t.session_id}/${t.turn_id}`, "aria-current": String(t.session_id === sid && t.turn_id === tid) },
@@ -710,6 +714,85 @@ function whatIfForm(results, cal) {
     }
   });
   return form;
+}
+
+// ---- Human eval ----
+const RUBRIC_LABELS = {
+  natural: "Natural", numbers_clear: "Numbers and dates", one_question: "One question at a time", turn_taking: "Turn-taking",
+};
+
+async function human() {
+  const d = await api("/api/human-eval");
+  const done = render(...head("Human eval", [
+    "Calls made and rated by people following the scenario cards (",
+    el("code", { text: "tests/human/README.md" }),
+    "). The same questions then go to the kit's judge, and the agreement says how far a judge verdict can be trusted.",
+  ]));
+  const tiles = el("div", { class: "tiles" },
+    tile("Ratings", fmt.num(d.ratings), `${d.raters} rater${d.raters === 1 ? "" : "s"}`),
+    tile("Cards rated", `${d.scenarios_rated}/${d.scenarios}`, "each card can be rated by more than one person"),
+    tile("Goal reached", d.goal === null ? "–" : fmt.pct(d.goal), "as the raters judged it"));
+  const calib = calibrationBlock(d.calibration);
+  if (!d.ratings) {
+    return done(tiles, empty("No ratings yet. On the caller simulator's first screen, pick a scenario card, make the call, and rate it when it ends.",
+      el("a", { href: "/", text: "Open the caller simulator" })), calib);
+  }
+  const rows = d.cards.map((c) => ({ ...c, goalTxt: c.goal === null ? "–" : fmt.pct(c.goal),
+    systemTxt: c.system_outcome === null ? "–" : fmt.pct(c.system_outcome) }));
+  const cardsTable = el("table", { class: "data" },
+    el("thead", {}, el("tr", {}, ["Card", "Expected", "Ratings", "Goal (people)", "Goal (call record)",
+      ...Object.values(RUBRIC_LABELS), "Calls"].map((h, i) => el("th", { class: i >= 2 && i < 9 ? "num" : "", text: h })))),
+    el("tbody", {}, rows.map((c) => el("tr", {},
+      el("td", { text: c.title }), el("td", { text: c.outcome }),
+      el("td", { class: "num", text: `${c.ratings} (${c.raters})` }),
+      el("td", { class: "num", text: c.goalTxt }), el("td", { class: "num", text: c.systemTxt }),
+      Object.keys(RUBRIC_LABELS).map((k) => el("td", { class: "num", text: c[k] === null ? "–" : c[k].toFixed(1) })),
+      el("td", {}, c.sessions.map((sid) => el("span", {},
+        el("a", { href: `/#call=${sid}&card=${c.id}`, text: "rate again" }), " · ",
+        el("a", { href: `#traces/${sid}`, text: "trace" }), " ")))))));
+  const spread = d.items.map((i) => ({ ...i, label: RUBRIC_LABELS[i.item] }));
+  done(tiles,
+    el("h2", { class: "section-title", text: "By card" }), el("div", { class: "panel", style: "overflow-x: auto" }, cardsTable),
+    el("div", { class: "grid2", style: "margin-top: 16px" },
+      figure({
+        title: "The rubric", sub: "Mean score with the lowest and highest given, 1 to 5",
+        rows: spread, columns: [{ key: "label", label: "Item" }, { key: "mean", label: "Mean", num: true }, { key: "min", label: "Lowest", num: true }, { key: "max", label: "Highest", num: true }],
+        draw: (w, c) => Plot.plot(base(w, 40 + spread.length * 34, {
+          marginLeft: 150, x: { domain: [1, 5], label: "score →", grid: true }, y: { label: null, domain: spread.map((r) => r.label) },
+          marks: [
+            Plot.ruleY(spread, { x1: "min", x2: "max", y: "label", stroke: c.muted, strokeWidth: 2 }),
+            Plot.dot(spread, { x: "mean", y: "label", r: 6, fill: c.ink, tip: true }),
+          ],
+        })),
+      }),
+      calib),
+    d.notes.length ? el("h2", { class: "section-title", text: "Notes" }) : null,
+    d.notes.length ? el("div", { class: "fb" }, d.notes.map((n) => el("article", { class: "fb-item" },
+      el("div", { class: "row" }, el("span", { class: "mono", text: n.rater }), el("span", { text: n.scenario }), el("span", { text: fmt.time(n.created) })),
+      el("p", { class: "note", text: n.note })))) : null);
+}
+
+function calibrationBlock(cal) {
+  if (!cal) {
+    return el("div", { class: "figure" }, el("h2", { class: "figure-title", text: "Judge calibration" }),
+      el("p", { class: "figure-sub" }, "Not run yet. Once calls are rated, ", el("code", { text: "make calibrate" }),
+        " asks the kit's judge the same questions about the same calls and saves how often it agrees with people (Cohen's κ)."));
+  }
+  const k = (v) => (v === null || v === undefined ? "–" : Number(v).toFixed(2));
+  return el("div", { class: "figure" },
+    el("h2", { class: "figure-title", text: "Judge calibration" }),
+    el("p", { class: "figure-sub", text: `${cal.ratings} rated calls, judge ${cal.judge_model}, ${fmt.time(cal.run_ts)}. κ above 0.6 is substantial agreement; near 0 is chance.` }),
+    el("table", { class: "data" },
+      el("thead", {}, el("tr", {}, ["Item", "Calls", "Agree", "κ"].map((h, i) => el("th", { class: i ? "num" : "", text: h })))),
+      el("tbody", {},
+        Object.entries(cal.items).map(([item, r]) => el("tr", {},
+          el("td", { text: item === "goal" ? "Goal" : RUBRIC_LABELS[item] || item }),
+          el("td", { class: "num", text: r.n }), el("td", { class: "num", text: r.agree === null ? "–" : fmt.pct(r.agree) }),
+          el("td", { class: "num", text: k(r.kappa) }))),
+        el("tr", {}, el("td", { text: "All items" }), el("td", { class: "num", text: "" }),
+          el("td", { class: "num", text: cal.overall_agree === null ? "–" : fmt.pct(cal.overall_agree) }), el("td", { class: "num", text: k(cal.overall_kappa) })),
+        el("tr", {}, el("td", { text: "Rater with rater" }), el("td", { class: "num", text: `${cal.rater_pairs} pairs` }),
+          el("td", { class: "num", text: "" }), el("td", { class: "num", text: k(cal.rater_kappa) })))));
 }
 
 // start only once every view's state above exists: a direct link to any view must work

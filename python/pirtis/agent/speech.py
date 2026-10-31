@@ -24,6 +24,7 @@ from pirtis.agent.policy import (
     Moved,
     NoFit,
     Offer,
+    OffTopic,
     OwnClash,
     Price,
     Refuse,
@@ -52,11 +53,16 @@ def tone(t: Transcript) -> Voice:
 
 
 SORRY = "Sorry, I didn't catch that. Could you say it again?"
+OFF_TOPIC = (
+    "That's not something I can help with, but I can help you rent one of our saunas. "
+    "What would you like to book?"
+)
 
 QUESTIONS = {
     # says out loud that we're deferring, so "does not say whether…" can't be misread
     "name": "I can help with that once I know who's calling. Can I get your full name, please?",
     "dates": "Which dates were you thinking of?",
+    "past_dates": "That date has already passed. Which dates were you thinking of?",
     "people": "How many of you will there be?",
     # names both the car and the figure, so either reading of the question is covered
     "tow": "What car will you tow it with, and how much can it tow, braked?",
@@ -165,6 +171,8 @@ def render(d: Decision, voice: Voice = NEUTRAL) -> list[Action]:
             return [_say(text, voice)]
         case Sorry():
             return [_say(SORRY, voice)]
+        case OffTopic():
+            return [_say(OFF_TOPIC, voice)]
         case Handoff(queue=queue, reason=reason, summary=summary, apologise=apologise):
             line = HANDOFF_SORRY if apologise else HANDOFF_LINES.get(queue, HANDOFF_DEFAULT)
             return [_say(line, voice), handoff(queue, reason, summary)]

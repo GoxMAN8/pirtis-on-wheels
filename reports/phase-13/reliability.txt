@@ -1,0 +1,34 @@
+# Phase 13 · pass^k for k = 1..5, five runs of every gated case (agent a40b5e6fcd67)
+# commit: test: hidden-style and red-team cases, variants, human-eval kit · 2026-10-31
+# command: cd python && make reliability (stopped before the 59 variant candidates, which are
+#          measured when they are reviewed); then python -m pirtis.ops.reliability --dir runs/reliability
+
+pass^k for k = 1..5
+  extra                   32 cases  k=1: 0.9938  k=2: 0.9875  k=3: 0.9812  k=4: 0.975  k=5: 0.9688
+  fixtures                14 cases  k=1: 1.0  k=2: 1.0  k=3: 1.0  k=4: 1.0  k=5: 1.0
+  total                   46 cases  k=1: 0.9957  k=2: 0.9913  k=3: 0.987  k=4: 0.9826  k=5: 0.9783
+
+The one failure in 230 runs: nine-people-hear-the-largest-sauna-seats-eight, run 4: "eight of us,
+maybe nine" read as eight, so the car was asked about. Fixed in code (D-79, agent 454b3a30e0ee),
+then the four hedge-sensitive cases, five runs each:
+
+  ask-tow-capacity run 1: PASS
+  ask-tow-capacity run 2: PASS
+  ask-tow-capacity run 3: PASS
+  ask-tow-capacity run 4: PASS
+  ask-tow-capacity run 5: PASS
+  capacity run 1: PASS
+  capacity run 2: PASS
+  capacity run 3: PASS
+  capacity run 4: PASS
+  capacity run 5: PASS
+  nine-people run 1: PASS
+  nine-people run 2: PASS
+  nine-people run 3: PASS
+  nine-people run 4: PASS
+  nine-people run 5: PASS
+  nine-people-hear-the-largest-sauna-seats-eight run 1: PASS
+  nine-people-hear-the-largest-sauna-seats-eight run 2: PASS
+  nine-people-hear-the-largest-sauna-seats-eight run 3: PASS
+  nine-people-hear-the-largest-sauna-seats-eight run 4: PASS
+  nine-people-hear-the-largest-sauna-seats-eight run 5: PASS

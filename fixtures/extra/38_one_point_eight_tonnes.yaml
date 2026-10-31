@@ -1,0 +1,53 @@
+# hidden-style: a tow figure said as '1.8 tonnes'; the electric unit is taken
+# the judge never sees today's date, so the dates are checked by the gold state (D-72)
+id: one-point-eight-tonnes
+expect:
+  action: say
+  bookings: []
+judge:
+  - "The reply offers Didžioji for two days, for six people."
+transcript:
+  call_id: call_38
+  today: "2026-09-28"
+  now: 19.1
+  caller: {phone: "+37061234567"}
+  items:
+    - type: message
+      role: assistant
+      start: 0.5
+      end: 2.0
+      content: "Pirtis on Wheels, hello?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 2.5
+      end: 6.3
+      content: "hello, Tomas Petrauskas. we're six, for this saturday and sunday"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.6}]}
+    - type: function_call
+      call_id: c1
+      name: customers.identify
+      arguments: '{"phone": "+37061234567", "name": "Tomas Petrauskas"}'
+      start: 6.6
+    - type: function_call_output
+      call_id: c1
+      output: '{"ok": true, "customer_id": "cus_12"}'
+      end: 6.8
+    - type: message
+      role: assistant
+      start: 7.3
+      end: 12.7
+      content: "What car will you tow it with, and how much can it tow, braked?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 13.2
+      end: 18.6
+      content: "a passat, it can do 1.8 tonnes braked. and there's power at the cottage"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.6}]}

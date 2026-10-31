@@ -22,6 +22,7 @@ GATED = {
     "silence": "say",
     "rising-frustration": "transfer",
     "silence-after-check-in": "end_call",
+    "hang-on-let-me-ask": "wait",
 }
 
 

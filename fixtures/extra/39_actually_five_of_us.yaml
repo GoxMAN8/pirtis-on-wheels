@@ -1,0 +1,52 @@
+# hidden-style: a correction after an offer: never book the old offer
+id: actually-five-of-us
+expect:
+  action: say
+  bookings: []
+judge:
+  - "The reply asks whether there is mains power where the sauna is going."
+transcript:
+  call_id: call_39
+  today: "2026-09-28"
+  now: 26.4
+  caller: {phone: "+37068881122"}
+  items:
+    - type: message
+      role: assistant
+      start: 0.5
+      end: 2.0
+      content: "Pirtis on Wheels, hello?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 2.5
+      end: 10.6
+      content: "hi, Eglė Butkutė. a sauna for the weekend after next, there's four of us, and the car tows two thousand kilos"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.6}]}
+    - type: function_call
+      call_id: c1
+      name: customers.identify
+      arguments: '{"phone": "+37068881122", "name": "Eglė Butkutė"}'
+      start: 10.9
+    - type: function_call_output
+      call_id: c1
+      output: '{"ok": true, "customer_id": "cus_19"}'
+      end: 11.1
+    - type: message
+      role: assistant
+      start: 11.6
+      end: 21.6
+      content: "I can offer Mažoji, Saturday the tenth to Sunday the eleventh of October, for four people. That's two hundred and forty euros. Shall I book it?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 22.1
+      end: 25.9
+      content: "oh wait, actually five of us, my sister's coming too"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.6}]}

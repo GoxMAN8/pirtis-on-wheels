@@ -1,0 +1,53 @@
+# hidden-style: a tow figure said as 'two tonnes'
+# the judge never sees today's date, so the dates are checked by the gold state (D-72)
+id: two-tonnes-in-words
+expect:
+  action: say
+  bookings: []
+judge:
+  - "The reply offers Mažoji for two days, for four people."
+transcript:
+  call_id: call_37
+  today: "2026-09-28"
+  now: 17.2
+  caller: {phone: "+37062223344"}
+  items:
+    - type: message
+      role: assistant
+      start: 0.5
+      end: 2.0
+      content: "Pirtis on Wheels, hello?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 2.5
+      end: 7.5
+      content: "hi, Jonas Jonaitis. four of us want a sauna the weekend after next"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.6}]}
+    - type: function_call
+      call_id: c1
+      name: customers.identify
+      arguments: '{"phone": "+37062223344", "name": "Jonas Jonaitis"}'
+      start: 7.8
+    - type: function_call_output
+      call_id: c1
+      output: '{"ok": true, "customer_id": "cus_07"}'
+      end: 8.0
+    - type: message
+      role: assistant
+      start: 8.5
+      end: 13.9
+      content: "What car will you tow it with, and how much can it tow, braked?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 14.4
+      end: 16.7
+      content: "the skoda. it tows two tonnes"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.6}]}

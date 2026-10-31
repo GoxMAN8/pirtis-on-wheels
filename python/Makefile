@@ -14,7 +14,7 @@ SUITES ?= ../fixtures ../fixtures/extra $(wildcard ../fixtures/variants)
 ID ?=
 OURS := pirtis/agent pirtis/ops pirtis/playground
 
-.PHONY: install lint format typecheck test check gate eval-extract trace
+.PHONY: install lint format typecheck test check gate eval-extract trace playground variants variants-accept reliability calibrate
 
 install:
 	uv sync
@@ -65,3 +65,30 @@ eval-extract:
 # Calls, feedback and gate runs are kept in var/ (PIRTIS_DATA_DIR).
 playground:
 	uv run playground
+
+# Metamorphic variants of the given cases, checked by the kit's API (pirtis/ops/variants.py).
+# They go to fixtures/variants-candidates with a review table; a person reads REVIEW.md and
+# runs variants-accept, which moves them into fixtures/variants, where make gate runs them.
+variants:
+	uv run python -m pirtis.ops.variants --out ../fixtures/variants-candidates
+
+variants-accept:
+	@test -f ../fixtures/variants-candidates/REVIEW.md || { echo "make variants first"; exit 2; }
+	@mkdir -p ../fixtures/variants && ln -sfn ../seeds ../fixtures/variants/seeds
+	mv ../fixtures/variants-candidates/*.yaml ../fixtures/variants/
+	mv ../fixtures/variants-candidates/REVIEW.md ../fixtures/variants/REVIEW.md
+	@echo "accepted: $$(ls ../fixtures/variants/*.yaml | wc -l) variants now run in make gate"
+
+# pass^k for k = 1..5 on every suite (variant candidates included), from 5 runs of each case.
+# A measurement, not the gate: about $0.30 of model calls with the judge.
+reliability:
+	@rm -rf runs/reliability && mkdir -p runs/reliability
+	@for suite in ../fixtures ../fixtures/extra $(wildcard ../fixtures/variants) $(wildcard ../fixtures/variants-candidates); do \
+		name=$$(basename $$suite); echo "== $$suite: 5 runs"; \
+		uv run harness --fixtures $$suite --runs 5 --need 1 --trace runs/reliability/$$name > runs/reliability/$$name.txt; \
+	done; \
+	uv run python -m pirtis.ops.reliability --dir runs/reliability --json runs/reliability/curve.json
+
+# Judge calibration against the human ratings (tests/human/README.md); spends judge calls.
+calibrate:
+	uv run python -m pirtis.ops.calibrate

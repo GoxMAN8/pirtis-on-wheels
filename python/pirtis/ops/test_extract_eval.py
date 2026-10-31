@@ -16,7 +16,13 @@ GOLDS = load_gold()
 
 
 # the turn gate answers these without asking the model, so there is nothing to compare
-ZERO_CALL = {"interim-speech", "silence", "rising-frustration", "silence-after-check-in"}
+ZERO_CALL = {
+    "interim-speech",
+    "silence",
+    "rising-frustration",
+    "silence-after-check-in",
+    "hang-on-let-me-ask",
+}
 FIXTURES = Path(__file__).resolve().parents[3] / "fixtures"
 
 

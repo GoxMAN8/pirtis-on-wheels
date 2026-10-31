@@ -231,4 +231,32 @@ class Turn(Entity):
         return self.ts
 
 
-ENTITIES: tuple[type[Entity], ...] = (Session, Feedback, HumanRating, GateRun, Turn)
+class Calibration(Entity):
+    """One judge calibration: how often the kit's judge agrees with people about the same
+    calls, item by item, and how often raters agree with each other."""
+
+    KIND = "calibration"
+    RETENTION_DAYS = 365
+
+    run_ts: Annotated[AwareDatetime, NONE]
+    judge_model: Annotated[str, NONE]
+    ratings: Annotated[int, NONE]
+    items: Annotated[dict[str, dict[str, float | int | None]], NONE]  # item: n, agree, kappa
+    overall_agree: Annotated[float | None, NONE]
+    overall_kappa: Annotated[float | None, NONE]
+    rater_pairs: Annotated[int, NONE]
+    rater_kappa: Annotated[float | None, NONE]
+
+    def partition(self) -> str:
+        return _day(self.run_ts)
+
+    def key(self) -> str:
+        return self.run_ts.astimezone(UTC).strftime("%Y%m%dT%H%M%SZ")
+
+    def when(self) -> datetime:
+        return self.run_ts
+
+
+ENTITIES: tuple[type[Entity], ...] = (
+    Session, Feedback, HumanRating, GateRun, Turn, Calibration,
+)  # fmt: skip

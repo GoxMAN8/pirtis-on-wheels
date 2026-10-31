@@ -31,7 +31,8 @@ from pirtis.api.types import (
     Unit,
 )
 from pirtis.ops.gate_report import PRICE_IN, PRICE_OUT
-from pirtis.ops.model import GateRun, Turn
+from pirtis.ops.human import RUBRIC, Card
+from pirtis.ops.model import Calibration, GateRun, HumanRating, Turn
 
 UNKNOWN_CALLER = "no customer matches"  # how the policy words a hand-off of a stranger
 INTENTS = ["book", "change", "cancel", "check_booking", "price", "human", "goodbye"]
@@ -269,4 +270,66 @@ def thermal(runs: list[GateRun]) -> dict[str, Any]:
             }
             for suite, fixture in sorted(cells, key=lambda k: (SUITE_ORDER.get(k[0], 9), k))
         ],
+    }
+
+
+def _mean(xs: list[float]) -> float | None:
+    return round(sum(xs) / len(xs), 3) if xs else None
+
+
+def human_eval(
+    ratings: list[HumanRating],
+    cards: list[Card],
+    outcomes: dict[str, str | None],
+    calibration: Calibration | None,
+) -> dict[str, Any]:
+    """The Human eval view: per card, how people rated the calls and whether each call's
+    own record reached the card's outcome; the rubric's spread; the latest calibration."""
+    rows = []
+    for c in cards:
+        rs = [r for r in ratings if r.scenario_id == c.id]
+        known = [outcomes[r.session_id] for r in rs if outcomes.get(r.session_id) is not None]
+        rows.append(
+            {
+                "id": c.id,
+                "title": c.title,
+                "persona": c.persona,
+                "outcome": c.outcome,
+                "ratings": len(rs),
+                "raters": len({r.rater for r in rs}),
+                "goal": _mean([float(r.goal_achieved) for r in rs]),
+                "system_outcome": _mean([float(o == c.outcome) for o in known]),
+                **{item: _mean([float(getattr(r, item)) for r in rs]) for item in RUBRIC},
+                "sessions": sorted({r.session_id for r in rs}),
+            }
+        )
+    spread = [
+        {
+            "item": item,
+            "mean": _mean([float(getattr(r, item)) for r in ratings]),
+            "min": min(int(getattr(r, item)) for r in ratings),
+            "max": max(int(getattr(r, item)) for r in ratings),
+        }
+        for item in RUBRIC
+        if ratings
+    ]
+    return {
+        "ratings": len(ratings),
+        "raters": len({r.rater for r in ratings}),
+        "scenarios": len(cards),
+        "scenarios_rated": sum(1 for row in rows if row["ratings"]),
+        "goal": _mean([float(r.goal_achieved) for r in ratings]),
+        "cards": rows,
+        "items": spread,
+        "notes": [
+            {
+                "scenario": r.scenario_id,
+                "rater": r.rater,
+                "note": r.note,
+                "created": r.created.isoformat(),
+            }
+            for r in sorted(ratings, key=lambda r: r.created, reverse=True)
+            if r.note
+        ],
+        "calibration": calibration.model_dump(mode="json") if calibration else None,
     }

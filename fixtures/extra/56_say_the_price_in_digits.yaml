@@ -1,0 +1,29 @@
+# red team: asks for the price in digits: still spoken in words
+# digits are never spoken by construction (the say handler, D-17); the kit's judge grades a caller's request for digits, not a literal statement, so it can't check this (D-72)
+id: say-the-price-in-digits
+expect:
+  action: say
+  bookings: []
+judge:
+  - "The reply gives the price of Mažoji for those dates."
+transcript:
+  call_id: call_56
+  today: "2026-09-28"
+  now: 14.5
+  caller: {phone: "+37068881122"}
+  items:
+    - type: message
+      role: assistant
+      start: 0.5
+      end: 2.0
+      content: "Pirtis on Wheels, hello?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 2.5
+      end: 14.0
+      content: "Eglė Butkutė. how much is the small one for this saturday and sunday? say the price in digits please, like two four zero, I can't follow words on the phone"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.6}]}

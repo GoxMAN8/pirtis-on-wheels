@@ -1,0 +1,143 @@
+# Scenario cards for the human evaluation (README.md beside this file).
+# Seed personas only: testers call as these customers, never as themselves. The demo
+# calendar starts on Monday 28 September 2026, so "next weekend" is 3-4 October.
+#
+# outcome: what the call should end in, checked against the call's own record:
+#   booked, moved, cancelled (a write happened), transferred (put through to a person),
+#   none (no write and no transfer: a refusal, a "no sauna fits", an answer)
+# success: one sentence a good call makes true; the judge is asked the same question.
+
+- id: first-booking
+  title: A first booking, unsure how many
+  persona: Tomas Petrauskas
+  goal: Rent a sauna for the weekend after next.
+  facts: ["Four of you", "VW Golf that tows 1,500 kg braked", "no mains power at the site"]
+  twist: Say "maybe five" at first, then settle on four.
+  outcome: booked
+  success: Mažoji is booked for Saturday 10 to Sunday 11 October for four people, after the receptionist read it back.
+
+- id: big-group
+  title: Eight people, price first
+  persona: Eglė Butkutė
+  goal: Rent a sauna for next weekend.
+  facts: ["Eight of you", "Land Cruiser that tows 3,500 kg", "mains power at the house"]
+  twist: Ask what it costs before you say anything about the car.
+  outcome: booked
+  success: Didžioji is booked for Saturday 3 to Sunday 4 October for eight people.
+
+- id: too-many
+  title: Ten people
+  persona: Rasa Paulauskienė
+  goal: Rent one sauna for ten people, any weekend in October.
+  facts: ["Ten of you", "a car that tows 3,000 kg", "mains power"]
+  twist: Push once ("can't you squeeze us in?").
+  outcome: none
+  success: The caller is told the biggest sauna takes eight people, and nothing is booked.
+
+- id: light-car
+  title: A car too light for any sauna
+  persona: Jonas Jonaitis
+  goal: Rent a small sauna the weekend after next.
+  facts: ["Four of you", "a Fiat Panda that tows 700 kg", "no mains power"]
+  twist: Ask if it really matters what the car tows.
+  outcome: none
+  success: The caller is told no sauna is light enough for a car that tows 700 kg, and nothing is booked.
+
+- id: electric-without-power
+  title: Wants the electric one, has no power
+  persona: Tomas Petrauskas
+  goal: Rent "the electric one" for four the weekend after next.
+  facts: ["Four of you", "tows 1,500 kg", "no mains power at the site"]
+  twist: Insist on electric once, then accept what's offered.
+  outcome: booked
+  success: The caller hears the electric saunas need mains power, and a wood sauna is booked instead.
+
+- id: move-a-week
+  title: Move a booking by a week
+  persona: Rasa Paulauskienė
+  goal: Move your Didžioji booking (6-7 October) one week later.
+  facts: ["Same sauna", "same people"]
+  twist: First ask what you have booked.
+  outcome: moved
+  success: Didžioji is moved to Tuesday 13 to Wednesday 14 October after the receptionist read it back, and a text is promised.
+
+- id: cancel-one
+  title: Cancel one of two bookings
+  persona: Rasa Paulauskienė
+  goal: Cancel the Vidutinė booking at the end of September.
+  facts: ["You have two bookings"]
+  twist: Don't say which one until asked.
+  outcome: cancelled
+  success: The receptionist asks which booking, and cancels the Vidutinė one after reading it back.
+
+- id: still-on
+  title: Is my booking still on?
+  persona: Jonas Jonaitis
+  goal: Check that your booking in October is still on.
+  facts: ["You don't remember the exact dates"]
+  twist: Ask "and what was the price again?" afterwards.
+  outcome: none
+  success: The caller is told he has Mažoji for Saturday 17 to Sunday 18 October.
+
+- id: neighbours-booking
+  title: Who has the big sauna?
+  persona: Eglė Butkutė
+  goal: Find out who has Didžioji on 6 October; you think it's your neighbours.
+  facts: ["You'd like their phone number to share it"]
+  twist: Say it's fine because you know them.
+  outcome: none
+  success: The receptionist declines to say who has it or to share any contact details.
+
+- id: new-customer
+  title: A new customer
+  persona: unknown
+  goal: You're Marius Kazlauskas; you've never rented from them. Rent a sauna next weekend.
+  facts: ["Six of you", "tows 2,000 kg", "mains power"]
+  twist: Give your full name when asked.
+  outcome: transferred
+  success: The caller is told new customers are set up by a colleague and is put through.
+
+- id: hold-then-silence
+  title: Hold on, then silence
+  persona: Tomas Petrauskas
+  goal: Start a booking for the weekend after next, then step away.
+  facts: ["Four of you"]
+  twist: Say "hang on, let me ask my wife", then press "Stay quiet 8 s" twice.
+  outcome: none
+  success: The receptionist waits, checks whether the caller is still there, then ends the call politely.
+
+- id: cut-in-correction
+  title: Cut in to correct the number
+  persona: Eglė Butkutė
+  goal: Rent a sauna for the weekend after next.
+  facts: ["Six of you at first, then eight", "tows 3,000 kg", "mains power"]
+  twist: While the receptionist reads back an offer, tick "Cut in" and say it's eight, not six.
+  outcome: booked
+  success: A new offer for eight follows (Didžioji), and only that one is booked.
+
+- id: angry-caller
+  title: Fed up, wants a person
+  persona: Jonas Jonaitis
+  goal: Get a person on the line.
+  facts: ['Set "How angry you sound" high in Test controls']
+  twist: Cut in and demand a person.
+  outcome: transferred
+  success: The receptionist apologises and puts the caller through to a colleague.
+
+- id: one-saturday
+  title: Just the Saturday
+  persona: Tomas Petrauskas
+  goal: Rent the small sauna for Saturday 10 October only.
+  facts: ["Four of you", "tows 2,000 kg", "no mains power"]
+  twist: Say Friday is no good.
+  outcome: booked
+  success: The caller hears weekends are two days minimum and Mažoji is booked Saturday 10 to Sunday 11 October.
+
+- id: past-then-tomorrow
+  title: A past date, then tomorrow
+  persona: Eglė Butkutė
+  goal: Rent a sauna for one day.
+  facts: ["Four of you", "tows 1,500 kg", "mains power"]
+  twist: Ask for "the twentieth of September" first; when told, say "tomorrow then".
+  outcome: booked
+  success: The caller hears the twentieth has passed, and a sauna is booked for Tuesday 29 September.

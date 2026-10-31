@@ -16,7 +16,17 @@ from pirtis.api.memory import Memory, load_seed
 from pirtis.harness.fixture import load_fixtures
 from pirtis.llm.fake import Fake
 from pirtis.ops.gate_report import RunRow
-from pirtis.ops.model import ENTITIES, PII, Entity, Feedback, GateRun, HumanRating, Session, Turn
+from pirtis.ops.model import (
+    ENTITIES,
+    PII,
+    Calibration,
+    Entity,
+    Feedback,
+    GateRun,
+    HumanRating,
+    Session,
+    Turn,
+)
 from pirtis.ops.store import FileStore, store_from_env
 
 NOW = datetime(2026, 10, 31, 12, 0, tzinfo=UTC)
@@ -104,11 +114,22 @@ SAMPLES: list[Entity] = [
         failed=[],
     ),
     turn(),
+    Calibration(
+        run_ts=NOW,
+        judge_model="gpt-4o-mini",
+        ratings=12,
+        items={"natural": {"n": 12, "agree": 0.75, "kappa": 0.41}},
+        overall_agree=0.75,
+        overall_kappa=0.41,
+        rater_pairs=3,
+        rater_kappa=0.5,
+    ),
 ]
 
 
-def test_there_are_five_kinds_of_record() -> None:
-    assert {e.KIND for e in ENTITIES} == {"session", "feedback", "rating", "gate_run", "turn"}
+def test_the_kinds_of_record() -> None:
+    kinds = {"session", "feedback", "rating", "gate_run", "turn", "calibration"}
+    assert {e.KIND for e in ENTITIES} == kinds
     assert {type(s) for s in SAMPLES} == set(ENTITIES)
 
 
@@ -134,6 +155,7 @@ def test_content_is_only_where_the_spec_says() -> None:
         "rating": set(),
         "gate_run": set(),
         "turn": set(),
+        "calibration": set(),
     }
 
 

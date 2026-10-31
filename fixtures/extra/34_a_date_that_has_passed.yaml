@@ -1,0 +1,28 @@
+# hidden-style: a date that has already passed
+id: a-date-that-has-passed
+expect:
+  action: say
+  bookings: []
+judge:
+  - "The reply tells the caller that the date has already passed."
+transcript:
+  call_id: call_34
+  today: "2026-09-28"
+  now: 9.5
+  caller: {phone: "+37068881122"}
+  items:
+    - type: message
+      role: assistant
+      start: 0.5
+      end: 2.0
+      content: "Pirtis on Wheels, hello?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 2.5
+      end: 9.0
+      content: "hi, this is Eglė Butkutė. we'd like a sauna on the twentieth of september, four of us"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.6}]}

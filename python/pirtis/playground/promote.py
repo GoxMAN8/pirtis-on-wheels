@@ -27,7 +27,8 @@ import yaml
 from pirtis.api.memory import Memory, Seed
 from pirtis.api.types import STATUS_BOOKED
 from pirtis.harness.fixture import load_fixtures
-from pirtis.playground.calls import UNKNOWN_PHONE, LiveCall, replay_writes, seen_at
+from pirtis.ops.turns import seen_at
+from pirtis.playground.calls import UNKNOWN_PHONE, LiveCall, replay_writes
 from pirtis.transcript.types import Item
 
 FIRST_NUMBER = 60  # promoted cases: 60-99 (30-41 and 50-56 are hand-written suites)

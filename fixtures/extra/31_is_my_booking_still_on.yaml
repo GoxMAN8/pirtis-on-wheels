@@ -1,0 +1,52 @@
+# hidden-style: a status question after identification
+id: is-my-booking-still-on
+expect:
+  action: say
+  bookings: []
+judge:
+  - "The reply says Rasa has Didžioji booked for Tuesday the sixth to Wednesday the seventh of October."
+transcript:
+  call_id: call_31
+  today: "2026-09-28"
+  now: 14.8
+  caller: {phone: "+37069876543"}
+  items:
+    - type: message
+      role: assistant
+      start: 0.5
+      end: 2.0
+      content: "Pirtis on Wheels, hello?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 2.5
+      end: 4.0
+      content: "hi, it's Rasa Paulauskienė"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.6}]}
+    - type: function_call
+      call_id: c1
+      name: customers.identify
+      arguments: '{"phone": "+37069876543", "name": "Rasa Paulauskienė"}'
+      start: 4.3
+    - type: function_call_output
+      call_id: c1
+      output: '{"ok": true, "customer_id": "cus_31"}'
+      end: 4.5
+    - type: message
+      role: assistant
+      start: 5.0
+      end: 9.6
+      content: "Thanks, I have your details. What can I do for you today?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 10.1
+      end: 14.3
+      content: "is my booking for the big sauna next week still on?"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.6}]}

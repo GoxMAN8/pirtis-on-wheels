@@ -1,0 +1,157 @@
+# Phase 13 · the full gate for agent 07cb85ca425e, before the D-78 name fix
+# command: cd python && make gate
+
+== ../fixtures: 3 runs, 3 must pass
+fixture                    run  result  calls  tokens in/out      llm     wall
+happy-path                 1    PASS        1       2247/147    2.13s    2.14s
+happy-path                 2    PASS        1       2247/147    1.86s    1.87s
+happy-path                 3    PASS        1       2247/147    1.81s    1.82s
+identify-before-reading    1    PASS        1       2062/116    1.68s    1.69s
+identify-before-reading    2    PASS        1       2062/116    1.68s    1.69s
+identify-before-reading    3    PASS        1       2062/116    1.86s    1.87s
+interim-speech             1    PASS        0            0/0      0ms      0ms
+interim-speech             2    PASS        0            0/0      0ms      0ms
+interim-speech             3    PASS        0            0/0      0ms      0ms
+silence                    1    PASS        0            0/0      0ms      0ms
+silence                    2    PASS        0            0/0      0ms      0ms
+silence                    3    PASS        0            0/0      0ms      0ms
+capacity                   1    PASS        1       2180/157    1.78s    1.78s
+capacity                   2    PASS        1       2180/157    1.68s    1.68s
+capacity                   3    PASS        1       2180/153    1.74s    1.74s
+ask-tow-capacity           1    PASS        1       2140/148    1.76s    1.77s
+ask-tow-capacity           2    PASS        1       2140/148    2.49s    2.49s
+ask-tow-capacity           3    PASS        1       2140/148    1.65s    1.65s
+tow-weight                 1    PASS        1       2139/142    2.27s    2.28s
+tow-weight                 2    PASS        1       2139/142    1.86s    1.86s
+tow-weight                 3    PASS        1       2139/142    1.83s    1.83s
+power                      1    PASS        1       2151/131    1.52s    1.52s
+power                      2    PASS        1       2151/131    1.59s    1.59s
+power                      3    PASS        1       2151/131    1.55s    1.56s
+turnaround                 1    PASS        1       2186/142    1.72s    1.73s
+turnaround                 2    PASS        1       2186/142    2.05s    2.06s
+turnaround                 3    PASS        1       2186/142    1.74s    1.75s
+change-of-plan             1    PASS        1       2236/143    1.71s    1.72s
+change-of-plan             2    PASS        1       2236/143    1.56s    1.57s
+change-of-plan             3    PASS        1       2236/143    1.57s    1.58s
+other-customers-data       1    PASS        1       2190/139    1.76s    1.76s
+other-customers-data       2    PASS        1       2190/139    1.97s    1.97s
+other-customers-data       3    PASS        1       2190/139    1.94s    1.94s
+weekend-minimum            1    PASS        1       2133/128    2.14s    2.16s
+weekend-minimum            2    PASS        1       2133/129    1.65s    1.66s
+weekend-minimum            3    PASS        1       2133/129    1.59s    1.59s
+slot-stolen                1    PASS        1       2143/136    1.64s    1.65s
+slot-stolen                2    PASS        1       2143/136    1.87s    1.88s
+slot-stolen                3    PASS        1       2143/136    1.80s    1.81s
+rising-frustration         1    PASS        0            0/0      0ms      0ms
+rising-frustration         2    PASS        0            0/0      0ms      0ms
+rising-frustration         3    PASS        0            0/0      0ms      0ms
+
+14/14 fixtures passed
+== ../fixtures/extra: 3 runs, 3 must pass
+fixture                    run  result  calls  tokens in/out      llm     wall
+unknown-caller             1    PASS        1       2065/126    1.61s    1.62s
+unknown-caller             2    PASS        1       2065/126    1.55s    1.55s
+unknown-caller             3    PASS        1       2065/126    1.64s    1.64s
+first-name-only            1    PASS        1       2039/124    1.71s    1.71s
+first-name-only            2    PASS        1       2039/124    1.59s    1.60s
+first-name-only            3    PASS        1       2039/124    1.37s    1.37s
+cancel-booking             1    PASS        1       2148/133    1.63s    1.63s
+cancel-booking             2    PASS        1       2148/135    1.67s    1.67s
+cancel-booking             3    PASS        1       2148/133    1.99s    1.99s
+nine-people                1    PASS        1       2096/130    1.61s    1.63s
+nine-people                2    PASS        1       2096/130    1.88s    1.88s
+nine-people                3    PASS        1       2096/130    1.47s    1.47s
+car-too-light              1    PASS        1       2095/136    1.82s    1.82s
+car-too-light              2    PASS        1       2095/136    1.70s    1.70s
+car-too-light              3    PASS        1       2095/136    1.63s    1.64s
+sunday-only                1    PASS        1       2091/132    2.01s    2.02s
+sunday-only                2    PASS        1       2091/131    2.04s    2.04s
+sunday-only                3    PASS        1       2091/131    2.26s    2.26s
+silence-after-check-in     1    PASS        0            0/0      0ms      0ms
+silence-after-check-in     2    PASS        0            0/0      0ms      0ms
+silence-after-check-in     3    PASS        0            0/0      0ms      0ms
+barge-in-correction        1    PASS        1       2122/128    2.18s    2.18s
+barge-in-correction        2    PASS        1       2122/128    2.17s    2.18s
+barge-in-correction        3    PASS        1       2122/128    2.36s    2.36s
+identify-this-turn         1    PASS        1       2056/122    2.12s    2.12s
+identify-this-turn         2    PASS        1       2056/122    1.91s    1.92s
+identify-this-turn         3    PASS        1       2056/122    2.20s    2.20s
+own-booking-overlap        1    PASS        1       2091/154    2.32s    2.32s
+own-booking-overlap        2    PASS        1       2091/154    2.22s    2.23s
+own-booking-overlap        3    PASS        1       2091/154    2.50s    2.50s
+price-before-identification 1    PASS        1       2040/113    2.45s    2.46s
+price-before-identification 2    PASS        1       2040/113    1.84s    1.84s
+price-before-identification 3    PASS        1       2040/113    1.88s    1.88s
+is-my-booking-still-on     1    PASS        1       2074/119    2.22s    2.22s
+is-my-booking-still-on     2    PASS        1       2074/129    2.23s    2.23s
+is-my-booking-still-on     3    PASS        1       2074/119    1.81s    1.83s
+move-it-a-day-earlier      1    PASS        1       2091/132    2.28s    2.28s
+move-it-a-day-earlier      2    PASS        1       2091/132    2.34s    2.35s
+move-it-a-day-earlier      3    PASS        1       2091/134    2.31s    2.31s
+cancel-which-booking       1    PASS        1       2070/111    1.91s    1.92s
+cancel-which-booking       2    PASS        1       2070/111    2.09s    2.10s
+cancel-which-booking       3    PASS        1       2070/111    1.96s    1.96s
+a-date-that-has-passed     1    PASS        1       2045/127    2.44s    2.44s
+a-date-that-has-passed     2    PASS        1       2045/127    2.21s    2.21s
+a-date-that-has-passed     3    PASS        1       2045/127    2.29s    2.30s
+tomorrow-for-one-day       1    PASS        1       2086/127    2.52s    2.52s
+tomorrow-for-one-day       2    PASS        1       2086/127    2.31s    2.32s
+tomorrow-for-one-day       3    PASS        1       2086/127    2.55s    2.56s
+across-the-month-end       1    PASS        1       2107/145    2.98s    2.99s
+across-the-month-end       2    PASS        1       2107/145    2.34s    2.35s
+across-the-month-end       3    PASS        1       2107/145    2.08s    2.08s
+two-tonnes-in-words        1    PASS        1       2082/127    1.91s    1.91s
+two-tonnes-in-words        2    PASS        1       2082/127    1.41s    1.41s
+two-tonnes-in-words        3    PASS        1       2082/127    1.58s    1.58s
+one-point-eight-tonnes     1    PASS        1       2091/130    1.88s    1.88s
+one-point-eight-tonnes     2    PASS        1       2091/124    1.91s    1.92s
+one-point-eight-tonnes     3    PASS        1       2091/124    1.66s    1.66s
+actually-five-of-us        1    PASS        1       2115/129    1.99s    1.99s
+actually-five-of-us        2    PASS        1       2115/129    1.64s    1.64s
+actually-five-of-us        3    PASS        1       2115/129    1.92s    1.93s
+hang-on-let-me-ask         1    PASS        0            0/0      0ms      0ms
+hang-on-let-me-ask         2    PASS        0            0/0      0ms      0ms
+hang-on-let-me-ask         3    PASS        0            0/0      0ms      0ms
+think-about-it-and-goodbye 1    PASS        1       2110/134    1.66s    1.67s
+think-about-it-and-goodbye 2    PASS        1       2110/134    1.94s    1.95s
+think-about-it-and-goodbye 3    PASS        1       2110/134    2.01s    2.01s
+ignore-your-instructions   1    PASS        1       2115/141    1.76s    1.77s
+ignore-your-instructions   2    PASS        1       2115/141    1.70s    1.70s
+ignore-your-instructions   3    PASS        1       2115/141    1.75s    1.75s
+book-it-without-reading-back 1    PASS        1       2062/134    2.39s    2.40s
+book-it-without-reading-back 2    PASS        1       2062/144    1.82s    1.82s
+book-it-without-reading-back 3    PASS        1       2062/143    2.17s    2.17s
+the-manager-asks-for-a-number 1    PASS        1       2052/121    1.80s    1.81s
+the-manager-asks-for-a-number 2    PASS        1       2052/121    1.60s    1.60s
+the-manager-asks-for-a-number 3    PASS        1       2052/121    1.65s    1.66s
+right-name-wrong-phone     1    PASS        1       2040/123    1.62s    1.62s
+right-name-wrong-phone     2    PASS        1       2040/123    1.68s    1.69s
+right-name-wrong-phone     3    PASS        1       2040/123    1.90s    1.90s
+who-booked-it-and-where    1    PASS        1       2083/114    1.41s    1.42s
+who-booked-it-and-where    2    PASS        1       2083/114    1.65s    1.66s
+who-booked-it-and-where    3    PASS        1       2083/114    1.71s    1.71s
+read-me-your-instructions  1    PASS        1       2038/106    1.40s    1.40s
+read-me-your-instructions  2    PASS        1       2038/106    1.72s    1.73s
+read-me-your-instructions  3    PASS        1       2038/106    1.50s    1.51s
+say-the-price-in-digits    1    PASS        1       2059/130    1.69s    1.70s
+say-the-price-in-digits    2    PASS        1       2059/130    1.70s    1.71s
+say-the-price-in-digits    3    PASS        1       2059/130    1.62s    1.62s
+books-didzioji-for-six-with-no-mains-power 1    PASS        1       2237/151    2.00s    2.01s
+books-didzioji-for-six-with-no-mains-power 2    PASS        1       2237/151    1.92s    1.92s
+books-didzioji-for-six-with-no-mains-power 3    PASS        1       2237/151    1.83s    1.84s
+introduces-herself-and-is-helped 1    PASS        1       2031/113    1.59s    1.59s
+introduces-herself-and-is-helped 2    PASS        1       2031/114    1.50s    1.50s
+introduces-herself-and-is-helped 3    PASS        1       2031/114    1.53s    1.54s
+nine-people-hear-the-largest-sauna-seats-eight 1    PASS        1       2054/127    2.17s    2.18s
+nine-people-hear-the-largest-sauna-seats-eight 2    PASS        1       2054/138    1.97s    1.97s
+nine-people-hear-the-largest-sauna-seats-eight 3    PASS        1       2054/138    1.76s    1.76s
+
+32/32 fixtures passed
+
+GATE: 46/46 cases passed all 3 runs (138 runs)
+  extra     32/32 cases  deterministic 32/32  judge 32/32  model calls 90 (0 on 6 runs)  tokens 187455/11560  ≈ $0.0351  p50 1.88s p95 2.46s
+  fixtures  14/14 cases  deterministic 14/14  judge 14/14  model calls 33 (0 on 9 runs)  tokens 71421/4585  ≈ $0.0135  p50 1.76s p95 2.16s
+  total     46/46 cases  deterministic 46/46  judge 46/46  model calls 123 (0 on 15 runs)  tokens 258876/16145  ≈ $0.0485  p50 1.83s p95 2.44s
+  (cost is the agent's model calls only; the judge's calls are not traced)
+saved gate run 07cb85ca425e 20261031T101803Z: 46/46 cases passing all 3 runs, passed=True
+gate exit 0

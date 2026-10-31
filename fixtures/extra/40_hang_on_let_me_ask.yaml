@@ -1,0 +1,59 @@
+# hidden-style: 'hang on, let me ask my wife' as the last line: wait, no model call
+id: hang-on-let-me-ask
+expect:
+  action: wait
+  bookings: []
+transcript:
+  call_id: call_40
+  today: "2026-09-28"
+  now: 15.8
+  caller: {phone: "+37061234567"}
+  items:
+    - type: message
+      role: assistant
+      start: 0.5
+      end: 2.0
+      content: "Pirtis on Wheels, hello?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 2.5
+      end: 3.7
+      content: "hi, Tomas Petrauskas"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.6}]}
+    - type: function_call
+      call_id: c1
+      name: customers.identify
+      arguments: '{"phone": "+37061234567", "name": "Tomas Petrauskas"}'
+      start: 4.0
+    - type: function_call_output
+      call_id: c1
+      output: '{"ok": true, "customer_id": "cus_12"}'
+      end: 4.2
+    - type: message
+      role: assistant
+      start: 4.7
+      end: 9.3
+      content: "Thanks, I have your details. What can I do for you today?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 9.8
+      end: 12.1
+      content: "we'd like a sauna next weekend"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.6}]}
+    - type: message
+      role: user
+      start: 12.6
+      end: 15.3
+      content: "hang on, let me ask my wife"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.6}]}

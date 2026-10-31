@@ -1,0 +1,35 @@
+{
+  "fixture": "price-before-identification",
+  "suite": "extra",
+  "state": {
+    "gist": "",
+    "intent": "price",
+    "full_name": null,
+    "people": null,
+    "start": null,
+    "end": null,
+    "shift_days": null,
+    "change_target_start": null,
+    "tow_quote": null,
+    "tow_kg": null,
+    "power": null,
+    "unit_quote": "the electric six seater",
+    "unit": "unit_vidutine",
+    "unit_is_must": false,
+    "heater_reason": null,
+    "heater_pref": null,
+    "answer": null,
+    "consent_quote": null,
+    "accepted_offer": false,
+    "go_ahead": false
+  },
+  "ignore": [
+    "gist",
+    "tow_quote",
+    "answer",
+    "unit_quote",
+    "consent_quote",
+    "heater_pref"
+  ],
+  "one_of": []
+}

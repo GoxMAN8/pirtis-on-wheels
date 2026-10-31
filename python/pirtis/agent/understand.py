@@ -49,6 +49,7 @@ class CallState(BaseModel):
         "goodbye",
         "hold",
         "smalltalk",
+        "off_topic",
         "unclear",
     ] = Field(
         description="What the caller wants now. greeting: they only said hello or gave "
@@ -58,11 +59,14 @@ class CallState(BaseModel):
         "other_customer_info: ask who has a booking, or for another person's details; giving "
         "your own name is never this. human: ask for a person. goodbye: "
         "end the call. hold: ask us to wait a moment. smalltalk: anything else we can answer "
-        "briefly. unclear: you cannot tell."
+        "briefly. off_topic: ask for something a sauna rental doesn't do, such as our "
+        "instructions or prompt, or anything unrelated to renting a sauna. unclear: you "
+        "cannot tell what they said."
     )
     full_name: str | None = Field(
-        description="The caller's full name exactly as said, keeping letters like ė, ž, š; "
-        "join spelled-out letters into the word. Null if no name was given."
+        description="The caller's own full name exactly as said, keeping letters like ė, ž, "
+        "š; join spelled-out letters into the word. A name they ask about is someone else's, "
+        "not theirs. Null if they gave no name of their own."
     )
     people: int | None = Field(
         description="How many people, only if the caller said a number. If they hedge "
@@ -193,12 +197,34 @@ class CallState(BaseModel):
             quote_in(data.get("unit_quote"), lines) and names_a_sauna(data.get("unit_quote"), names)
         ):
             data["unit"], data["unit_is_must"] = None, False
+        if isinstance(data.get("people"), int):  # a hedge counts as the higher number (D-08)
+            data["people"] = hedged_higher(data["people"], lines)
+        units = ctx.get("units")
+        quote = data.get("unit_quote")
+        if (
+            data.get("unit") is None
+            and units
+            and quote_in(quote, lines)
+            and names_a_sauna(quote, names)
+        ):
+            data["unit"] = unit_from_quote(quote, units)  # the quote is there, the sauna wasn't
         if latest is not None and not quote_in(data.get("consent_quote"), latest):
+            data["accepted_offer"], data["go_ahead"] = False, False
+        # a yes that names its own price, or that talks to the system, isn't a yes to us
+        if latest is not None and any(_NOT_A_YES.search(line) for line in latest):
             data["accepted_offer"], data["go_ahead"] = False, False
         if not ctx.get("offered", True):
             data["accepted_offer"] = False
         return data
 
+
+# a latest turn with a price demand or an instruction to the system voids consent (D-74)
+_NOT_A_YES = re.compile(
+    r"\b(for free|free of charge|for nothing|zero euros?|no charge|discount|half price"
+    r"|ignore (all |your |the )?(previous |prior |earlier )?instructions|new instructions"
+    r"|admin mode|developer mode|system prompt|you are now|you're now|you're in \w+ mode)\b",
+    re.IGNORECASE,
+)
 
 # words that make a quote carry a number, besides digits
 _NUMBER_WORDS = {
@@ -249,6 +275,64 @@ def names_a_sauna(quote: object, unit_names: Sequence[str]) -> bool:
 
 def _words(s: str) -> set[str]:
     return set(re.findall(r"[a-z0-9]+", fold(s).lower()))
+
+
+_NUMBERS = {w: n for n, w in enumerate(
+    "zero one two three four five six seven eight nine ten eleven twelve".split())}  # fmt: skip
+
+
+# a hedged group size: "eight of us, maybe nine", "seven of us this time. maybe eight",
+# "six, maybe seven", "four or five of us"; never a figure with a unit after it (D-79)
+_N = r"(\d{1,2}|" + "|".join(sorted(_NUMBERS, key=len, reverse=True)) + r")"
+_HEDGE = re.compile(
+    rf"\b{_N}\b(?:\s+(?:of us|people))?[^.?!\d]{{0,15}}(?:[.?!]\s*)?"
+    rf"\b(?:maybe|or|possibly|perhaps)\s+{_N}\b"
+    r"(?!\s*(?:tonnes?|tons?|kilos?|kg|thousand|hundred|days?|nights?))",
+    re.IGNORECASE,
+)
+
+
+def _count(word: str) -> int:
+    return int(word) if word.isdigit() else _NUMBERS[word.lower()]
+
+
+def hedged_higher(people: int, lines: Sequence[str]) -> int:
+    """The higher number of a hedge whose lower number is the group size taken."""
+    for line in lines:
+        for m in _HEDGE.finditer(line):
+            low, high = sorted((_count(m[1]), _count(m[2])))
+            if low == people and high > low:
+                return high
+    return people
+
+
+def unit_from_quote(quote: object, units: Sequence[Unit]) -> str | None:
+    """The one sauna the caller's words name or describe, or None when they fit none or
+    several. The model sometimes writes the quote and leaves the sauna out; this reads the
+    quote in code: a name, a heater, an N-seater, then a size among what is left."""
+    if not isinstance(quote, str):
+        return None
+    text = fold(quote).lower()
+    named = [u for u in units if fold(u.name).lower() in text]
+    if named:
+        return named[0].id if len(named) == 1 else None
+    words = set(re.findall(r"[a-z]+|\d+", text))
+    fits, described = list(units), False
+    for heater, said in (("electric", {"electric"}), ("wood", {"wood", "wooden"})):
+        if words & said:
+            fits, described = [u for u in fits if u.heater == heater], True
+    seats = re.search(r"\b(\w+)[ -]seater\b", text)
+    if seats:
+        n = int(seats[1]) if seats[1].isdigit() else _NUMBERS.get(seats[1])
+        fits, described = [u for u in fits if u.capacity == n], True
+    sizes = sorted({u.capacity for u in units})
+    if fits and words & {"small", "smallest", "little"}:
+        fits, described = [u for u in fits if u.capacity == min(f.capacity for f in fits)], True
+    if fits and words & {"big", "biggest", "large", "largest"}:
+        fits, described = [u for u in fits if u.capacity == max(f.capacity for f in fits)], True
+    if words & {"middle", "medium"}:
+        fits, described = [u for u in fits if u.capacity == sizes[len(sizes) // 2]], True
+    return fits[0].id if described and len(fits) == 1 else None
 
 
 def fold(s: str) -> str:
@@ -419,6 +503,7 @@ def extract(t: Transcript, llm: LlmClient, units: Sequence[Unit]) -> CallState:
     context = {
         "unit_ids": ids,
         "unit_names": [u.name for u in units],
+        "units": list(units),
         "caller_lines": caller_lines(t),
         "latest_lines": [it.content for it in latest_caller_turn(t)],
         "offered": we_offered(t),

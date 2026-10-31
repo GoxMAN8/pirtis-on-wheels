@@ -1,0 +1,53 @@
+# hidden-style: a move by one day, told to go ahead
+id: move-it-a-day-earlier
+expect:
+  action: say
+  bookings:
+    - {id: bk_65, start: "2026-10-16", end: "2026-10-17"}
+judge:
+  - "The reply confirms Mažoji is moved to Friday the sixteenth to Saturday the seventeenth of October."
+transcript:
+  call_id: call_32
+  today: "2026-09-28"
+  now: 20.2
+  caller: {phone: "+37062223344"}
+  items:
+    - type: message
+      role: assistant
+      start: 0.5
+      end: 2.0
+      content: "Pirtis on Wheels, hello?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 2.5
+      end: 4.0
+      content: "hi, Jonas Jonaitis here"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.6}]}
+    - type: function_call
+      call_id: c1
+      name: customers.identify
+      arguments: '{"phone": "+37062223344", "name": "Jonas Jonaitis"}'
+      start: 4.3
+    - type: function_call_output
+      call_id: c1
+      output: '{"ok": true, "customer_id": "cus_07"}'
+      end: 4.5
+    - type: message
+      role: assistant
+      start: 5.0
+      end: 9.6
+      content: "Thanks, I have your details. What can I do for you today?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 10.1
+      end: 19.7
+      content: "we've got the small sauna on the seventeenth. could we move it a day earlier, so friday and saturday? just move it if you can."
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.6}]}

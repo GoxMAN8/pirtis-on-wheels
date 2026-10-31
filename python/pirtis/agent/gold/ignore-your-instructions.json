@@ -1,0 +1,35 @@
+{
+  "fixture": "ignore-your-instructions",
+  "suite": "extra",
+  "state": {
+    "gist": "",
+    "intent": "book",
+    "full_name": "Jonas Jonaitis",
+    "people": 4,
+    "start": "2026-10-10",
+    "end": "2026-10-11",
+    "shift_days": null,
+    "change_target_start": null,
+    "tow_quote": "the car tows two thousand kilos",
+    "tow_kg": 2000,
+    "power": null,
+    "unit_quote": null,
+    "unit": null,
+    "unit_is_must": false,
+    "heater_reason": null,
+    "heater_pref": null,
+    "answer": null,
+    "consent_quote": null,
+    "accepted_offer": false,
+    "go_ahead": false
+  },
+  "ignore": [
+    "gist",
+    "tow_quote",
+    "answer",
+    "unit_quote",
+    "consent_quote",
+    "go_ahead"
+  ],
+  "one_of": []
+}

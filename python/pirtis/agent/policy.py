@@ -37,8 +37,9 @@ from pirtis.transcript.types import Transcript
 
 @dataclass(frozen=True)
 class Ask:
-    """Ask for one missing detail: name, dates, people, tow, power, which_booking or
-    new_dates; or, for a caller who only greeted us, what they need."""
+    """Ask for one missing detail: name, dates (past_dates when theirs have passed),
+    people, tow, power, which_booking or new_dates; or, for a caller who only greeted us,
+    what they need."""
 
     slot: str
 
@@ -142,6 +143,11 @@ class Reply:
 
 
 @dataclass(frozen=True)
+class OffTopic:
+    """They asked for something we don't do (our instructions, anything but saunas)."""
+
+
+@dataclass(frozen=True)
 class Sorry:
     """We didn't understand; ask the caller to say it again."""
 
@@ -168,6 +174,7 @@ class NoFit:
 Decision = (
     Ask | Offer | Booked | OwnClash | Refuse | ConfirmChange | Moved | ConfirmCancel
     | Cancelled | BookingsRead | Price | Goodbye | Hold | Reply | Sorry | Handoff | NoFit
+    | OffTopic
 )  # fmt: skip
 
 
@@ -191,6 +198,8 @@ def next_step(t: Transcript, s: CallState, api: ApiClient, units: list[Unit]) ->
             return price(s, units)
         case "other_customer_info":
             return Refuse(by_id.get(s.unit or ""))
+        case "off_topic":
+            return OffTopic()
         case "unclear":
             return twice_misunderstood(t, s) if asked_again(t) else Sorry()
         case "smalltalk":
@@ -229,6 +238,8 @@ def book(
         return NoFit("too_many", limit=biggest)
     if s.start is None:
         return Ask("dates")
+    if date.fromisoformat(s.start) < today:  # a date that has passed: say so first
+        return Ask("past_dates")
     if s.people is None:
         return Ask("people")
     if s.tow_kg is None:

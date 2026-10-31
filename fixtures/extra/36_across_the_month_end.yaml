@@ -1,0 +1,52 @@
+# hidden-style: a range across the month boundary; the right unit is taken
+id: across-the-month-end
+expect:
+  action: say
+  bookings: []
+judge:
+  - "The reply offers Didžioji from Wednesday the thirtieth of September to Friday the second of October."
+transcript:
+  call_id: call_36
+  today: "2026-09-28"
+  now: 24.5
+  caller: {phone: "+37068881122"}
+  items:
+    - type: message
+      role: assistant
+      start: 0.5
+      end: 2.0
+      content: "Pirtis on Wheels, hello?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 2.5
+      end: 10.2
+      content: "hello, Eglė Butkutė. we need a sauna from the thirtieth of september to the second of october, six of us"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.6}]}
+    - type: function_call
+      call_id: c1
+      name: customers.identify
+      arguments: '{"phone": "+37068881122", "name": "Eglė Butkutė"}'
+      start: 10.5
+    - type: function_call_output
+      call_id: c1
+      output: '{"ok": true, "customer_id": "cus_19"}'
+      end: 10.7
+    - type: message
+      role: assistant
+      start: 11.2
+      end: 16.6
+      content: "What car will you tow it with, and how much can it tow, braked?"
+      interrupted: false
+    - type: message
+      role: user
+      start: 17.1
+      end: 24.0
+      content: "a land rover, it tows three and a half tonnes. and yes, there's mains power at the house"
+      is_final: true
+      speech_final: true
+      confidence: 0.9
+      prosody: {emotions: [{name: Calmness, score: 0.6}]}

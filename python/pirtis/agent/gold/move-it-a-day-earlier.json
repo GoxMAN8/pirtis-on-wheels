@@ -1,0 +1,48 @@
+{
+  "fixture": "move-it-a-day-earlier",
+  "suite": "extra",
+  "state": {
+    "gist": "",
+    "intent": "change",
+    "full_name": "Jonas Jonaitis",
+    "people": null,
+    "start": "2026-10-16",
+    "end": "2026-10-17",
+    "shift_days": -1,
+    "change_target_start": "2026-10-17",
+    "tow_quote": null,
+    "tow_kg": null,
+    "power": null,
+    "unit_quote": null,
+    "unit": null,
+    "unit_is_must": false,
+    "heater_reason": null,
+    "heater_pref": null,
+    "answer": null,
+    "consent_quote": "just move it if you can.",
+    "accepted_offer": false,
+    "go_ahead": true
+  },
+  "ignore": [
+    "gist",
+    "tow_quote",
+    "answer",
+    "unit_quote",
+    "consent_quote",
+    "shift_days",
+    "start",
+    "end",
+    "unit"
+  ],
+  "one_of": [
+    [
+      {
+        "shift_days": -1
+      },
+      {
+        "start": "2026-10-16",
+        "end": "2026-10-17"
+      }
+    ]
+  ]
+}
