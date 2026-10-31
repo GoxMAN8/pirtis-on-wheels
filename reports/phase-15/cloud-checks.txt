@@ -46,6 +46,12 @@
 
 == the alerts
   the three rules exist (created before the first log, by the empty-table union)
-  gate regression: the alert test's line arrived about 11:47Z; by 11:52Z the rule had not
-  fired yet (it runs every 15 minutes). The email is still to be confirmed.
+  gate regression: the alert test's line arrived about 11:47Z; the rule fired and the
+  "Gate regression" email reached the owner's inbox (confirmed by the owner).
   agent errors, slow turns: no call traffic yet, so nothing to fire on
+
+== the final image, built from the phase's commit
+  tag 9b9bb75 (a clean tree: no -dirty), deployed by digest sha256:1c6da8e67c60...
+  to the app and the job; the gate held for 454b3a30e0ee; health 200 after a 44 s wake-up;
+  a stranger still meets the sign-in and the closed traversal path; the -dirty tag is
+  removed from the registry; a plan against the live deployment shows no changes

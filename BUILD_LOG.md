@@ -1930,7 +1930,7 @@ in and use the whole app themselves.
 **Headline: live in Germany West Central.** Behind a sign-in with accounts we create,
 the app's gate job passed the nightly suite in Azure, 21/21 cases, 63/63 runs, extractor
 18/18. It wrote to the mounted share as the non-root user. The gate-regression alert
-was triggered end to end: its line reached Log Analytics with `passed false` and `llm_errors 54`. The rule's email had not arrived when this was written (see Open issues). An independent security review found 11 issues,
+was fired end to end: its line reached Log Analytics with `passed false` and `llm_errors 54`, the rule fired, and its email reached you. An independent security review found 11 issues,
 none reaching data. Ten were fixed test-first and re-probed live; one is written down.
 
 ### How it was built
@@ -2032,8 +2032,9 @@ none reaching data. Ten were fixed test-first and re-probed live; one is written
 | the cloud, as a stranger | redirects, 401s, HTTPS only; after the fixes, every traversal variant closed; cross-site POST 403; HSTS |
 | a plan after the workload-profile fix | **No changes** |
 | **`make gate-now` in Azure** | **Succeeded: 21/21 cases, 63/63 runs, extractor 18/18**, p95 2.00 s; the gate run written to the share by uid 10001 |
-| `make alert-test` | the line: `passed false`, `llm_errors 54`, a 401 in `extract_error`; the rule had not fired by 11:52 UTC (the line arrived about 11:47; the rule runs every 15 minutes) |
+| `make alert-test` | the line: `passed false`, `llm_errors 54`, a 401 in `extract_error`; **the rule fired and the "Gate regression" email arrived** (confirmed by you) |
 | turn lines in Log Analytics after both runs | **0** (126 gate turns, none logged) |
+| `make image deploy` from the clean commit 9b9bb75 | tag `9b9bb75` (no `-dirty`); the app and the job run `sha256:1c6da8e6…` by digest; the gate held; the `-dirty` tag removed; a plan shows **no changes** |
 
 **Reports:** `reports/phase-15/`
 - `infra.txt`, `cloud-checks.txt`, `security-review.md`, `pytest.txt`
@@ -2063,8 +2064,6 @@ since every call was refused. ≈ $1.3 in total of the $6. Azure: the deployment
 standing cost is about €5–6 a month, mostly the registry.
 
 ### Open issues and risks
-- **The alert email isn't confirmed yet.** Check the aimrank.io inbox for "Gate regression". If none arrives, the first suspect is the `Microsoft.AlertsManagement` resource provider, which isn't registered in this subscription; registering it is your call.
-- **The deployed image is still the `-dirty` build.** It is the same code as this commit; rebuilding from the clean commit (`make image deploy`) is left.
 - **The agent-errors and slow-turns alerts** fire only on real calls; your first
   signed-in calls give their queries data.
 - **The lockout and the spending caps live in memory,** so they reset when the replica

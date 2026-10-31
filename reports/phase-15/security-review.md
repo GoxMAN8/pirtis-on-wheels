@@ -19,7 +19,7 @@ findings 1, 2, 3 and 6 against a local server. Every fix below was written test-
 | 8 | low | Removing the last account never reached the cloud. | **Fixed.** The secret goes back to `unset`, and the app refuses to start (fails closed). |
 | 9 | low | Secret values passed as `az` arguments are visible in `ps` on the deploying machine while the command runs. | **Kept, written down** (SPEC §12). It is a single-user laptop, and the values never reach a file or the repo. |
 | 10 | low | A negative `Content-Length` made the server read until the client hung up. | **Fixed.** Anything but digits is refused with 400 (tested). Live, the ingress drops such a request before it reaches the app. |
-| 11 | low | The deployed image was built from uncommitted code. | **Fixed.** The image tag now says `-dirty`, and the final deploy is built from the phase's commit. |
+| 11 | low | The deployed image was built from uncommitted code. | **Fixed.** The image tag now says `-dirty` when it should. The live app and job run an image built from the phase's commit (tag `9b9bb75`). |
 
 **Checked and found sound by the review:**
 - the cookie HMAC, compared in constant time; names that can't inject a separator
