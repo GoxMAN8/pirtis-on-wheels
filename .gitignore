@@ -10,3 +10,4 @@ deploy/.passwords/
 deploy/.image-digest
 INITIAL_INSTRUCTIONS.md
 .claude/launch.json
+__pycache__/
