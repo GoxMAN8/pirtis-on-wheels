@@ -89,3 +89,31 @@ def test_unreadable_model_answer_apologises() -> None:
     runner = Runner(llm=llm, judge=PASS_JUDGE, decide=decide, handlers=handlers)
     r = runner.run(fixture("ask-tow-capacity")).runs[0]
     assert "say it again" in speech(r)
+
+
+SEED_CUSTOMERS = json.loads((FIXTURES / "seeds" / "base.json").read_text())["customers"]
+
+
+@pytest.mark.parametrize("id", sorted(GOLD))
+def test_no_reply_ever_names_another_customer(id: str) -> None:
+    """Privacy holds on every path, not only in the refusal: nothing said or texted to a
+    caller names any customer but the one calling."""
+    f = fixture(id)
+    r = replay(id, [GOLD[id]])
+    heard = " ".join(str(e.get("text")) for e in r.effects if e.get("type") in ("speech", "sms"))
+    for c in SEED_CUSTOMERS:
+        if c["phone"] == f.transcript.caller.phone:
+            continue
+        for part in c["name"].split():
+            assert part not in heard, f"{id}: said {part!r}"
+        assert c["phone"] not in heard
+
+
+def test_after_a_barge_in_the_reply_is_rebuilt_not_repeated() -> None:
+    """The caller cut into our offer of Vidutinė to say eight, not six. The next reply
+    comes from the recomputed state: it never repeats the cut-off line or its unit."""
+    f = fixture("barge-in-correction")
+    cut = next(it for it in f.transcript.items if it.interrupted).content
+    said = speech(replay("barge-in-correction", [GOLD["barge-in-correction"]]))
+    assert cut not in said and "Vidutinė" not in said
+    assert "Didžioji" in said and "eight" in said

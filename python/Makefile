@@ -14,10 +14,6 @@ SUITES ?= ../fixtures ../fixtures/extra $(wildcard ../fixtures/variants)
 ID ?=
 OURS := pirtis/agent pirtis/ops
 
-# gpt-4o-mini list prices in USD per token, for the cost line under the gate
-PRICE_IN := 0.00000015
-PRICE_OUT := 0.0000006
-
 .PHONY: install lint format typecheck test check gate eval-extract trace
 
 install:
@@ -39,8 +35,9 @@ test:
 
 check: lint typecheck test
 
-# Runs every suite even when one fails, then prints what the agent's model calls cost
-# (the judge's calls are not in the harness counts) and exits non-zero on any failure.
+# Runs every suite even when one fails, then prints the gate report (pass^k overall and
+# split into deterministic checks and the judge, cost, latency; see pirtis/ops/gate_report.py)
+# and exits non-zero on any failure.
 # pipefail is set inside the recipe because make 3.81 (macOS) ignores .SHELLFLAGS, and
 # without it tee would hide the harness's exit code and the gate could never fail.
 gate:
@@ -52,10 +49,7 @@ gate:
 		uv run harness --fixtures $$suite --runs $(RUNS) --need $(NEED) \
 			--trace runs/gate/$$name | tee runs/gate/$$name.txt || status=1; \
 	done; \
-	awk -v pin=$(PRICE_IN) -v pout=$(PRICE_OUT) \
-		'$$3 == "PASS" || $$3 == "FAIL" { split($$5, t, "/"); calls += $$4; tin += t[1]; tout += t[2] } \
-		END { printf "\nagent model calls %d, tokens in/out %d/%d, est. $$%.4f (judge calls not counted)\n", \
-			calls, tin, tout, tin * pin + tout * pout }' runs/gate/*.txt; \
+	uv run python -m pirtis.ops.gate_report --dir runs/gate --json runs/gate/summary.json; \
 	exit $$status
 
 trace:

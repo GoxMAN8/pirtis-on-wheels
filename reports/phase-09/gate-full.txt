@@ -1,0 +1,115 @@
+# Phase 09 · THE FROZEN GATE: 24/24 cases (14 given + 10 ours) passed all 3 runs, 72 runs; deterministic 24/24, judge 24/24
+# commit: test: full gate, extractor eval and voice-UX audit · 2026-10-31
+# command: cd python && make gate
+
+== ../fixtures: 3 runs, 3 must pass
+fixture                    run  result  calls  tokens in/out      llm     wall
+happy-path                 1    PASS        1       2135/146    1.53s    1.54s
+happy-path                 2    PASS        1       2135/146    1.75s    1.75s
+happy-path                 3    PASS        1       2135/146    1.78s    1.79s
+                                pass  (3/3, need 3)
+identify-before-reading    1    PASS        1       1950/116    1.40s    1.40s
+identify-before-reading    2    PASS        1       1950/116    1.32s    1.33s
+identify-before-reading    3    PASS        1       1950/116    1.31s    1.31s
+                                pass  (3/3, need 3)
+interim-speech             1    PASS        0            0/0      0ms      0ms
+interim-speech             2    PASS        0            0/0      0ms      0ms
+interim-speech             3    PASS        0            0/0      0ms      0ms
+                                pass  (3/3, need 3)
+silence                    1    PASS        0            0/0      0ms      0ms
+silence                    2    PASS        0            0/0      0ms      0ms
+silence                    3    PASS        0            0/0      0ms      0ms
+                                pass  (3/3, need 3)
+capacity                   1    PASS        1       2068/155    1.63s    1.64s
+capacity                   2    PASS        1       2068/155    1.63s    1.64s
+capacity                   3    PASS        1       2068/155    1.73s    1.73s
+                                pass  (3/3, need 3)
+ask-tow-capacity           1    PASS        1       2028/146    1.57s    1.57s
+ask-tow-capacity           2    PASS        1       2028/146    1.54s    1.54s
+ask-tow-capacity           3    PASS        1       2028/148    1.66s    1.67s
+                                pass  (3/3, need 3)
+tow-weight                 1    PASS        1       2027/143    1.57s    1.58s
+tow-weight                 2    PASS        1       2027/146    1.83s    1.84s
+tow-weight                 3    PASS        1       2027/143    1.73s    1.74s
+                                pass  (3/3, need 3)
+power                      1    PASS        1       2039/140    1.60s    1.61s
+power                      2    PASS        1       2039/138    1.59s    1.59s
+power                      3    PASS        1       2039/138    1.71s    1.71s
+                                pass  (3/3, need 3)
+turnaround                 1    PASS        1       2074/142    1.55s    1.55s
+turnaround                 2    PASS        1       2074/142    1.52s    1.52s
+turnaround                 3    PASS        1       2074/142    1.78s    1.78s
+                                pass  (3/3, need 3)
+change-of-plan             1    PASS        1       2124/143    1.65s    1.66s
+change-of-plan             2    PASS        1       2124/143    1.70s    1.70s
+change-of-plan             3    PASS        1       2124/143    1.58s    1.59s
+                                pass  (3/3, need 3)
+other-customers-data       1    PASS        1       2078/141    1.50s    1.51s
+other-customers-data       2    PASS        1       2078/141    1.47s    1.47s
+other-customers-data       3    PASS        1       2078/141    1.50s    1.50s
+                                pass  (3/3, need 3)
+weekend-minimum            1    PASS        1       2021/129    1.54s    1.54s
+weekend-minimum            2    PASS        1       2021/131    1.62s    1.62s
+weekend-minimum            3    PASS        1       2021/129    1.48s    1.48s
+                                pass  (3/3, need 3)
+slot-stolen                1    PASS        1       2031/154    1.59s    1.59s
+slot-stolen                2    PASS        1       2031/154    1.68s    1.69s
+slot-stolen                3    PASS        1       2031/154    1.88s    1.89s
+                                pass  (3/3, need 3)
+rising-frustration         1    PASS        0            0/0      0ms      0ms
+rising-frustration         2    PASS        0            0/0      0ms      0ms
+rising-frustration         3    PASS        0            0/0      0ms      0ms
+                                pass  (3/3, need 3)
+
+14/14 fixtures passed
+== ../fixtures/extra: 3 runs, 3 must pass
+fixture                    run  result  calls  tokens in/out      llm     wall
+unknown-caller             1    PASS        1       1953/125    1.41s    1.42s
+unknown-caller             2    PASS        1       1953/125    1.45s    1.46s
+unknown-caller             3    PASS        1       1953/125    1.51s    1.51s
+                                pass  (3/3, need 3)
+first-name-only            1    PASS        1       1927/124    1.40s    1.40s
+first-name-only            2    PASS        1       1927/124    1.44s    1.44s
+first-name-only            3    PASS        1       1927/124    1.52s    1.52s
+                                pass  (3/3, need 3)
+cancel-booking             1    PASS        1       2036/135    1.51s    1.51s
+cancel-booking             2    PASS        1       2036/135    1.55s    1.55s
+cancel-booking             3    PASS        1       2036/135    1.60s    1.62s
+                                pass  (3/3, need 3)
+nine-people                1    PASS        1       1984/130    1.47s    1.48s
+nine-people                2    PASS        1       1984/130    1.48s    1.49s
+nine-people                3    PASS        1       1984/130    1.53s    1.54s
+                                pass  (3/3, need 3)
+car-too-light              1    PASS        1       1983/136    1.59s    1.60s
+car-too-light              2    PASS        1       1983/136    1.56s    1.56s
+car-too-light              3    PASS        1       1983/139    3.62s    3.63s
+                                pass  (3/3, need 3)
+sunday-only                1    PASS        1       1979/135    1.71s    1.72s
+sunday-only                2    PASS        1       1979/133    1.47s    1.47s
+sunday-only                3    PASS        1       1979/133    1.50s    1.51s
+                                pass  (3/3, need 3)
+silence-after-check-in     1    PASS        0            0/0      0ms      0ms
+silence-after-check-in     2    PASS        0            0/0      0ms      0ms
+silence-after-check-in     3    PASS        0            0/0      0ms      0ms
+                                pass  (3/3, need 3)
+barge-in-correction        1    PASS        1       2010/128    1.41s    1.42s
+barge-in-correction        2    PASS        1       2010/128    1.49s    1.50s
+barge-in-correction        3    PASS        1       2010/128    1.32s    1.33s
+                                pass  (3/3, need 3)
+identify-this-turn         1    PASS        1       1944/122    1.39s    1.40s
+identify-this-turn         2    PASS        1       1944/122    1.52s    1.52s
+identify-this-turn         3    PASS        1       1944/122    1.42s    1.42s
+                                pass  (3/3, need 3)
+own-booking-overlap        1    PASS        1       1979/154    1.70s    1.70s
+own-booking-overlap        2    PASS        1       1979/154    1.72s    1.73s
+own-booking-overlap        3    PASS        1       1979/154    1.71s    1.71s
+                                pass  (3/3, need 3)
+
+10/10 fixtures passed
+
+GATE: 24/24 cases passed all 3 runs (72 runs)
+  extra     10/10 cases  deterministic 10/10  judge 10/10  model calls 27 (0 on 3 runs)  tokens 53385/3566  ≈ $0.0101  p50 1.51s p95 1.73s
+  fixtures  14/14 cases  deterministic 14/14  judge 14/14  model calls 33 (0 on 9 runs)  tokens 67725/4668  ≈ $0.0130  p50 1.59s p95 1.79s
+  total     24/24 cases  deterministic 24/24  judge 24/24  model calls 60 (0 on 12 runs)  tokens 121110/8234  ≈ $0.0231  p50 1.55s p95 1.79s
+  (cost is the agent's model calls only; the judge's calls are not traced)
+exit 0

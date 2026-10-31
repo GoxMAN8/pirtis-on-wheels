@@ -114,20 +114,22 @@ itself (D-31).
 
 ## 5. Voice UX
 
-Each rule is enforced in code and has a test (D-24).
+Each rule is enforced in code and proven by a named test (D-24). Audited in Phase 9:
+three rules were only partly tested, and their tests were added. All tests are under
+`python/pirtis/agent/`.
 
-| Rule | Enforced by |
-|---|---|
-| Never speak while the caller is still talking | turn gate: `is_final`/`speech_final`, filler-only lines, "hang on" |
-| Never leave dead air | silence ≥ 6 s → "Are you still there?"; a second silence → goodbye + hang up |
-| One question per turn | templates; test: at most one "?" per speech |
-| Short | at most two sentences before the question |
-| Numbers, dates and prices as words | templates + the `say` handler's digit guard |
-| Read back before every booking | unit, spoken dates, people, price, then "Shall I book it?" |
-| Barge-in recovery | the next reply is rebuilt from the recomputed state, never a repeat of the cut-off line |
-| Tone follows the caller | anger or distress ≥ 0.5 → `calm`, speed 0.95 |
-| Warm transfer | "I'll put you through to a colleague" before every transfer, with a handoff summary |
-| Privacy wording | never confirm or deny who holds a booking |
+| Rule | Enforced by | Tests |
+|---|---|---|
+| Never speak while the caller is still talking | turn gate: `is_final`/`speech_final`, filler-only lines, "hang on", a cut-off line, under 6 s since we spoke | `test_turn.py`: `test_gated_fixtures[interim-speech]`, `test_filler_only_waits`, `test_hold_waits`, `test_cut_off_with_nothing_said_yet_waits`, `test_we_just_spoke_so_wait` |
+| Never leave dead air | silence ≥ 6 s → "Are you still there?"; a second silence → goodbye + hang up; after a goodbye → hang up | `test_turn.py`: `test_silence_check_in_is_the_check_in_line`, `test_second_silence_says_goodbye_then_hangs_up`, `test_silence_after_a_goodbye_hangs_up_without_speaking` |
+| One question per turn | templates | `test_speech.py`: `test_every_line_follows_the_voice_rules` (at most one "?" in every line, every decision kind) |
+| Short | templates | `test_speech.py`: `test_every_line_follows_the_voice_rules` (at most two statements before the question) |
+| Numbers, dates and prices as words | templates + the `say` handler's digit guard | `test_speech.py`: `test_digits_to_words`, `test_digits_to_words_leaves_no_digit_behind`; `test_actions.py`: `test_say_never_speaks_a_digit`; `test_agent.py`: `test_gold_state_passes_the_fixture` (no digit in any reply) |
+| Read back before every booking | every offer says unit, dates, people and price, then "Shall I book it?"; we book only what was read back (D-10, D-52) | `test_speech.py`: `test_offers_end_with_the_booking_question`, **`test_every_offer_reads_back_unit_dates_people_and_price`** (added); `test_policy.py`: `test_our_own_offers_read_back_exactly`, `test_00_yes_but_five_of_us_re_offers_and_never_books`, `test_05_no_tow_number_asks_even_when_told_to_book` |
+| Barge-in recovery | the next reply is rebuilt from the recomputed state, never a repeat of the cut-off line | **`test_agent.py`: `test_after_a_barge_in_the_reply_is_rebuilt_not_repeated`** (added); `test_turn.py`: `test_anger_with_a_barge_in_transfers` |
+| Tone follows the caller | anger or distress ≥ 0.5 in the latest turn → `calm`, speed 0.95 | `test_speech.py`: `test_tone_follows_the_callers_latest_turn`, `test_voice_is_passed_to_every_line`; `test_turn.py`: `test_transfer_is_announced_calm_and_carries_who_called` |
+| Warm transfer | "I'll put you through to a colleague" before every transfer, with a handoff summary | `test_speech.py`: `test_every_handoff_is_announced_then_carries_a_summary`, `test_new_customers_hear_why`; `test_actions.py`: `test_transfer_carries_its_summary` |
+| Privacy wording | an explicit refusal; never confirm or deny who holds a booking; never name another customer | `test_policy.py`: `test_10_refuses_other_customers_details_without_reading_any`; **`test_agent.py`: `test_no_reply_ever_names_another_customer`** (added, every gold case, speech and texts) |
 
 ### 5b. Visual design (caller simulator and admin console)
 
@@ -207,8 +209,15 @@ blocks deployment.
   gates run at the end of a phase (D-48).
 - **Commands** (in `python/`):
   - `make check` runs lint, strict types and tests, with no model tokens
-  - `make gate` is the frozen gate across every suite; it exits non-zero on any failure
-    and ends with a line of agent model calls, tokens and estimated cost
+  - `make gate` is the frozen gate across every suite. It exits non-zero on any failure
+    and ends with the gate report (`pirtis/ops/gate_report.py`, read from the harness's
+    trace files), per suite and in total:
+    - cases passing all runs
+    - the deterministic and judge pass^k, separately
+    - model calls (and runs with none), tokens, estimated cost
+    - p50 and p95 latency of model turns
+
+    It also writes `runs/gate/summary.json`.
   - `make gate RUNS=1 NEED=1` is the same wiring for a quick look
   - `make trace ID=<fixture>` runs one fixture verbosely
   - `make eval-extract` runs the extractor eval: the live model extracts every fixture
@@ -246,6 +255,7 @@ blocks deployment.
 | 2026-10-31 | **ours, understanding v2** (`agent_version` b37713964b41) | given + extra, **3 runs, 3 must pass** | **14/14 and 10/10: 72/72 runs, pass^3 = 1.0** | 60 (0 on 12 runs) | 121,110 / 8,244 |
 
 | 2026-10-31 | ours: note + telemetry (`agent_version` 8a552e2b0636) | **all 24 cases** (14 given + 10 ours), 1 run | **24/24**; one note in every run's result; nothing on stderr | 20 | 40,370 / 2,742 |
+| 2026-10-31 | **ours, Phase 9 gate** (`agent_version` 8a552e2b0636) | **all 24 cases, 3 runs, 3 must pass** | **24/24 cases, 72/72 runs; deterministic 24/24, judge 24/24**; p50 1.55 s, p95 1.79 s | 60 (0 on 12 runs) | 121,110 / 8,234 |
 
 At the Phase 6 gate, model turns took p50 1.54 s and p95 1.77 s (max 1.84 s), with
 about 1.7k prompt tokens each. After understanding v2 they take p50 1.76 s and p95
@@ -261,6 +271,7 @@ plus the judge.
 | 2026-10-31 | Phase 6 prompt (baseline) | 1 | 10/20 | `unit_is_must` 65% |
 | 2026-10-31 | + sharper rules | 3 | 12/20 | `accepted_offer` 80% (a regression: consent flags set without an offer) |
 | 2026-10-31 | **+ quotes verified in code** | 3 | **20/20** | every field 100% |
+| 2026-10-31 | the same (Phase 9 re-run) | 3 | **20/20** | every field 100% |
 
 The naive agent swings between samples (4/14, then 3/14), which is why the gate needs
 3 of 3 runs. The skeleton's failures are all features of later phases: the silence
@@ -480,3 +491,4 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | 2026-10-31 | 6 | Rules mirror with property tests against the API; offer engine (weekend minimum, both-way date shifts, must-have and heater-reason units, catalogue limits); read-back parser; own-booking clashes; moves and cancels with version retry; 409 re-check-and-retry and 500 check-then-retry; every intent (price, refusal, status, goodbye, hold, a second misunderstanding → person); `CallState` v2. Fixture 29's second criterion reworded: it contradicted the first. **Frozen gate passes: 72/72 runs** | Make a rule violation impossible by construction and handle every turn the fixtures describe | D-07, D-10, D-12–D-16, D-19, D-31, D-34, D-35, D-52, D-53 |
 | 2026-10-31 | 7 | Gold call states for the 20 model-facing fixtures; the extractor eval (`make eval-extract`); sharper prompt rules; sanity bounds and an answer cap; quote checks in code for unit and consent; booking notes without site or car details; `agent_version`. Extractor pass^3 went 10/20 (1 run) → 12/20 → **20/20**; the frozen gate still passes 72/72 | Measure and fix the model's understanding apart from the policy and the judge | D-36, D-54, D-55, D-56 |
 | 2026-10-31 | 8 | `decide` restructured around an `Outcome`; a `note` ends every turn; `telemetry.py` builds and emits one content-free `TurnRecord` per turn, with an OpenTelemetry rendering; a `NullHandler` silences library logging. One-run gate: all 24 cases pass, with one note in every result | Observability without personal data, and traceable runs | D-26, D-37 |
+| 2026-10-31 | 9 | Gate report with pass^k split into deterministic and judge (D-21's reporting), now the tail of `make gate`. Extractor eval and the full gate re-run: 20/20 and **24/24 cases passing all 3 runs (72 runs), deterministic 24/24, judge 24/24**. Voice-UX audit: every rule in §5 mapped to named tests; three gaps closed (price in every read-back, a rebuilt reply after a barge-in, no reply ever naming another customer) | Prove each voice rule, and report the gate the way D-21 promised | D-21, D-24 |

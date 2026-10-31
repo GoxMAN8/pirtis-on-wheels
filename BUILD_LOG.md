@@ -965,3 +965,83 @@ What the notes show, at a glance (`reports/phase-08/notes.txt`):
     any gaps
 
   About 6 cents.
+
+---
+
+## Phase 9 — the full gate, the extractor eval, the voice-UX audit
+
+**Date:** 2026-10-31
+**Goal:** a full measurement of the agent as it now stands, reported the way D-21
+promised (deterministic and judge separately), and proof that every voice rule is
+enforced by a named test.
+
+**Headline: the frozen gate passes, 24/24 cases (14 given + 10 ours) passing all 3
+runs, 72 runs in total.** Deterministic checks 24/24 and judge 24/24. The extractor eval
+gives 20/20, every field 100%. No live tuning was needed.
+
+### What was built
+- **`pirtis/ops/gate_report.py` + tests:** reads the harness's own trace files
+  (`runs/gate/<suite>/<case>/run-<n>/result.json`) and reports, per suite and in total:
+  - cases passing all k runs
+  - the same split into **deterministic** (action, bookings, API invariants) and
+    **judge**
+  - model calls (and runs with none), tokens, estimated cost
+  - p50 and p95 latency of model turns
+
+  `make gate` now ends with this report and writes `runs/gate/summary.json`; it
+  replaces Phase 2's awk cost line. The tests were written alongside the code (both
+  passed on the first run), not before it.
+- **The voice-UX audit:** every rule in SPEC §5 now names the code that enforces it
+  and the tests that prove it. Three rules were only partly tested, and each got a
+  test:
+  - **Read-back:** `test_every_offer_reads_back_unit_dates_people_and_price`. Every
+    offer line says the unit, the dates, the number of people and the price.
+  - **Barge-in recovery:** `test_after_a_barge_in_the_reply_is_rebuilt_not_repeated`.
+    After the caller cut into our Vidutinė offer to say "eight, not six", the reply
+    never repeats the cut-off line or names Vidutinė; it offers Didžioji for eight.
+  - **Privacy:** `test_no_reply_ever_names_another_customer`, run on all 20 gold
+    cases. Nothing spoken or texted to a caller contains another customer's name or
+    phone.
+
+  All three passed on their first run: the behaviour was already right, but it
+  wasn't pinned down by a test.
+
+### Commands and results
+| Command | Result |
+|---|---|
+| `make check` | lint, strict mypy (26 files), **367 tests passed** (22 new), 0 failed |
+| `make eval-extract` | **extractor pass^3 20/20**, every field 100%; 60 calls, ≈ $0.023 |
+| **`make gate`** | **24/24 cases (14 given + 10 ours), 72/72 runs; deterministic 24/24, judge 24/24**; 60 model calls (0 on 12 runs); p50 1.55 s, p95 1.79 s; ≈ $0.023 agent |
+
+**The version measured is the version committed:** `agent_version` is `8a552e2b0636`
+before and after, because this phase changed no agent code, only tests and tooling.
+
+**Reports:** `reports/phase-09/`: `gate-full.txt`, `gate-summary.json`, `eval.txt`,
+`eval.json`, `pytest.txt` (367 tests).
+
+### Decisions
+- No new decisions. This phase implements D-21's split reporting and completes D-24
+  (every voice rule has a test).
+
+### Deviations from the plan
+- **No live tuning.** Nothing failed, so there was nothing to tune.
+
+### Spend
+≈ $0.06 this phase (an eval and a full gate, with the judge); ≈ $0.31 in total of the
+$6.
+
+### Open issues and risks
+- **The judge has passed every verdict since Phase 6,** but it's known to vary. Phase
+  13 measures it against human ratings.
+- **The 24 cases pass reliably; the hidden set is the real test.** Phase 13's
+  metamorphic variants and hand-written hidden-style cases are the next evidence.
+
+### What the next phase needs from you
+- Nothing beyond the go-ahead. Phase 10 builds the data layer:
+  - versioned pydantic entities: Session, Feedback, GateRun, TurnRecord, HumanRating
+  - a `Store` with a local file backend and an Azure Blob + Table backend (standard
+    library only, managed-identity token)
+  - retention and PII classes
+  - zero-token tests throughout
+
+  No model calls.

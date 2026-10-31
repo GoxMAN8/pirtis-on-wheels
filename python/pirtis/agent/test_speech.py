@@ -288,3 +288,14 @@ def test_voice_is_passed_to_every_line() -> None:
 
 def test_check_in_asks_if_the_caller_is_still_there() -> None:
     assert "still there" in check_in_line()
+
+
+def test_every_offer_reads_back_unit_dates_people_and_price() -> None:
+    """The read-back rule: what the caller agrees to is exactly what was said."""
+    for d in SAMPLES:
+        if isinstance(d, Offer):
+            line = _spoken(render(d))[0]
+            assert d.unit.name in line
+            assert spoken_range(d.start, d.end).split(" to ")[-1] in line
+            assert spoken_number(d.people) in line
+            assert spoken_euros(d.total) in line
