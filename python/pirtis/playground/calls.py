@@ -338,7 +338,9 @@ class Calls:
             t.items.append(
                 Item(type="function_call", call_id=cid, name=c.method, arguments=args, start=at)
             )
-            t.items.append(Item(type="function_call_output", call_id=cid, output=out, end=at + 0.2))
+            t.items.append(
+                Item(type="function_call_output", call_id=cid, output=out, end=round(at + 0.2, 2))
+            )
             at = round(at + 0.3, 2)
         for e in effects:
             match e.get("type"):
@@ -428,27 +430,38 @@ class Calls:
         state by replaying the call's own writes in order."""
         t = Transcript.from_dict(saved.transcript)
         api = Memory(load_seed(self.seed_path))
-        asked: dict[str, tuple[str, dict[str, Any]]] = {}
-        for it in t.items:
-            if it.type == "function_call":
-                asked[it.call_id] = (it.name, json.loads(it.arguments))
-                continue
-            if it.type != "function_call_output" or it.call_id not in asked:
-                continue
-            name, args = asked[it.call_id]
-            out = json.loads(it.output)
-            if not isinstance(out, dict) or "error" in out:
-                continue
-            if name == "bookings.create":
-                site = Site(**args["site"])
-                got = api.create_booking(BookingRequest(**{**args, "site": site}))
-            elif name == "bookings.update":
-                got = api.update_booking(args["id"], args["version"], BookingPatch(**args["patch"]))
-            else:
-                continue
-            if (got.id, got.version) != (out.get("id"), out.get("version")):
-                raise ValueError(f"{saved.session_id}: replay diverged at {it.call_id}")
+        replay_writes(api, t.items, saved.session_id)
         return LiveCall(saved.session_id, saved.started, t, api, saved.status, list(saved.steps))
+
+
+def seen_at(items: list[Item], at: float) -> list[Item]:
+    """The items decide saw on the turn that ran at `at`: everything before that turn's
+    own API calls and replies (an output item carries only its end time)."""
+    return [i for i in items if (i.end if i.type == "function_call_output" else i.start) < at]
+
+
+def replay_writes(api: Memory, items: list[Item], label: str) -> None:
+    """Replays the successful bookings.create and bookings.update calls recorded in items,
+    in order, and fails loudly if a replayed booking's id or version differs."""
+    asked: dict[str, tuple[str, dict[str, Any]]] = {}
+    for it in items:
+        if it.type == "function_call":
+            asked[it.call_id] = (it.name, json.loads(it.arguments))
+            continue
+        if it.type != "function_call_output" or it.call_id not in asked:
+            continue
+        name, args = asked[it.call_id]
+        out = json.loads(it.output)
+        if not isinstance(out, dict) or "error" in out:
+            continue
+        if name == "bookings.create":
+            got = api.create_booking(BookingRequest(**{**args, "site": Site(**args["site"])}))
+        elif name == "bookings.update":
+            got = api.update_booking(args["id"], args["version"], BookingPatch(**args["patch"]))
+        else:
+            continue
+        if (got.id, got.version) != (out.get("id"), out.get("version")):
+            raise ValueError(f"{label}: replay diverged at {it.call_id}")
 
 
 def _must_be_open(call: LiveCall) -> None:

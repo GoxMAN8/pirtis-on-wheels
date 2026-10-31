@@ -202,7 +202,16 @@ def test_tone_follows_the_callers_latest_turn() -> None:
 SAMPLES: list[Decision] = [
     *(
         Ask(slot)
-        for slot in ("name", "dates", "people", "tow", "power", "which_booking", "new_dates")
+        for slot in (
+            "name",
+            "dates",
+            "people",
+            "tow",
+            "power",
+            "which_booking",
+            "new_dates",
+            "need",
+        )
     ),
     Offer(MAZOJI, "2026-10-06", "2026-10-07", 4, 240),
     Offer(VIDUTINE, "2026-10-04", "2026-10-05", 6, 320, blocked_day="2026-10-03"),
@@ -299,3 +308,8 @@ def test_every_offer_reads_back_unit_dates_people_and_price() -> None:
             assert spoken_range(d.start, d.end).split(" to ")[-1] in line
             assert spoken_number(d.people) in line
             assert spoken_euros(d.total) in line
+
+
+def test_an_identified_greeting_is_asked_what_it_needs() -> None:
+    line = _spoken(render(Ask("need")))[0]
+    assert "what can i do for you" in line.lower() and line.count("?") == 1

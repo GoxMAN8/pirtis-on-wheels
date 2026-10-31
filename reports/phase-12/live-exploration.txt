@@ -1,0 +1,35 @@
+# Phase 12 · exploratory calls in the playground that found two defects (live gpt-4o-mini)
+# commit: feat(loop): flagged turns become test cases · 2026-10-31
+# agent 8a552e2b0636 · seed customers only · driven through the playground's own API
+
+== rasa-move
+  caller: Hi, it's Rasa Paulauskienė.
+  -> Refuse (other_customer_info)
+     I'm sorry, I can't share anything about other customers' bookings or their details. Is there anything else I can help with?
+     DEFECT: a customer giving her own name got the refusal meant for questions about someone else.
+     The model labelled the introduction other_customer_info; there was no intent for a bare greeting.
+  caller: I'd like to move my booking on the sixth to a week later, same sauna.
+  -> ConfirmChange (change)
+     I can move Didžioji to Tuesday the thirteenth to Wednesday the fourteenth of October. Shall I do that?
+  caller: Yes, please move it.
+  -> Moved (change) [sms]
+     Done: Didžioji is moved to Tuesday the thirteenth to Wednesday the fourteenth of October. I'll text you the new dates.
+
+== price-first
+  caller: Hi, how much is the big sauna for a weekend?
+  -> Price (price)  Didžioji is two hundred and ten euros a day. Which dates were you thinking of?
+  caller: Ok, and the small one?
+  -> Price (price)  Mažoji is one hundred and twenty euros a day. Which dates were you thinking of?
+
+== eight-maybe-nine
+  caller: Hello, Eglė Butkutė here. We need a sauna for Saturday the seventeenth and Sunday the eighteenth, there's eight of us, maybe nine.
+  -> Ask (book)  What car will you tow it with, and how much can it tow, braked?
+     DEFECT: the model rightly took the higher number (people 9), but the policy checked the
+     catalogue's limits only after the tow figure, so it asked about the car for a group no sauna seats.
+
+== still-on
+  caller: Hi, Jonas Jonaitis. Is my booking still on?
+  -> BookingsRead (check_booking)  You have Mažoji for Saturday the seventeenth to Sunday the eighteenth of October. Can I help with anything else?
+
+Two of four calls showed a defect; both were flagged, promoted (cases 61 and 62), run red,
+fixed test-first and run green (loop-runs.txt).

@@ -174,6 +174,18 @@ def test_08_must_have_unit_moves_to_sunday_never_another_unit(must: bool) -> Non
     )  # fmt: skip
 
 
+def test_a_must_have_sauna_survives_a_wrong_heater_reading() -> None:
+    """Gate run of a59a54c41e20: the model read "the wood smoke sets off my asthma" as a
+    wish for wood, the heater filter dropped the must-have Vidutinė, and a wood sauna was
+    offered to the asthmatic caller. A must-have is never filtered out by a heater."""
+    d, _ = run(
+        "turnaround", people=6, start="2026-10-03", end="2026-10-04", tow_kg=2000, power=True,
+        unit="unit_vidutine", unit_is_must=True, heater_pref="wood",
+        heater_reason="the wood smoke sets off my asthma", **JONAS,
+    )  # fmt: skip
+    assert isinstance(d, Offer) and d.unit.id == "unit_vidutine"
+
+
 def test_09_moves_the_existing_booking_a_week() -> None:
     d, api = run(
         "change-of-plan", intent="change", shift_days=7, go_ahead=True, unit="unit_mazoji",
@@ -260,6 +272,17 @@ def test_23_nobody_seats_nine() -> None:
     assert d == NoFit("too_many", limit=8)
 
 
+def test_a_group_no_sauna_seats_hears_so_before_any_other_question() -> None:
+    """Promoted case 62: nine people and no tow figure yet. No sauna seats nine, so asking
+    about the car (or the dates) is a wasted turn; say so at once, without a search."""
+    d, api = run("nine-people-hear-the-largest-sauna-seats-eight", people=9,
+                 start="2026-10-17", end="2026-10-18", full_name="Eglė Butkutė")  # fmt: skip
+    assert d == NoFit("too_many", limit=8)
+    assert api_client.METHOD_UNITS_AVAILABILITY not in methods(api)
+    d, _ = run("nine-people-hear-the-largest-sauna-seats-eight", people=9, full_name="Eglė Butkutė")
+    assert d == NoFit("too_many", limit=8)
+
+
 def test_24_car_too_light_for_any_unit() -> None:
     d, _ = run(
         "car-too-light", people=4, start="2026-10-10", end="2026-10-11", tow_kg=700,
@@ -292,6 +315,23 @@ def test_28_identifies_then_asks_the_next_detail() -> None:
     assert d == Ask("people")
     identify = next(c for c in api.log() if c.method == api_client.METHOD_CUSTOMERS_IDENTIFY)
     assert identify.result.ok
+
+
+def test_a_caller_who_only_gives_her_name_is_identified_then_asked_what_she_needs() -> None:
+    """Promoted case 61: a self-introduction is a greeting, never a question about
+    someone else; the caller is identified and asked what she needs."""
+    d, api = run(
+        "introduces-herself-and-is-helped", intent="greeting", full_name="Rasa Paulauskienė"
+    )
+    assert d == Ask("need")
+    identify = next(c for c in api.log() if c.method == api_client.METHOD_CUSTOMERS_IDENTIFY)
+    assert identify.result.ok
+
+
+def test_a_bare_hello_is_asked_for_a_name() -> None:
+    d, api = run("introduces-herself-and-is-helped", intent="greeting")
+    assert d == Ask("name")
+    assert api_client.METHOD_CUSTOMERS_IDENTIFY not in methods(api)
 
 
 def test_29_own_booking_clash_is_named() -> None:

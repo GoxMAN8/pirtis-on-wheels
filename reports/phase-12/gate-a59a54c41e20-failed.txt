@@ -1,0 +1,105 @@
+# Phase 12 · the full gate for agent a59a54c41e20 (greeting intent + early capacity check), which FAILED
+# commit: feat(loop): flagged turns become test cases · 2026-10-31
+# command: cd python && make gate
+# turnaround failed on the judge 3/3: "the wood smoke sets off my asthma" was read as wanting wood,
+# and a wood sauna (Didžioji) was offered. Caught first by the extractor eval; fixed in D-69.
+
+== ../fixtures: 3 runs, 3 must pass
+fixture                    run  result  calls  tokens in/out      llm     wall
+happy-path                 1    PASS        1       2166/147    1.72s    1.72s
+happy-path                 2    PASS        1       2166/147    2.40s    2.40s
+happy-path                 3    PASS        1       2166/147    1.80s    1.81s
+identify-before-reading    1    PASS        1       1981/116    1.49s    1.50s
+identify-before-reading    2    PASS        1       1981/116    1.59s    1.60s
+identify-before-reading    3    PASS        1       1981/116    1.79s    1.79s
+interim-speech             1    PASS        0            0/0      0ms      0ms
+interim-speech             2    PASS        0            0/0      0ms      0ms
+interim-speech             3    PASS        0            0/0      0ms      0ms
+silence                    1    PASS        0            0/0      0ms      0ms
+silence                    2    PASS        0            0/0      0ms      0ms
+silence                    3    PASS        0            0/0      0ms      0ms
+capacity                   1    PASS        1       2099/153    2.15s    2.15s
+capacity                   2    PASS        1       2099/153    1.68s    1.68s
+capacity                   3    PASS        1       2099/155    1.77s    1.77s
+ask-tow-capacity           1    PASS        1       2059/148    1.73s    1.73s
+ask-tow-capacity           2    PASS        1       2059/148    1.62s    1.62s
+ask-tow-capacity           3    PASS        1       2059/148    1.61s    1.61s
+tow-weight                 1    PASS        1       2058/146    2.74s    2.75s
+tow-weight                 2    PASS        1       2058/146    1.55s    1.55s
+tow-weight                 3    PASS        1       2058/146    1.72s    1.72s
+power                      1    PASS        1       2070/137    1.88s    1.88s
+power                      2    PASS        1       2070/137    1.82s    1.82s
+power                      3    PASS        1       2070/131    1.60s    1.60s
+turnaround                 1    FAIL        1       2105/143    1.59s    1.60s
+turnaround                 2    FAIL        1       2105/142    2.11s    2.11s
+turnaround                 3    FAIL        1       2105/142    1.45s    1.45s
+change-of-plan             1    PASS        1       2155/144    1.49s    1.49s
+change-of-plan             2    PASS        1       2155/144    1.61s    1.61s
+change-of-plan             3    PASS        1       2155/144    1.54s    1.55s
+other-customers-data       1    PASS        1       2109/141    1.73s    1.74s
+other-customers-data       2    PASS        1       2109/141    1.79s    1.79s
+other-customers-data       3    PASS        1       2109/141    2.21s    2.22s
+weekend-minimum            1    PASS        1       2052/131    1.74s    1.74s
+weekend-minimum            2    PASS        1       2052/131    1.45s    1.45s
+weekend-minimum            3    PASS        1       2052/131    1.41s    1.41s
+slot-stolen                1    PASS        1       2062/154    1.61s    1.61s
+slot-stolen                2    PASS        1       2062/151    1.89s    1.90s
+slot-stolen                3    PASS        1       2062/154    1.93s    1.94s
+rising-frustration         1    PASS        0            0/0      0ms      0ms
+rising-frustration         2    PASS        0            0/0      0ms      0ms
+rising-frustration         3    PASS        0            0/0      0ms      0ms
+
+13/14 fixtures passed
+== ../fixtures/extra: 3 runs, 3 must pass
+fixture                    run  result  calls  tokens in/out      llm     wall
+unknown-caller             1    PASS        1       1984/125    1.46s    1.47s
+unknown-caller             2    PASS        1       1984/125    1.39s    1.40s
+unknown-caller             3    PASS        1       1984/125    1.71s    1.72s
+first-name-only            1    PASS        1       1958/124    1.62s    1.62s
+first-name-only            2    PASS        1       1958/124    2.85s    2.85s
+first-name-only            3    PASS        1       1958/124    1.68s    1.68s
+cancel-booking             1    PASS        1       2067/135    1.40s    1.40s
+cancel-booking             2    PASS        1       2067/135    1.64s    1.64s
+cancel-booking             3    PASS        1       2067/135    1.80s    1.80s
+nine-people                1    PASS        1       2015/133    1.41s    1.41s
+nine-people                2    PASS        1       2015/133    1.79s    1.80s
+nine-people                3    PASS        1       2015/133    1.54s    1.54s
+car-too-light              1    PASS        1       2014/139    1.69s    1.69s
+car-too-light              2    PASS        1       2014/139    1.46s    1.46s
+car-too-light              3    PASS        1       2014/139    1.58s    1.59s
+sunday-only                1    PASS        1       2010/132    1.81s    1.82s
+sunday-only                2    PASS        1       2010/133    1.55s    1.56s
+sunday-only                3    PASS        1       2010/132    1.52s    1.52s
+silence-after-check-in     1    PASS        0            0/0      0ms      0ms
+silence-after-check-in     2    PASS        0            0/0      0ms      0ms
+silence-after-check-in     3    PASS        0            0/0      0ms      0ms
+barge-in-correction        1    PASS        1       2041/128    1.66s    1.66s
+barge-in-correction        2    PASS        1       2041/128    1.41s    1.42s
+barge-in-correction        3    PASS        1       2041/128    1.70s    1.70s
+identify-this-turn         1    PASS        1       1975/122    1.63s    1.64s
+identify-this-turn         2    PASS        1       1975/122    1.47s    1.48s
+identify-this-turn         3    PASS        1       1975/122    1.39s    1.40s
+own-booking-overlap        1    PASS        1       2010/154    1.81s    1.81s
+own-booking-overlap        2    PASS        1       2010/154    1.75s    1.75s
+own-booking-overlap        3    PASS        1       2010/154    2.23s    2.24s
+books-didzioji-for-six-with-no-mains-power 1    PASS        1       2156/151    1.71s    1.72s
+books-didzioji-for-six-with-no-mains-power 2    PASS        1       2156/151    1.70s    1.71s
+books-didzioji-for-six-with-no-mains-power 3    PASS        1       2156/151    1.92s    1.92s
+introduces-herself-and-is-helped 1    PASS        1       1950/114    1.75s    1.75s
+introduces-herself-and-is-helped 2    PASS        1       1950/114    1.53s    1.53s
+introduces-herself-and-is-helped 3    PASS        1       1950/114    1.46s    1.46s
+nine-people-hear-the-largest-sauna-seats-eight 1    PASS        1       1973/133    1.67s    1.67s
+nine-people-hear-the-largest-sauna-seats-eight 2    PASS        1       1973/133    1.73s    1.73s
+nine-people-hear-the-largest-sauna-seats-eight 3    PASS        1       1973/138    1.61s    1.61s
+
+13/13 fixtures passed
+
+GATE: 26/27 cases passed all 3 runs (81 runs)
+  extra     13/13 cases  deterministic 13/13  judge 13/13  model calls 36 (0 on 3 runs)  tokens 72459/4776  ≈ $0.0137  p50 1.66s p95 1.92s
+  fixtures  13/14 cases  deterministic 14/14  judge 13/14  model calls 33 (0 on 9 runs)  tokens 68748/4671  ≈ $0.0131  p50 1.72s p95 2.22s
+  total     26/27 cases  deterministic 27/27  judge 26/27  model calls 69 (0 on 12 runs)  tokens 141207/9447  ≈ $0.0268  p50 1.68s p95 2.24s
+  failed: turnaround
+  (cost is the agent's model calls only; the judge's calls are not traced)
+saved gate run a59a54c41e20 20261031T092442Z: 26/27 cases passing all 3 runs, passed=False
+make: *** [gate] Error 1
+gate exit 2

@@ -110,6 +110,13 @@ mark { background: rgba(240, 116, 58, 0.22); color: inherit; border-radius: 2px;
 .fb-item .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 0.8125rem; color: var(--ink-2); }
 .fb-item blockquote { margin: 0; padding-left: 12px; border-left: 2px solid var(--ember); }
 .fb-item .note { font-style: italic; }
+.promote { display: grid; gap: 12px; padding: 16px; margin-top: 4px; }
+.promote .section-title { margin: 0; }
+.promote textarea { resize: vertical; font-family: var(--f-body); }
+.promote .row2, .booking-want .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.booking-want { border: 1px solid var(--line); border-radius: var(--r); padding: 12px; display: grid; gap: 10px; margin: 0; }
+.booking-want[disabled] { opacity: 0.45; }
+.promote select, .booking-want input, .booking-want select { min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); color: var(--ink); }
 
 /* fleet */
 .fleet-wrap { overflow-x: auto; }

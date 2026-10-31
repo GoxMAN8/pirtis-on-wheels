@@ -1,0 +1,34 @@
+{
+  "fixture": "books-didzioji-for-six-with-no-mains-power",
+  "suite": "extra",
+  "state": {
+    "gist": "",
+    "intent": "book",
+    "full_name": "Jonas Jonaitis",
+    "people": 6,
+    "start": "2026-10-10",
+    "end": "2026-10-11",
+    "shift_days": null,
+    "change_target_start": null,
+    "tow_quote": "about two and a half tonnes",
+    "tow_kg": 2500,
+    "power": false,
+    "unit_quote": "Didžioji",
+    "unit": null,
+    "unit_is_must": false,
+    "heater_pref": null,
+    "heater_reason": null,
+    "answer": null,
+    "consent_quote": "Yes please, book it.",
+    "accepted_offer": true,
+    "go_ahead": true
+  },
+  "ignore": [
+    "gist",
+    "tow_quote",
+    "answer",
+    "unit_quote",
+    "consent_quote"
+  ],
+  "one_of": []
+}

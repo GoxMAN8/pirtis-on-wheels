@@ -1,0 +1,30 @@
+# Promoted by a reviewer from feedback on turn 887c78a9625f4e91
+# (agent 8a552e2b0636, 2026-10-31): Nine people hear the largest sauna seats eight.
+# Why: Found exploring: no sauna seats nine, yet the receptionist asked about the car first.
+id: nine-people-hear-the-largest-sauna-seats-eight
+expect:
+  action: say
+  bookings: []
+transcript:
+  call_id: case_nine-people-hear-the-largest-sauna-seats-eight
+  today: '2026-09-28'
+  now: 12.1
+  caller:
+    phone: '+37068881122'
+  items:
+  - type: message
+    role: assistant
+    start: 0.5
+    end: 2.4
+    content: Pirtis on Wheels, hello?
+    interrupted: false
+  - type: message
+    role: user
+    start: 2.8
+    end: 11.6
+    content: Hello, Eglė Butkutė here. We need a sauna for Saturday the seventeenth and Sunday the eighteenth, there's eight of us, maybe nine.
+    is_final: true
+    speech_final: true
+    confidence: 0.95
+judge:
+- The reply tells the caller that the largest sauna takes eight people.

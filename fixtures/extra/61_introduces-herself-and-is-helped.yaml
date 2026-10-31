@@ -1,0 +1,31 @@
+# Promoted by a reviewer from feedback on turn ded9c8ab23d194a7
+# (agent 8a552e2b0636, 2026-10-31): Introduces herself and is helped.
+# Judge line sharpened after its first red run: the first wording let a refusal pass.
+# Why: Found exploring: a customer giving her own name got the privacy refusal meant for questions about other customers.
+id: introduces-herself-and-is-helped
+expect:
+  action: say
+  bookings: []
+transcript:
+  call_id: case_introduces-herself-and-is-helped
+  today: '2026-09-28'
+  now: 4.9
+  caller:
+    phone: '+37069876543'
+  items:
+  - type: message
+    role: assistant
+    start: 0.5
+    end: 2.4
+    content: Pirtis on Wheels, hello?
+    interrupted: false
+  - type: message
+    role: user
+    start: 2.8
+    end: 4.4
+    content: Hi, it's Rasa Paulauskienė.
+    is_final: true
+    speech_final: true
+    confidence: 0.95
+judge:
+- Every sentence of the reply is about helping the caller herself.

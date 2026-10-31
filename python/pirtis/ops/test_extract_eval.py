@@ -2,10 +2,12 @@
 a valid call state for a real fixture, matches itself, and a wrong field is caught."""
 
 import json
+from pathlib import Path
 
 import pytest
 
 from pirtis.agent.understand import CallState
+from pirtis.harness.fixture import load_fixtures
 from pirtis.llm.client import Response
 from pirtis.llm.fake import Fake
 from pirtis.ops.extract_eval import Gold, compare, evaluate, field_accuracy, fixture_for, load_gold
@@ -13,8 +15,16 @@ from pirtis.ops.extract_eval import Gold, compare, evaluate, field_accuracy, fix
 GOLDS = load_gold()
 
 
+# the turn gate answers these without asking the model, so there is nothing to compare
+ZERO_CALL = {"interim-speech", "silence", "rising-frustration", "silence-after-check-in"}
+FIXTURES = Path(__file__).resolve().parents[3] / "fixtures"
+
+
 def test_there_is_gold_for_every_fixture_the_model_sees() -> None:
-    assert len(GOLDS) == 20
+    """A promoted case that reaches the model needs its gold state too, or the extractor
+    eval silently stops covering it."""
+    every = {f.id for d in (FIXTURES, FIXTURES / "extra") for f in load_fixtures(d)}
+    assert {g.fixture for g in GOLDS} == every - ZERO_CALL
     assert {g.suite for g in GOLDS} == {"given", "extra"}
 
 

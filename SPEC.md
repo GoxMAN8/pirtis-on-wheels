@@ -199,6 +199,14 @@ was traced against the real in-memory API.
 | 12 slot-stolen | 409 → re-check → retry | the injected 409, then a successful create |
 | 13 rising-frustration | turn gate | explicit "a person" + anger 0.82 + barge-in → transfer, 0 model calls |
 
+**Promoted from the playground** (`fixtures/extra/60–`, through the improvement loop, §11):
+
+| Case | Where it came from | What it holds the agent to |
+|---|---|---|
+| 60 books-didzioji-for-six-with-no-mains-power | 👍 on a live call in the caller simulator | a regression guard: four turns, no mains power, so the electric Vidutinė is ruled out and Didžioji 10–11 Oct is booked |
+| 61 introduces-herself-and-is-helped | exploration: Rasa giving her own name got the privacy refusal | a greeting is identified and asked what it needs (D-67) |
+| 62 nine-people-hear-the-largest-sauna-seats-eight | exploration: nine people were asked about the car | a group no sauna seats hears so at once (D-68) |
+
 ---
 
 ## 7. Gate (frozen)
@@ -271,14 +279,18 @@ blocks deployment.
 | 2026-10-31 | ours: note + telemetry (`agent_version` 8a552e2b0636) | **all 24 cases** (14 given + 10 ours), 1 run | **24/24**; one note in every run's result; nothing on stderr | 20 | 40,370 / 2,742 |
 | 2026-10-31 | **ours, Phase 9 gate** (`agent_version` 8a552e2b0636) | **all 24 cases, 3 runs, 3 must pass** | **24/24 cases, 72/72 runs; deterministic 24/24, judge 24/24**; p50 1.55 s, p95 1.79 s | 60 (0 on 12 runs) | 121,110 / 8,234 |
 
+| 2026-10-31 | ours, before the fix (8a552e2b0636) | promoted 61 and 62, 3 runs | **red: 0/3 each** (61 refused a greeting; 62 asked nine people about the car) | 1 per run | — |
+| 2026-10-31 | ours: greeting intent, early capacity check (a59a54c41e20) | **all 27 cases, 3 runs** | **gate FAILED, 26/27**: turnaround 0/3 on the judge (a wood sauna offered to an asthmatic caller); deterministic 27/27 | 69 (0 on 12 runs) | 141,207 / 9,447 |
+| 2026-10-31 | **ours: + heater reason first, must-have kept (f1412b386c00)** | **all 27 cases (14 given + 10 ours + 3 promoted), 3 runs, 3 must pass** | **27/27 cases, 81/81 runs; deterministic 27/27, judge 27/27**; p50 1.63 s, p95 1.92 s | 69 (0 on 12 runs) | 144,519 / 9,367 |
+
 At the Phase 6 gate, model turns took p50 1.54 s and p95 1.77 s (max 1.84 s), with
 about 1.7k prompt tokens each. After understanding v2 they take p50 1.76 s and p95
 2.14 s (one outlier at 4.2 s), with about 2.0k prompt tokens: the price of the quote
 fields. Turns the gate settles take 0 ms. The agent's cost for 72 runs is about $0.02,
 plus the judge.
 
-**Extractor eval** (the model's understanding alone, against gold call states for the
-20 fixtures it sees):
+**Extractor eval** (the model's understanding alone, against gold call states for
+every fixture it sees: 20, then 23 with the promoted cases):
 
 | Date | Prompt | Runs | Extractor pass^k | Weakest field |
 |---|---|---|---|---|
@@ -286,6 +298,9 @@ plus the judge.
 | 2026-10-31 | + sharper rules | 3 | 12/20 | `accepted_offer` 80% (a regression: consent flags set without an offer) |
 | 2026-10-31 | **+ quotes verified in code** | 3 | **20/20** | every field 100% |
 | 2026-10-31 | the same (Phase 9 re-run) | 3 | **20/20** | every field 100% |
+| 2026-10-31 | + greeting intent (a59a54c41e20), 23 gold states | 3 | 20/23 | `heater_pref` 95% (turnaround read as wood); 2 of the 3 were my gold errors (`power` false, not unknown) |
+| 2026-10-31 | + heater rule (5bda63c22794) | 3 | 22/23 | `heater_pref` 95%: the rule alone didn't move it |
+| 2026-10-31 | **+ heater reason before heater (f1412b386c00)** | 3 | **23/23** | every field 100% |
 
 The naive agent swings between samples (4/14, then 3/14), which is why the gate needs
 3 of 3 runs. The skeleton's failures are all features of later phases: the silence
@@ -438,18 +453,40 @@ also shows **intent-mix drift**: the PSI of the last 7 days against the 7 before
 
 ## 11. Improvement loop
 
+Built in `python/pirtis/playground/promote.py` and the admin console's Feedback view.
+Every step after capture is a person's; nothing promotes itself (D-30, D-39).
+
 1. **Capture:** 👍/👎 and a note on any receptionist line in the caller simulator, or
    *Flag this turn* in a trace; saved as `Feedback` with a snapshot of the call.
-2. **Review:** the admin console's Feedback view lists rated lines, newest first, each
-   with its reply, its note and a link to its trace.
-3. **Promote:** a person turns a failure into a test case. The form pre-fills the
-   transcript; you set the expected action, the booking change and judge statements,
-   and it enforces seed personas. Nothing is promoted automatically.
-4. **Fix:** the new fixture fails the gate; we fix the agent and log the change here.
-5. **Ship:** the gate passes; deploy (the deploy runs the gate first); the nightly gate
-   keeps checking.
+2. **Review:** the Feedback view lists rated lines, newest first, each with its reply,
+   its note and its trace. A reviewer may decide a flag is not a defect (for example a
+   wish that contradicts a voice rule) and leave it there.
+3. **Promote:** *Save as test case* on a rated line. The case is the call as decide saw
+   it at that line, the world as it stood (bookings the call had made or moved are set
+   up, under free ids below 100), and what the reviewer says should have happened: the
+   action, the booking change, judge statements written positively (D-51). It is written
+   as `fixtures/extra/NN_<title>.yaml`, NN from 60, never over another file, and read
+   back by the kit's own loader first. Seed people only: a seed customer's phone or the
+   playground's unknown number, seed names given to identify, no other phone-length
+   number or email, plus the reviewer's confirmation (D-66). In the cloud the case is
+   downloaded instead of written (`PIRTIS_PROMOTE_DIR=""`).
+4. **Red:** run the case three times and see it fail for the reason it should. A case
+   that passes on the agent that got it wrong doesn't test the defect yet; sharpen its
+   judge statement and run it again.
 
-Every change to the prompt or the policy changes `agent_version`, and needs a gate run.
+       cd python && uv run harness --fixtures ../fixtures/extra --id <case> --runs 3 --need 3 -v
+
+5. **Fix, test first:** a failing unit test for the cause, then the change. A case that
+   reaches the model gets a gold state too (`pirtis/agent/gold/`); a test refuses a
+   model-facing case without one.
+6. **Green and re-measure:** the case passes three times; `make eval-extract` shows no
+   understanding regressed; `make gate` passes on every case, and saves the run to the
+   Reliability view. Record the change in §14 and the decision in §13.
+7. **Ship:** commit; deploy (the deploy runs the gate first); the nightly gate keeps
+   checking.
+
+Every change to the prompt or the policy changes `agent_version`, and needs the
+extractor eval and a gate run.
 
 ---
 
@@ -549,6 +586,11 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | D-63 | 2026-10-31 | The playground shows the call state the agent accepted: the model's answer is captured on its way through and re-validated by the agent's own `extract` with a scripted model. A quote counts as the caller's evidence only when the fact it backs survived | No second model call and no copy of the validation; found in the browser: the agent drops a fact whose quote isn't the caller's words but keeps the quote text, which then looked like evidence | showing the raw model output; a second extraction call | accepted |
 | D-64 | 2026-10-31 | Intent drift is shown as this window against the one before, intent by intent, with the PSI band; below 30 turns in either window the badge says too few to judge instead of a number | The chart shows exactly what PSI measures; PSI on a handful of turns is noise | intent per day as stacked bars (needs eight hues, and hides the comparison) | accepted |
 | D-65 | 2026-10-31 | Chart colours are the validated steps per theme (pass `#1E9C94`/`#00897B`, fail `#E2662C`/`#CF5520`); a judge-only failure is a hatch on the fail colour; the brand tokens stay for chrome and glow | The palette check failed a third hue (amber against ember, ΔE 0.6 for deuteranopes) and the original plunge (chroma below the floor) | amber for judge-only failures | accepted |
+| D-66 | 2026-10-31 | Promotion: a person turns a rated line into `fixtures/extra/NN_<title>.yaml` (NN from 60), never over a file and only after the kit's loader reads it back. The case is the call as decide saw it, with bookings the call had made set up under free ids below 100; a turn after a cancellation is refused (the kit's setup can't express one). Seed people only: a seed phone or the playground's unknown number, seed names given to identify, no other phone-length number or email, and the reviewer's confirmation. In the cloud the case is downloaded, not written | A test case is evidence, so it must reproduce the world exactly and carry no real person into git; a person decides, so feedback can't poison the gate | promoting automatically from 👎; writing setup rows with the call's own ids (a fresh API reuses bk_101) | accepted |
+| D-67 | 2026-10-31 | A `greeting` intent: the caller only said hello or gave their own name. It goes through identification, then "Thanks, I have your details. What can I do for you today?". `other_customer_info` says that giving your own name is never it | Found exploring: "Hi, it's Rasa Paulauskienė" was read as a question about another customer and refused (case 61) | sending greetings to `unclear` (the reply would be "sorry, could you say that again?") | accepted |
+| D-68 | 2026-10-31 | A group larger than the biggest sauna hears so as soon as its size is known, before dates, the car or a search | Found exploring: nine people were asked about the car first (case 62); the limit was only checked at search time | waiting for the search | accepted |
+| D-69 | 2026-10-31 | A must-have sauna is never removed by a heater filter, and `heater_reason` comes before `heater_pref` in the schema (evidence before the value, as D-33), with a rule that a heater the caller calls a problem means the other kind | The D-67 wording shifted the model at temperature 0: "the wood smoke sets off my asthma" became a wish for wood, and the gate failed turnaround because a wood sauna was offered to an asthmatic caller. The extractor eval caught it first; the field order fixed it, and the policy now holds even if the reading slips | rewording the prompt alone (the first try didn't move it) | accepted |
+| D-70 | 2026-10-31 | Every fixture the model sees has a gold call state, promoted cases included; a test compares the gold set with every suite, not with a count | A count of 20 hid that case 60 had no gold, so the extractor eval had silently stopped covering it | a fixed count | accepted |
 
 ---
 
@@ -569,3 +611,4 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | 2026-10-31 | plan | Azure kept to a minimum. Instead of Blob + Table + Key Vault + lifecycle policies, one Azure Files share is mounted into the app and the job at `/data`, and the data layer is one `FileStore` (a JSON file per record) that runs the same locally. Secrets become Container App secrets set by CLI | Your request for the smallest infrastructure; less to build, secure and explain | D-27 → D-57, D-38 → D-58 |
 | 2026-10-31 | 10 | Data layer, test-first: five versioned records (Session, Feedback, HumanRating, GateRun, Turn) with a privacy class on every field, and one `FileStore` (a JSON file per record, atomic writes, queries by partition and date, pruning by each record's retention). A gate run is built from the gate report's rows and passes only at pass^3; a turn is built from the agent's own telemetry line. 25 new tests (392 in total); the Phase 9 gate traces stored and read back unchanged | Somewhere to keep calls, feedback, ratings and gate history for the UIs and the improvement loop, the same locally and on the mounted share | D-58, D-59, D-60 |
 | 2026-10-31 | 11 | The playground: one stdlib server with a caller simulator (pick a seed customer or an unknown number, speak or type; a fogged-glass booking card condenses as the receptionist learns each fact; thumbs on every reply; a test drawer with anger, barge-in and fixture replay) and an admin console (Reliability with the thermal view, Conversations, Traces, Feedback, Fleet with a what-if). Calls run turn by turn through `decide` and the kit's handlers, saved after every turn, resumed by replaying their writes. Analytics from content-free records only; a privacy scan proves it. `make gate` now saves each run (`record_gate`). Vendored d3 and Plot, self-hosted fonts, validated chart colours. 40 new tests (432 in total). Checked live in the browser: a full booking, an unknown caller, a replay, both themes, phone width, keyboard only; 16 defects found there and fixed | A way to call the agent and to see what it did, without spending the reviewer's time on terminals | D-40, D-41, D-42, D-61 – D-65 |
+| 2026-10-31 | 12 | The improvement loop, built and run. *Save as test case* on any rated line writes `fixtures/extra/NN_<title>.yaml` (from 60) through a form: the call as decide saw it, bookings it had made set up under free ids, the expected action and booking change, judge statements, seed people only, the reviewer's confirmation, read back by the kit's loader. Run for real: a 👍 booking promoted as a regression guard (60, green); exploring found two defects, promoted as 61 and 62 and run red 0/3. Fixed test-first: a `greeting` intent (D-67) and the capacity limit said at once (D-68). The fix's wording made the model read "the wood smoke sets off my asthma" as wood; the extractor eval caught it and the gate failed (26/27, a wood sauna offered to an asthmatic caller), fixed by putting the heater reason before the heater and keeping a must-have through any heater filter (D-69). **Gate 27/27 cases, 81/81 runs, extractor 23/23.** The gold-count test now checks every suite (D-70). 468 tests (36 new) | Close the loop from a caller's bad experience to a test that keeps it fixed, and prove it on real defects | D-66 – D-70 |

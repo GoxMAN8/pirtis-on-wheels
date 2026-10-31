@@ -24,7 +24,7 @@ from datetime import UTC, date, datetime, timedelta
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
@@ -40,7 +40,8 @@ from pirtis.llm.client import open_ai_from_env
 from pirtis.ops.model import Feedback, GateRun, Turn
 from pirtis.ops.store import FileStore, store_from_env
 from pirtis.playground import analytics
-from pirtis.playground.calls import UNKNOWN_PHONE, CallClosed, Calls, LiveCall, plain
+from pirtis.playground.calls import UNKNOWN_PHONE, CallClosed, Calls, LiveCall, plain, seen_at
+from pirtis.playground.promote import Expected, PromoteError, build, save
 from pirtis.transcript.types import Item
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -99,6 +100,28 @@ class FeedbackBody(_Body):
     note: str = Field(default="", max_length=500)
 
 
+class ExpectBookingBody(_Body):
+    id: str = Field(default="", pattern=r"^(bk_\d{1,4})?$")
+    unit: str = Field(default="", max_length=40)
+    start: date | None = None
+    end: date | None = None
+    people: int | None = Field(default=None, ge=1, le=20)
+    status: Literal["", "booked", "cancelled"] = ""
+
+
+class PromoteBody(_Body):
+    session_id: str = Field(max_length=32)
+    turn_id: str = Field(max_length=64)
+    title: str = Field(min_length=3, max_length=60)
+    action: Literal["say", "wait", "transfer", "end_call"]
+    bookings: list[ExpectBookingBody] = Field(default_factory=list, max_length=4)
+    judge: list[Annotated[str, Field(min_length=5, max_length=300)]] = Field(
+        min_length=1, max_length=8
+    )
+    why: str = Field(default="", max_length=300)
+    confirm: Literal[True]  # the reviewer vouches that everyone in the call is made up
+
+
 class ReplayBody(_Body):
     fixture: str = Field(max_length=80)
 
@@ -150,6 +173,7 @@ class App:
         judge: LlmClient | None,
         rate_per_min: int,
         access_log: bool,
+        promote_dir: Path | None,
     ) -> None:
         self.store = store
         self.llm = llm
@@ -157,11 +181,19 @@ class App:
         self.calls = Calls(store, llm, seed=FIXTURES / "seeds" / "base.json", today=TODAY)
         self.limit = RateLimit(rate_per_min)
         self.access_log = access_log
+        self.promote_dir = promote_dir  # None: promoted cases are downloaded, not written
         self.fixtures: dict[str, tuple[str, Fixture]] = {}
-        for suite in ("fixtures", "extra"):
-            folder = FIXTURES if suite == "fixtures" else FIXTURES / suite
+        self._index_fixtures()
+
+    def _index_fixtures(self) -> None:
+        folders = [("given", FIXTURES), ("ours", FIXTURES / "extra")]
+        if self.promote_dir is not None and self.promote_dir != FIXTURES / "extra":
+            folders.append(("ours", self.promote_dir))
+        found: dict[str, tuple[str, Fixture]] = {}
+        for suite, folder in folders:
             for f in load_fixtures(folder):
-                self.fixtures.setdefault(f.id, ("given" if suite == "fixtures" else "ours", f))
+                found.setdefault(f.id, (suite, f))
+        self.fixtures = found
 
     # caller simulator
 
@@ -207,6 +239,42 @@ class App:
         except KeyError:
             raise HttpError(404, "no such turn in this call") from None
         return HTTPStatus.CREATED, {"ok": True}
+
+    def promote(self, body: PromoteBody) -> Any:
+        """A reviewed turn becomes a test case; only a person, through the form, does this."""
+        call = self._call(body.session_id)
+        step = next((s for s in call.steps if s["turn_id"] == body.turn_id), None)
+        if step is None:
+            raise HttpError(404, "no such turn in this call")
+        fb = self.store.get(Feedback, step["agent_version"], body.turn_id)
+        if fb is None:
+            raise HttpError(
+                409, "Rate or flag this turn first: a case comes from reviewed feedback."
+            )
+        want = Expected(
+            title=body.title,
+            action=body.action,
+            bookings=[b.model_dump(mode="json") for b in body.bookings],
+            judge=body.judge,
+            why=body.why,
+        )
+        try:
+            case = build(call, step, self.calls.seed, want)
+            path = save(case, self.promote_dir) if self.promote_dir is not None else None
+        except PromoteError as e:
+            raise HttpError(400, str(e)) from None
+        name = path.name if path else f"{case.id}.yaml"
+        self.store.put(fb.model_copy(update={"promoted_fixture": name}))
+        if path is not None:
+            self._index_fixtures()
+        return HTTPStatus.CREATED, {
+            "id": case.id,
+            "file": name,
+            "written": path is not None,
+            "yaml": case.text,
+            "run": f"uv run harness --fixtures {_shown(path.parent) if path else '<folder>'} "
+            f"--id {case.id} --runs 3 --need 3 -v",
+        }
 
     def fixture_list(self, q: dict[str, str]) -> Any:
         return {
@@ -292,11 +360,7 @@ class App:
             ),
             None,
         )
-        seen = [
-            i
-            for i in call.t.items
-            if (i.end if i.type == "function_call_output" else i.start) < step["at"]
-        ]
+        seen = seen_at(call.t.items, step["at"])
         return {
             "session_id": sid,
             "turn": rec.model_dump(mode="json", exclude={"phone_hash", "call_id"}) if rec else None,
@@ -343,6 +407,14 @@ class App:
     def _turns(self, q: dict[str, str]) -> list[Turn]:
         since = datetime.now(UTC) - timedelta(days=_int(q, "days", 7, 1, 90))
         return [t for t in self.store.query(Turn, since=since) if _source_ok(t, q)]
+
+
+def _shown(p: Path) -> str:
+    """A path as the reviewer would type it from python/."""
+    try:
+        return "../" + str(p.resolve().relative_to(ROOT))
+    except ValueError:
+        return str(p)
 
 
 def _source_ok(t: Turn, q: dict[str, str]) -> bool:
@@ -394,6 +466,7 @@ POST_ROUTES: dict[str, tuple[type[_Body], Any]] = {
     "hangup": (HangupBody, App.hang_up),
     "feedback": (FeedbackBody, App.feedback_post),
     "replay": (ReplayBody, App.replay),
+    "promote": (PromoteBody, App.promote),
     "what-if": (WhatIfBody, App.what_if),
 }
 
@@ -511,8 +584,9 @@ def make_server(
     rate_per_min: int = 30,
     judge: LlmClient | None = None,
     access_log: bool = False,
+    promote_dir: Path | None = None,
 ) -> ThreadingHTTPServer:
-    app = App(store, llm, judge, rate_per_min, access_log)
+    app = App(store, llm, judge, rate_per_min, access_log, promote_dir)
     srv = ThreadingHTTPServer((host, port), _handler(app))
     srv.daemon_threads = True
     return srv
@@ -537,8 +611,16 @@ def main(argv: list[str] | None = None) -> None:
     logging.basicConfig(level=logging.WARNING, stream=sys.stderr)
 
     rate = int(os.environ.get("PIRTIS_RATE_PER_MIN", "30"))
+    # promoted cases go into the repo's own suite; in the container, set it empty: download
+    promote = os.environ.get("PIRTIS_PROMOTE_DIR", str(FIXTURES / "extra"))
     srv = make_server(
-        store_from_env(), llm, host=args.host, port=args.port, rate_per_min=rate, access_log=True
+        store_from_env(),
+        llm,
+        host=args.host,
+        port=args.port,
+        rate_per_min=rate,
+        access_log=True,
+        promote_dir=Path(promote) if promote else None,
     )
     print(f"playground on http://{args.host}:{args.port}  ·  admin at /admin", file=sys.stderr)
     try:

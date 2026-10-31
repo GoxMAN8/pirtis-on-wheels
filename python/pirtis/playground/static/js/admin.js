@@ -523,23 +523,100 @@ function traceActions(trace) {
 const fbState = { verdict: "" };
 
 async function feedback() {
-  const { feedback: items } = await api(`/api/feedback${fbState.verdict ? `?verdict=${fbState.verdict}` : ""}`);
+  const [{ feedback: items }, grid] = await Promise.all([
+    api(`/api/feedback${fbState.verdict ? `?verdict=${fbState.verdict}` : ""}`),
+    api("/api/fleet?days=1"),
+  ]);
+  const units = grid.units.map((u) => [u.id, u.name]);
   const filters = seg([["", "All"], ["down", "Flagged"], ["up", "Good"]], fbState.verdict, (v) => { fbState.verdict = v; route(); }, "Show");
-  const done = render(...head("Feedback", "Receptionist lines rated in the caller simulator, newest first. A flagged line is where the next test case comes from.", filters));
+  const done = render(...head("Feedback",
+    "Receptionist lines rated in the caller simulator, newest first. A person turns a line into a test case here: what should have happened, in a form. Nothing becomes a test case on its own.", filters));
   if (!items.length) return done(empty("Nothing rated yet. Rate any receptionist line with a thumb in the caller simulator's transcript.", el("a", { href: "/", text: "Open the caller simulator" })));
-  done(el("div", { class: "fb" }, items.map((f) =>
-    el("article", { class: "fb-item" },
+  done(el("div", { class: "fb" }, items.map((f) => {
+    const slot = el("div");
+    const save = el("button", { class: "btn", type: "button", text: "Save as test case" });
+    save.addEventListener("click", () => { save.hidden = true; clear(slot, promoteForm(f, units, slot, save)); });
+    return el("article", { class: "fb-item" },
       el("div", { class: "row" },
         chip(f.verdict === "down" ? "Flagged" : "Good", f.verdict === "down" ? "hot" : "cold"),
         el("span", { text: fmt.time(f.created) }),
         el("span", { class: "mono", text: f.agent_version }),
-        f.decision ? el("span", { text: f.decision }) : null),
+        f.decision ? el("span", { text: f.decision }) : null,
+        f.promoted_fixture ? chip(`Test case ${f.promoted_fixture}`, "cold") : null),
       f.reply ? el("blockquote", { text: f.reply }) : el("p", { class: "muted", text: "The call has expired; only the note is left." }),
       f.note ? el("p", { class: "note", text: f.note }) : null,
       el("details", {}, el("summary", { text: "The call so far" }),
         el("div", { class: "heard", style: "margin-top: 8px" }, f.transcript.map((m) =>
           el("div", { class: `m ${m.role}` }, el("div", { class: "r", text: m.role === "user" ? "caller" : m.role === "assistant" ? "receptionist" : "api" }), m.content)))),
-      el("a", { href: `#traces/${f.session_id}/${f.turn_id}`, text: "Open its trace" })))));
+      el("div", { class: "trace-actions" },
+        el("a", { href: `#traces/${f.session_id}/${f.turn_id}`, text: "Open its trace" }),
+        f.reply && !f.promoted_fixture ? save : null),
+      slot);
+  })));
+}
+
+// What the agent did, as the harness names actions: the reviewer starts from it.
+const ACTION_OF = { Handoff: "transfer", Goodbye: "end_call", Hold: "wait" };
+const ACTIONS = [["say", "Answer: say something"], ["transfer", "Pass the call to a colleague"], ["end_call", "End the call"], ["wait", "Wait, saying nothing"]];
+
+function promoteForm(f, units, slot, opener) {
+  const field = (label, control, hint) => el("label", { class: "field" }, label, control, hint ? el("span", { class: "muted", text: hint }) : null);
+  const title = el("input", { class: "text", name: "title", required: true, minlength: "3", maxlength: "60", placeholder: "What this case checks, e.g. Offers Didžioji when there's no power" });
+  const action = el("select", { name: "action" }, ACTIONS.map(([v, t]) => el("option", { value: v, text: t, selected: v === (ACTION_OF[f.decision] || "say") })));
+  const change = el("input", { type: "checkbox", name: "change" });
+  const unit = el("select", { name: "unit" }, units.map(([id, name]) => el("option", { value: id, text: name })));
+  const start = el("input", { type: "date", name: "start", value: "2026-10-06" });
+  const end = el("input", { type: "date", name: "end", value: "2026-10-07" });
+  const people = el("input", { type: "number", name: "people", min: "1", max: "20", placeholder: "any" });
+  const status = el("select", { name: "status" }, [["booked", "booked"], ["cancelled", "cancelled"]].map(([v, t]) => el("option", { value: v, text: t })));
+  const bookingId = el("input", { class: "text", name: "booking_id", placeholder: "bk_88, only for a change to an existing booking", maxlength: "8" });
+  const booking = el("fieldset", { class: "booking-want", disabled: true },
+    el("legend", { class: "visually-hidden", text: "The booking" }),
+    el("div", { class: "row2" }, field("Sauna", unit), field("People", people)),
+    el("div", { class: "row2" }, field("From", start), field("To", end)),
+    el("div", { class: "row2" }, field("Status", status), field("Booking id", bookingId)));
+  change.addEventListener("change", () => { booking.disabled = !change.checked; });
+  const judge = el("textarea", { class: "text", name: "judge", rows: "4", required: true,
+    placeholder: "One statement per line, each true of the right reply. For example:\nThe reply offers Didžioji for Saturday the tenth to Sunday the eleventh of October.\nThe reply doesn't offer Vidutinė." });
+  const why = el("input", { class: "text", name: "why", maxlength: "300", value: f.note || "" });
+  const confirm = el("input", { type: "checkbox", name: "confirm", required: true });
+  const out = el("div", { "aria-live": "polite" });
+  const form = el("form", { class: "promote panel" },
+    el("h3", { class: "section-title", text: "Save as test case" }),
+    el("p", { class: "muted", text: "The case is the call as the receptionist heard it at this line, and what should have happened. It goes into the gate, and stays red until the agent gets it right." }),
+    field("Title", title),
+    field("What should the receptionist have done?", action),
+    el("label", { class: "toggle" }, change, "A booking should be made or changed on this turn"),
+    booking,
+    field("What must the reply say? One statement per line", judge, "A judge reads the reply and checks each statement."),
+    field("Why this case (optional)", why),
+    el("label", { class: "toggle" }, confirm, "Everyone in this call is a seed customer or made up: no real names, numbers or addresses."),
+    el("div", { class: "trace-actions" },
+      el("button", { class: "btn primary", type: "submit", text: "Save test case" }),
+      el("button", { class: "btn ghost", type: "button", text: "Cancel", onclick: () => { clear(slot); opener.hidden = false; } })),
+    out);
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const body = {
+      session_id: f.session_id, turn_id: f.turn_id, title: title.value.trim(), action: action.value,
+      judge: judge.value.split("\n").map((l) => l.trim()).filter(Boolean),
+      why: why.value.trim(), confirm: confirm.checked,
+      bookings: change.checked ? [{ unit: unit.value, start: start.value, end: end.value,
+        people: people.value ? Number(people.value) : null, status: status.value, id: bookingId.value.trim() }] : [],
+    };
+    try {
+      const r = await api("/api/promote", body);
+      clear(slot, el("div", { class: "detail" },
+        el("p", {}, el("strong", { text: r.written ? `Saved as fixtures/extra/${r.file}` : `${r.file} is ready` }),
+          r.written ? "" : " (this server keeps no files: download it into fixtures/extra)."),
+        r.written ? null : el("p", {}, el("a", { href: URL.createObjectURL(new Blob([r.yaml], { type: "text/yaml" })), download: r.file, text: `Download ${r.file}` })),
+        el("p", { class: "muted" }, "Run it three times: ", el("code", { text: `cd python && ${r.run}` })),
+        el("p", { class: "muted" }, "Then the whole gate: ", el("code", { text: "make gate" }), ". Red until fixed; green, and it guards from then on.")));
+    } catch (err) {
+      clear(out, el("p", { class: "error-line", role: "alert", text: err.message }));
+    }
+  });
+  return form;
 }
 
 // ---- Fleet ----

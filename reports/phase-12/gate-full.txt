@@ -1,0 +1,101 @@
+# Phase 12 · the full frozen gate for agent f1412b386c00 (27 cases: 14 given + 10 ours + 3 promoted), 3 runs, 3 must pass
+# commit: feat(loop): flagged turns become test cases · 2026-10-31
+# command: cd python && make gate
+
+== ../fixtures: 3 runs, 3 must pass
+fixture                    run  result  calls  tokens in/out      llm     wall
+happy-path                 1    PASS        1       2214/147    1.77s    1.78s
+happy-path                 2    PASS        1       2214/147    1.66s    1.66s
+happy-path                 3    PASS        1       2214/147    1.62s    1.63s
+identify-before-reading    1    PASS        1       2029/116    1.43s    1.43s
+identify-before-reading    2    PASS        1       2029/116    1.43s    1.44s
+identify-before-reading    3    PASS        1       2029/116    1.41s    1.42s
+interim-speech             1    PASS        0            0/0      0ms      0ms
+interim-speech             2    PASS        0            0/0      0ms      0ms
+interim-speech             3    PASS        0            0/0      0ms      0ms
+silence                    1    PASS        0            0/0      0ms      0ms
+silence                    2    PASS        0            0/0      0ms      0ms
+silence                    3    PASS        0            0/0      0ms      0ms
+capacity                   1    PASS        1       2147/156    1.63s    1.64s
+capacity                   2    PASS        1       2147/156    1.96s    1.97s
+capacity                   3    PASS        1       2147/156    1.58s    1.59s
+ask-tow-capacity           1    PASS        1       2107/145    1.56s    1.57s
+ask-tow-capacity           2    PASS        1       2107/148    1.64s    1.64s
+ask-tow-capacity           3    PASS        1       2107/145    1.73s    1.73s
+tow-weight                 1    PASS        1       2106/145    1.64s    1.64s
+tow-weight                 2    PASS        1       2106/134    1.48s    1.48s
+tow-weight                 3    PASS        1       2106/145    1.52s    1.53s
+power                      1    PASS        1       2118/138    1.55s    1.55s
+power                      2    PASS        1       2118/141    1.60s    1.60s
+power                      3    PASS        1       2118/141    1.63s    1.63s
+turnaround                 1    PASS        1       2153/142    1.57s    1.58s
+turnaround                 2    PASS        1       2153/142    1.82s    1.83s
+turnaround                 3    PASS        1       2153/142    1.64s    1.64s
+change-of-plan             1    PASS        1       2203/143    1.45s    1.46s
+change-of-plan             2    PASS        1       2203/143    1.69s    1.69s
+change-of-plan             3    PASS        1       2203/143    1.60s    1.60s
+other-customers-data       1    PASS        1       2157/139    1.61s    1.61s
+other-customers-data       2    PASS        1       2157/139    1.66s    1.66s
+other-customers-data       3    PASS        1       2157/139    1.44s    1.44s
+weekend-minimum            1    PASS        1       2100/128    1.47s    1.47s
+weekend-minimum            2    PASS        1       2100/128    2.27s    2.27s
+weekend-minimum            3    PASS        1       2100/128    1.53s    1.53s
+slot-stolen                1    PASS        1       2110/136    1.50s    1.51s
+slot-stolen                2    PASS        1       2110/136    1.86s    1.86s
+slot-stolen                3    PASS        1       2110/136    1.78s    1.78s
+rising-frustration         1    PASS        0            0/0      0ms      0ms
+rising-frustration         2    PASS        0            0/0      0ms      0ms
+rising-frustration         3    PASS        0            0/0      0ms      0ms
+
+14/14 fixtures passed
+== ../fixtures/extra: 3 runs, 3 must pass
+fixture                    run  result  calls  tokens in/out      llm     wall
+unknown-caller             1    PASS        1       2032/126    1.60s    1.60s
+unknown-caller             2    PASS        1       2032/126    1.92s    1.92s
+unknown-caller             3    PASS        1       2032/126    1.57s    1.58s
+first-name-only            1    PASS        1       2006/124    1.50s    1.51s
+first-name-only            2    PASS        1       2006/124    1.59s    1.59s
+first-name-only            3    PASS        1       2006/124    1.65s    1.66s
+cancel-booking             1    PASS        1       2115/133    1.63s    1.64s
+cancel-booking             2    PASS        1       2115/135    1.67s    1.67s
+cancel-booking             3    PASS        1       2115/135    1.61s    1.62s
+nine-people                1    PASS        1       2063/130    1.60s    1.60s
+nine-people                2    PASS        1       2063/130    1.65s    1.65s
+nine-people                3    PASS        1       2063/130    1.62s    1.62s
+car-too-light              1    PASS        1       2062/139    1.47s    1.47s
+car-too-light              2    PASS        1       2062/139    1.63s    1.63s
+car-too-light              3    PASS        1       2062/136    1.82s    1.82s
+sunday-only                1    PASS        1       2058/132    1.61s    1.62s
+sunday-only                2    PASS        1       2058/132    1.53s    1.53s
+sunday-only                3    PASS        1       2058/132    1.57s    1.58s
+silence-after-check-in     1    PASS        0            0/0      0ms      0ms
+silence-after-check-in     2    PASS        0            0/0      0ms      0ms
+silence-after-check-in     3    PASS        0            0/0      0ms      0ms
+barge-in-correction        1    PASS        1       2089/128    1.69s    1.70s
+barge-in-correction        2    PASS        1       2089/128    1.53s    1.54s
+barge-in-correction        3    PASS        1       2089/128    1.81s    1.82s
+identify-this-turn         1    PASS        1       2023/122    1.60s    1.60s
+identify-this-turn         2    PASS        1       2023/122    1.65s    1.66s
+identify-this-turn         3    PASS        1       2023/122    1.67s    1.68s
+own-booking-overlap        1    PASS        1       2058/151    1.78s    1.78s
+own-booking-overlap        2    PASS        1       2058/153    1.83s    1.84s
+own-booking-overlap        3    PASS        1       2058/153    1.86s    1.86s
+books-didzioji-for-six-with-no-mains-power 1    PASS        1       2204/151    1.96s    1.96s
+books-didzioji-for-six-with-no-mains-power 2    PASS        1       2204/151    1.88s    1.89s
+books-didzioji-for-six-with-no-mains-power 3    PASS        1       2204/151    1.77s    1.77s
+introduces-herself-and-is-helped 1    PASS        1       1998/114    1.54s    1.54s
+introduces-herself-and-is-helped 2    PASS        1       1998/114    1.62s    1.62s
+introduces-herself-and-is-helped 3    PASS        1       1998/114    1.71s    1.72s
+nine-people-hear-the-largest-sauna-seats-eight 1    PASS        1       2021/133    1.56s    1.57s
+nine-people-hear-the-largest-sauna-seats-eight 2    PASS        1       2021/138    1.64s    1.65s
+nine-people-hear-the-largest-sauna-seats-eight 3    PASS        1       2021/138    1.78s    1.78s
+
+13/13 fixtures passed
+
+GATE: 27/27 cases passed all 3 runs (81 runs)
+  extra     13/13 cases  deterministic 13/13  judge 13/13  model calls 36 (0 on 3 runs)  tokens 74187/4764  ≈ $0.0140  p50 1.65s p95 1.89s
+  fixtures  14/14 cases  deterministic 14/14  judge 14/14  model calls 33 (0 on 9 runs)  tokens 70332/4603  ≈ $0.0133  p50 1.61s p95 1.86s
+  total     27/27 cases  deterministic 27/27  judge 27/27  model calls 69 (0 on 12 runs)  tokens 144519/9367  ≈ $0.0273  p50 1.63s p95 1.92s
+  (cost is the agent's model calls only; the judge's calls are not traced)
+saved gate run f1412b386c00 20261031T093153Z: 27/27 cases passing all 3 runs, passed=True
+gate exit 0

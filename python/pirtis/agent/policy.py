@@ -38,7 +38,7 @@ from pirtis.transcript.types import Transcript
 @dataclass(frozen=True)
 class Ask:
     """Ask for one missing detail: name, dates, people, tow, power, which_booking or
-    new_dates."""
+    new_dates; or, for a caller who only greeted us, what they need."""
 
     slot: str
 
@@ -209,6 +209,8 @@ def next_step(t: Transcript, s: CallState, api: ApiClient, units: list[Unit]) ->
         customer = found.customer_id
 
     match s.intent:
+        case "greeting":  # identified, and nothing asked yet
+            return Ask("need")
         case "check_booking":
             own = upcoming(own_bookings(api, customer), today)
             return BookingsRead(tuple((b, by_id[b.unit_id]) for b in own))
@@ -222,6 +224,9 @@ def next_step(t: Transcript, s: CallState, api: ApiClient, units: list[Unit]) ->
 def book(
     t: Transcript, s: CallState, api: ApiClient, customer: str, units: list[Unit], today: date
 ) -> Decision:
+    biggest = max(u.capacity for u in units)
+    if s.people is not None and s.people > biggest:  # no sauna fits: say so before any question
+        return NoFit("too_many", limit=biggest)
     if s.start is None:
         return Ask("dates")
     if s.people is None:
@@ -452,8 +457,8 @@ def choose_offer(
         return NoFit("too_light", lightest)
 
     fitting = [u for u in units if not hard_limit(u, r)]
-    if r.heater_hard:
-        fitting = [u for u in fitting if u.heater == r.heater]
+    if r.heater_hard:  # never filters out a must-have unit: the caller named that one
+        fitting = [u for u in fitting if u.heater == r.heater or (r.must and u.id == r.unit)]
     if not fitting:
         return NoFit("nothing_fits")
     fitting.sort(key=lambda u: (r.heater is not None and u.heater != r.heater, u.capacity))

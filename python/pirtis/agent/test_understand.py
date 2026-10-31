@@ -18,6 +18,7 @@ from pirtis.agent.understand import (
     quote_supported,
     render_transcript,
     strict_schema,
+    system_prompt,
 )
 from pirtis.api.memory import Memory, load_seed
 from pirtis.harness.fixture import load_fixtures
@@ -50,6 +51,9 @@ def test_schema_puts_evidence_before_values_and_consent_last() -> None:
     order = list(strict_schema(CallState)["properties"])
     assert order[0] == "gist"
     assert order.index("tow_quote") < order.index("tow_kg")
+    # the reason is the evidence for the heater: "the wood smoke sets off my asthma" read
+    # before it was written down made the model choose wood (gate run of a59a54c41e20)
+    assert order.index("heater_reason") < order.index("heater_pref")
     assert order[-2:] == ["accepted_offer", "go_ahead"]
 
 
@@ -203,3 +207,17 @@ def test_booking_notes_carry_units_and_dates_only() -> None:
     notes = render_transcript(cancel.transcript)
     assert "bookings: bk_77 unit_vidutine 2026-09-30 to 2026-10-02 booked" in notes
     assert "power" not in notes and "tow_capacity" not in notes
+
+
+def test_giving_your_own_name_is_a_greeting_never_someone_elses_details() -> None:
+    """Promoted case 61: the model read "Hi, it's Rasa Paulauskienė" as a question about
+    another customer. A greeting intent exists, and the definitions say which is which."""
+    described = CallState.model_fields["intent"].description or ""
+    assert "greeting" in described and "own name" in described
+    assert state(intent="greeting").intent == "greeting"
+
+
+def test_a_heater_that_is_a_problem_means_the_other_kind() -> None:
+    """Gate run of a59a54c41e20: "the wood smoke sets off my asthma" was read as wood."""
+    described = CallState.model_fields["heater_pref"].description or ""
+    assert "the other" in described and "the other kind" in system_prompt(UNITS)

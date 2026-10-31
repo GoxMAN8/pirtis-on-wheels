@@ -1,0 +1,54 @@
+# Phase 12 · the loop's runs, summarised from the harness's own trace files
+# commit: feat(loop): flagged turns become test cases · 2026-10-31
+# command per stage: uv run harness --fixtures ../fixtures/extra --id <case> --runs 3 --need 3 [-v] --trace runs/<stage>
+
+== 60 · the regression guard, first run after promotion (agent 8a552e2b0636)
+  books-didzioji-for-six-with-no-mains-power run 1: PASS · agent 8a552e2b0636 · Booked (book)
+    said: That's booked: Didžioji, Saturday the tenth to Sunday the eleventh of October, for six people. The total is four hundred and twenty euros, and I'll text you the details.
+  books-didzioji-for-six-with-no-mains-power run 2: PASS · agent 8a552e2b0636 · Booked (book)
+    said: That's booked: Didžioji, Saturday the tenth to Sunday the eleventh of October, for six people. The total is four hundred and twenty euros, and I'll text you the details.
+  books-didzioji-for-six-with-no-mains-power run 3: PASS · agent 8a552e2b0636 · Booked (book)
+    said: That's booked: Didžioji, Saturday the tenth to Sunday the eleventh of October, for six people. The total is four hundred and twenty euros, and I'll text you the details.
+
+== 61 and 62 · red on the agent that got them wrong (8a552e2b0636), first wording of 61
+  introduces-herself-and-is-helped run 1: PASS · agent 8a552e2b0636 · Refuse (other_customer_info)
+    said: I'm sorry, I can't share anything about other customers' bookings or their details. Is there anything else I can help with?
+  introduces-herself-and-is-helped run 2: PASS · agent 8a552e2b0636 · Refuse (other_customer_info)
+    said: I'm sorry, I can't share anything about other customers' bookings or their details. Is there anything else I can help with?
+  introduces-herself-and-is-helped run 3: PASS · agent 8a552e2b0636 · Refuse (other_customer_info)
+    said: I'm sorry, I can't share anything about other customers' bookings or their details. Is there anything else I can help with?
+  nine-people-hear-the-largest-sauna-seats-eight run 1: FAIL · agent 8a552e2b0636 · Ask (book)
+    said: What car will you tow it with, and how much can it tow, braked?
+    failure: judge: The reply tells the caller that the largest sauna takes eight people.: The reply does not mention the capacity of the sauna, which is crucial information for the caller.
+  nine-people-hear-the-largest-sauna-seats-eight run 2: FAIL · agent 8a552e2b0636 · Ask (book)
+    said: What car will you tow it with, and how much can it tow, braked?
+    failure: judge: The reply tells the caller that the largest sauna takes eight people.: The reply does not mention the capacity of the sauna, which is crucial information for the caller.
+  nine-people-hear-the-largest-sauna-seats-eight run 3: FAIL · agent 8a552e2b0636 · Ask (book)
+    said: What car will you tow it with, and how much can it tow, braked?
+    failure: judge: The reply tells the caller that the largest sauna takes eight people.: The reply does not mention the capacity of the sauna, which is crucial information for the caller.
+
+== 61 · red again after its judge statement was sharpened (8a552e2b0636)
+  introduces-herself-and-is-helped run 1: FAIL · agent 8a552e2b0636 · Refuse (other_customer_info)
+    said: I'm sorry, I can't share anything about other customers' bookings or their details. Is there anything else I can help with?
+    failure: judge: Every sentence of the reply is about helping the caller herself.: The first sentence does not help the caller directly, as it addresses a policy rather than her needs.
+  introduces-herself-and-is-helped run 2: FAIL · agent 8a552e2b0636 · Refuse (other_customer_info)
+    said: I'm sorry, I can't share anything about other customers' bookings or their details. Is there anything else I can help with?
+    failure: judge: Every sentence of the reply is about helping the caller herself.: The first sentence addresses a policy about confidentiality rather than helping the caller directly, which does not fulfill the criterion.
+  introduces-herself-and-is-helped run 3: FAIL · agent 8a552e2b0636 · Refuse (other_customer_info)
+    said: I'm sorry, I can't share anything about other customers' bookings or their details. Is there anything else I can help with?
+    failure: judge: Every sentence of the reply is about helping the caller herself.: The first sentence addresses a policy rather than helping the caller directly, which does not fulfill the criterion.
+
+== 61 and 62 · green after the fix (a59a54c41e20)
+  introduces-herself-and-is-helped run 1: PASS · agent a59a54c41e20 · Ask (greeting)
+    said: Thanks, I have your details. What can I do for you today?
+  introduces-herself-and-is-helped run 2: PASS · agent a59a54c41e20 · Ask (greeting)
+    said: Thanks, I have your details. What can I do for you today?
+  introduces-herself-and-is-helped run 3: PASS · agent a59a54c41e20 · Ask (greeting)
+    said: Thanks, I have your details. What can I do for you today?
+  nine-people-hear-the-largest-sauna-seats-eight run 1: PASS · agent a59a54c41e20 · NoFit (book)
+    said: I'm sorry, our biggest sauna takes eight people, so none of them can take that many. Could you make it fewer?
+  nine-people-hear-the-largest-sauna-seats-eight run 2: PASS · agent a59a54c41e20 · NoFit (book)
+    said: I'm sorry, our biggest sauna takes eight people, so none of them can take that many. Could you make it fewer?
+  nine-people-hear-the-largest-sauna-seats-eight run 3: PASS · agent a59a54c41e20 · NoFit (book)
+    said: I'm sorry, our biggest sauna takes eight people, so none of them can take that many. Could you make it fewer?
+

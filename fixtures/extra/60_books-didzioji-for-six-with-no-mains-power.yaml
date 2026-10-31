@@ -1,0 +1,106 @@
+# Promoted by a reviewer from feedback on turn ed072fbf71b024bb
+# (agent 8a552e2b0636, 2026-10-31): Books Didzioji for six with no mains power.
+# Why: Regression guard from a live call: a booking over four turns with no mains power, so the electric Vidutinė is ruled out.
+id: books-didzioji-for-six-with-no-mains-power
+expect:
+  action: say
+  bookings:
+  - unit: unit_didzioji
+    start: '2026-10-10'
+    end: '2026-10-11'
+    people: 6
+    status: booked
+transcript:
+  call_id: case_books-didzioji-for-six-with-no-mains-power
+  today: '2026-09-28'
+  now: 46.2
+  caller:
+    phone: '+37062223344'
+  items:
+  - type: message
+    role: assistant
+    start: 0.5
+    end: 2.4
+    content: Pirtis on Wheels, hello?
+    interrupted: false
+  - type: message
+    role: user
+    start: 2.8
+    end: 10.4
+    content: Hi, it's Jonas Jonaitis. Could we get a sauna for the weekend after next, there'll be six of us?
+    is_final: true
+    speech_final: true
+    confidence: 0.95
+  - type: function_call
+    call_id: c1
+    name: customers.identify
+    arguments: '{"phone": "+37062223344", "name": "Jonas Jonaitis"}'
+    start: 10.9
+  - type: function_call_output
+    call_id: c1
+    output: '{"ok": true, "customer_id": "cus_07"}'
+    end: 11.1
+  - type: message
+    role: assistant
+    start: 11.5
+    end: 17.1
+    content: What car will you tow it with, and how much can it tow, braked?
+    interrupted: false
+  - type: message
+    role: user
+    start: 17.5
+    end: 22.7
+    content: It's a Volvo, it can tow about two and a half tonnes braked.
+    is_final: true
+    speech_final: true
+    confidence: 0.95
+  - type: function_call
+    call_id: c2
+    name: bookings.list
+    arguments: '{"customer_id": "cus_07"}'
+    start: 23.2
+  - type: function_call_output
+    call_id: c2
+    output: '[{"customer_id": "cus_07", "unit_id": "unit_mazoji", "start": "2026-10-17", "end": "2026-10-18", "people": 4, "site": {"power_available": true}, "tow_capacity_kg": 2000, "id": "bk_65", "version": 1, "status": "booked", "total": 240}]'
+    end: 23.4
+  - type: message
+    role: assistant
+    start: 23.8
+    end: 27.4
+    content: Is there mains power where the sauna is going?
+    interrupted: false
+  - type: message
+    role: user
+    start: 27.8
+    end: 32.2
+    content: No, it's a field at our summer place, no power there.
+    is_final: true
+    speech_final: true
+    confidence: 0.95
+  - type: function_call
+    call_id: c3
+    name: bookings.list
+    arguments: '{"customer_id": "cus_07"}'
+    start: 32.7
+  - type: function_call_output
+    call_id: c3
+    output: '[{"customer_id": "cus_07", "unit_id": "unit_mazoji", "start": "2026-10-17", "end": "2026-10-18", "people": 4, "site": {"power_available": true}, "tow_capacity_kg": 2000, "id": "bk_65", "version": 1, "status": "booked", "total": 240}]'
+    end: 32.900000000000006
+  - type: message
+    role: assistant
+    start: 33.3
+    end: 43.7
+    content: I can offer Didžioji, Saturday the tenth to Sunday the eleventh of October, for six people. That's four hundred and twenty euros. Shall I book it?
+    interrupted: false
+  - type: message
+    role: user
+    start: 44.1
+    end: 45.7
+    content: Yes please, book it.
+    is_final: true
+    speech_final: true
+    confidence: 0.95
+judge:
+- The reply confirms that Didžioji is booked for Saturday the tenth to Sunday the eleventh of October.
+- The reply says the details will follow in a text message.
+- The only sauna the reply names is Didžioji.

@@ -1369,3 +1369,184 @@ through a human form:
 
 Then the loop runs red → fix → green, with its commands in SPEC §11. Zero tokens, apart
 from one gate run on the promoted case.
+
+---
+
+## Phase 12 — the improvement loop, built and run on real defects
+
+**Date:** 2026-10-31
+**Goal:** a caller's bad experience becomes a test case through a person, the case goes
+red, the agent is fixed, and the case keeps it fixed. Nothing promotes itself.
+
+**Headline: the loop ran end to end on two real defects found by exploring the
+playground. The frozen gate now holds 27 cases (14 given + 10 ours + 3 promoted) and
+passes all of them, 81/81 runs; the extractor eval is 23/23.** On the way, the fix
+introduced a regression that the extractor eval caught and the gate blocked. A wood
+sauna was offered to a caller with asthma; it never shipped.
+
+### How it was built
+- **Promotion, test-first:**
+  - `test_promote.py` was written before `promote.py`. It covers:
+    - a promoted turn is a fixture the kit loads
+    - the case replays what happened
+    - a corrected expectation turns it red
+    - earlier bookings are set up under free ids
+    - a turn after a cancellation is refused
+    - seed people only
+    - numbering from 60, never overwriting
+    - download-only mode
+  - Then `promote.py`, the endpoint and the form.
+  - **Test-data mistakes on the way:**
+    - My example "phone number in the caller's words" ended in a real seed phone's
+      digits, so it would have passed the check.
+    - A cancellation used version 1 of a booking that is at version 2.
+  - **A real gap the tests caught:** a name given on the promoted turn itself wasn't
+    checked. The identify call that carried it belongs to that turn, not to the
+    transcript before it.
+- **The loop, run in the browser and through the playground's API:**
+  1. **A regression guard.** The 👍 on Phase 11's live booking was saved through the
+     form as case 60. It passed 3/3 at once, judge included.
+  2. **Exploration.** Four live calls: a move, a price question, a hedged group size,
+     a status check. They found two defects (`live-exploration.txt`).
+     - Rasa saying "Hi, it's Rasa Paulauskienė" got the privacy refusal meant for
+       questions about other customers.
+     - "Eight of us, maybe nine": the model rightly took 9, but the policy only checks
+       the catalogue's limits at search time, so it asked about the car.
+  3. **Flag and promote.** Both were flagged and promoted as cases 61 and 62.
+  4. **Red, and a case that first wasn't one.** Case 62 failed 3/3. Case 61 *passed*
+     on the agent that got it wrong: my judge statement ("invites the caller to say
+     what she needs") accepted the refusal's closing "anything else I can help with?".
+     I sharpened it to "Every sentence of the reply is about helping the caller
+     herself" and it failed 3/3, for the right reason. A case that passes on the broken
+     agent isn't a test yet, so SPEC §11 now says to check for that.
+  5. **Fix, test-first.**
+     - **D-67:** a `greeting` intent. Its definition and that of "other customer" say
+       that giving your own name is a greeting. A greeting is identified, then asked
+       "Thanks, I have your details. What can I do for you today?".
+     - **D-68:** a group larger than the biggest sauna hears so as soon as its size is
+       known.
+     - Six failing tests first: three policy, one speech (plus the new line in the
+       voice-rule check), and the understanding test.
+  6. **Re-measure, and a regression.** The new intent text shifted the model at
+     temperature 0. "The wood smoke sets off my asthma" became a wish for wood.
+     - The extractor eval showed it: turnaround `heater_pref=wood`, 3/3.
+     - The gate, already running, failed 26/27. Turnaround offered Didžioji, a wood
+       sauna, to the asthmatic caller.
+     - Two layers let it through: the misreading, and the heater filter removing the
+       must-have Vidutinė, so the policy offered the next sauna.
+  7. **Fix the regression (D-69):**
+     - **The policy:** a must-have sauna is never removed by a heater filter.
+     - **A heater rule in the prompt.** On its own it didn't move the model: 22/23.
+     - **The cause:** `heater_pref` was written before `heater_reason`, so the model
+       chose the heater before writing down why. With the reason first, as D-33
+       already does for quotes, turnaround reads electric 3/3.
+     - Each layer got a failing test first.
+  8. **Green.**
+     - The extractor eval: 23/23, every field 100%.
+     - The full gate for `f1412b386c00`: 27/27 cases, 81/81 runs, deterministic and
+       judge 27/27.
+     - Both gate runs, failed and passed, are saved in the Reliability view's history.
+- **A test that counted instead of checked (D-70).** "There is gold for every fixture
+  the model sees" asserted `len == 20`. That hid that case 60 had no gold, so the
+  extractor eval had silently stopped covering it. It now compares the gold set with
+  every suite.
+
+### What was built
+- **`pirtis/playground/promote.py`:**
+  - `build`: the call as decide saw it at that turn
+  - `world_before`: replays the call's writes, sets up bookings it made under free ids
+    below 100, and refuses after a cancellation
+  - `seed_only`: the D-39 checks
+  - `save`: from 60, exclusive create, ids unique across the suites
+  - every case is read back by the kit's loader before it's kept
+- **`POST /api/promote`:**
+  - refuses (409) until the turn has been rated or flagged
+  - requires the reviewer's confirmation
+  - writes to `PIRTIS_PROMOTE_DIR` (default `fixtures/extra`; empty means download-only,
+    for the cloud)
+  - marks the feedback as promoted and refreshes the replay list
+- **The admin console's Feedback view:** *Save as test case* on every rated line, a
+  form with:
+  - title
+  - action, pre-filled from what the agent did
+  - an optional booking change
+  - judge statements
+  - why
+  - the confirmation
+  - then the exact commands to run the case, or a download in the cloud. Promoted
+    lines show their case.
+- **`calls.py`:** `replay_writes` and `seen_at` shared with promotion and the trace;
+  rounded output times.
+- **The agent (`understand.py`, `policy.py`, `speech.py`):** D-67, D-68 and D-69.
+  `agent_version` went 8a552e2b0636 → a59a54c41e20 (failed the gate) → 5bda63c22794
+  (never gated; its extractor eval was 22/23) → **f1412b386c00**.
+- **`fixtures/extra/60–62` and their gold states.**
+- **Tests:** 36 new, 468 in total.
+
+### Commands and results
+| Command | Result |
+|---|---|
+| tests before the code | `promote` missing; then 6 red agent tests before the fix, 2 before the regression fix |
+| case 60, 3 runs (8a552e2b0636) | 3/3, judge included |
+| cases 61 and 62, 3 runs each (8a552e2b0636) | 62 red 0/3; 61 green 3/3 with the first wording (not a test yet), red 0/3 after sharpening |
+| cases 61 and 62 (a59a54c41e20) | green 3/3 each |
+| `make eval-extract` (a59a54c41e20) | 20/23: turnaround heater misread, two gold errors of mine |
+| `make gate` (a59a54c41e20) | **failed 26/27**: turnaround judge 0/3 |
+| `make eval-extract` (5bda63c22794) | 22/23: the heater rule alone didn't fix it |
+| `make eval-extract` (f1412b386c00) | **23/23**, every field 100% |
+| **`make gate` (f1412b386c00)** | **27/27 cases, 81/81 runs; deterministic 27/27, judge 27/27**; 69 model calls (0 on 12 runs); p50 1.63 s, p95 1.92 s |
+| `make check` | ruff and strict mypy clean (40 files), **468 tests passed** |
+
+**Reports:** `reports/phase-12/`
+- `loop-runs.txt`: every case run, from the traces, red and green
+- `live-exploration.txt`
+- `gate-a59a54c41e20-failed.txt`, `gate-full.txt`, `gate-summary.json`
+- `eval.txt`, `eval.json`, `pytest.txt`
+- `screens/`: the form, filled, saved, and the queue with promoted cases
+
+### Decisions
+- **D-66:** the promotion rules (seed people only, free ids, loader check, never
+  overwrite, download in the cloud).
+- **D-67:** the `greeting` intent.
+- **D-68:** the capacity limit is said at once.
+- **D-69:** a must-have survives heater filtering, and the heater reason comes before
+  the heater.
+- **D-70:** gold for every fixture the model sees, checked against the suites.
+
+### Deviations from the plan
+- **The plan's loop was promote → red → fix; here a guard (case 60) entered green.**
+  A 👍 is promotable too: it keeps a right answer right.
+- **The flagged "ask car and power together" was reviewed and not promoted:** it
+  contradicts the one-question-per-turn voice rule (D-09, §5). A reviewer decides;
+  nothing promotes itself.
+- **Agent changes in a phase planned as tooling:** that is what the loop is for. Every
+  change went through failing tests, the extractor eval and the full gate.
+
+### Spend
+≈ $0.14 this phase:
+- 3 extractor evals
+- 2 full gates with the judge
+- the case runs
+- exploration
+
+≈ $0.45 in total of the $6.
+
+### Open issues and risks
+- **Prompt wording is fragile at temperature 0:** an unrelated definition moved a
+  heater reading. The extractor eval and the gate are what catch this, so neither may
+  be skipped for a "small" prompt change. D-69's code-level backstop means the same
+  misreading can no longer reach a caller with a must-have sauna.
+- **The seed-only check is a floor, not a guarantee:** a first name never sent to
+  identify passes it. The reviewer's confirmation covers that.
+- **Cancellations can't start a case yet:** the kit's setup only adds booked rows.
+
+### What the next phase needs from you
+The go-ahead for **Phase 13: expanded testing**:
+- metamorphic variants with the API as the oracle
+- hidden-style cases 30–41 and red-team cases 50–56
+- the human evaluation (scenario cards, ratings in a new admin view)
+- judge calibration against the ratings (κ)
+- a k = 5 reliability curve
+
+The human evaluation needs you, and optionally up to two others, for 30–45 minutes
+each in the caller simulator.

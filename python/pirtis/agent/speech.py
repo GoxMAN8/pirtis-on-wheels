@@ -63,6 +63,7 @@ QUESTIONS = {
     "power": "Is there mains power where the sauna is going?",
     "which_booking": "Which of your bookings do you mean? The dates are enough.",
     "new_dates": "Which dates would you like to move it to?",
+    "need": "Thanks, I have your details. What can I do for you today?",
 }
 
 HANDOFF_LINES = {

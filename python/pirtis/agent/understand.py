@@ -38,6 +38,7 @@ class CallState(BaseModel):
 
     gist: str = Field(description="At most 15 words: what the caller wants in their latest turn.")
     intent: Literal[
+        "greeting",
         "book",
         "change",
         "cancel",
@@ -50,10 +51,12 @@ class CallState(BaseModel):
         "smalltalk",
         "unclear",
     ] = Field(
-        description="What the caller wants now. book: rent a sauna. change: move or change "
-        "their existing booking. cancel: cancel their existing booking. check_booking: ask "
-        "about their own booking. price: ask what something costs. other_customer_info: ask "
-        "who has a booking or for someone else's details. human: ask for a person. goodbye: "
+        description="What the caller wants now. greeting: they only said hello or gave "
+        "their own name, and haven't asked for anything yet. book: rent a sauna. change: move "
+        "or change their existing booking. cancel: cancel their existing booking. "
+        "check_booking: ask about their own booking. price: ask what something costs. "
+        "other_customer_info: ask who has a booking, or for another person's details; giving "
+        "your own name is never this. human: ask for a person. goodbye: "
         "end the call. hold: ask us to wait a moment. smalltalk: anything else we can answer "
         "briefly. unclear: you cannot tell."
     )
@@ -101,12 +104,13 @@ class CallState(BaseModel):
         description="True only if the caller said they cannot take another sauna: 'it has to "
         "be that one', or a health reason. Naming or wanting a sauna is false."
     )
-    heater_pref: str | None = Field(
-        description="The heater type the caller asked for, if they said ('the wood one')."
-    )
     heater_reason: str | None = Field(
-        description="The caller's reason for that heater, if they gave one, in their words "
+        description="The caller's reason for wanting or avoiding a heater, in their words "
         "(e.g. 'the wood smoke sets off my asthma'). Null otherwise."
+    )
+    heater_pref: str | None = Field(
+        description="The heater type the caller wants, if they said ('the wood one'). If "
+        "they say one kind is a problem for them, it is the other kind."
     )
     answer: str | None = Field(
         description="Only for smalltalk: one or two short sentences answering the caller, "
@@ -302,6 +306,8 @@ caravan" is not a number.
 The sauna: record one only if the caller named or described it ("the big one", "the electric \
 six seater"). Never choose one for them. It is a must only if they said they cannot take \
 another, for example "it has to be that one" or a health reason; wanting one is not a must.
+Heater: record the kind of heater the caller wants. When they say one kind is a problem \
+for them (its smoke, their asthma), they want the other kind.
 Names: copy the name exactly as said, keeping letters like ė, ž, š, and join spelled-out \
 letters. A first name alone is recorded as said.
 """

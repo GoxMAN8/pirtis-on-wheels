@@ -48,8 +48,17 @@ class Client:
         return self.call("POST", path, body)
 
 
-def serve(tmp_path: Path, llm: Fake, rate: int = 100) -> Iterator[Client]:
-    srv = make_server(FileStore(tmp_path), llm, host="127.0.0.1", port=0, rate_per_min=rate)
+def serve(
+    tmp_path: Path, llm: Fake, rate: int = 100, promote_dir: Path | None = None
+) -> Iterator[Client]:
+    srv = make_server(
+        FileStore(tmp_path),
+        llm,
+        host="127.0.0.1",
+        port=0,
+        rate_per_min=rate,
+        promote_dir=promote_dir,
+    )
     th = threading.Thread(target=srv.serve_forever, daemon=True)
     th.start()
     try:
@@ -171,3 +180,45 @@ def test_personas_are_the_seed_customers_and_an_unknown_number(client: Client) -
     _, out = client.get("/api/personas")
     assert len(out["personas"]) == len(SEED_JSON["customers"]) + 1
     assert out["personas"][-1]["kind"] == "unknown"
+
+
+def test_a_reviewed_turn_is_saved_as_a_test_case(tmp_path: Path) -> None:
+    cases = tmp_path / "cases"
+    cases.mkdir()
+    (cases / "seeds").symlink_to(Path(__file__).resolve().parents[3] / "fixtures" / "seeds")
+    for c in serve(tmp_path / "data", scripted(T1, T2, T3, T4), promote_dir=cases):
+        sid = book(c)
+        _, view = c.get(f"/api/session/{sid}")
+        offer = next(s for s in view["steps"] if s["decision"] == "Offer")["turn_id"]
+        body = {
+            "session_id": sid,
+            "turn_id": offer,
+            "title": "Offers Mažoji for four",
+            "action": "say",
+            "judge": ["The reply offers Mažoji for the sixth and seventh of October."],
+            "confirm": True,
+        }
+        assert c.post("/api/promote", body)[0] == 409  # nobody has reviewed it yet
+        c.post("/api/feedback", {"session_id": sid, "turn_id": offer, "verdict": "up", "note": ""})
+        assert c.post("/api/promote", {**body, "confirm": False})[0] == 400
+        status, out = c.post("/api/promote", body)
+        assert status == 201 and out["file"] == "60_offers-mazoji-for-four.yaml"
+        assert (cases / out["file"]).read_text() == out["yaml"]
+        _, listed = c.get("/api/feedback")
+        assert listed["feedback"][0]["promoted_fixture"] == out["file"]
+        _, fixtures = c.get("/api/fixtures")
+        assert "offers-mazoji-for-four" in {f["id"] for f in fixtures["fixtures"]}
+        status, err = c.post("/api/promote", body)
+        assert status == 400 and "already" in err["error"]
+
+
+def test_without_a_folder_a_case_is_only_downloaded(tmp_path: Path) -> None:
+    for c in serve(tmp_path, scripted(T1, T2, T3, T4)):
+        sid = book(c)
+        _, view = c.get(f"/api/session/{sid}")
+        tid = view["steps"][-1]["turn_id"]
+        c.post("/api/feedback", {"session_id": sid, "turn_id": tid, "verdict": "up", "note": ""})
+        body = {"session_id": sid, "turn_id": tid, "title": "Books Mažoji", "action": "say",
+                "judge": ["The reply confirms the booking."], "confirm": True}  # fmt: skip
+        status, out = c.post("/api/promote", body)
+        assert status == 201 and out["written"] is False and out["yaml"].startswith("# Promoted")

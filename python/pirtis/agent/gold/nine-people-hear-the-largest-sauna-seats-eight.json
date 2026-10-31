@@ -1,0 +1,34 @@
+{
+  "fixture": "nine-people-hear-the-largest-sauna-seats-eight",
+  "suite": "extra",
+  "state": {
+    "gist": "",
+    "intent": "book",
+    "full_name": "Eglė Butkutė",
+    "people": 9,
+    "start": "2026-10-17",
+    "end": "2026-10-18",
+    "shift_days": null,
+    "change_target_start": null,
+    "tow_quote": null,
+    "tow_kg": null,
+    "power": null,
+    "unit_quote": null,
+    "unit": null,
+    "unit_is_must": false,
+    "heater_pref": null,
+    "heater_reason": null,
+    "answer": null,
+    "consent_quote": null,
+    "accepted_offer": false,
+    "go_ahead": false
+  },
+  "ignore": [
+    "gist",
+    "tow_quote",
+    "answer",
+    "unit_quote",
+    "consent_quote"
+  ],
+  "one_of": []
+}
