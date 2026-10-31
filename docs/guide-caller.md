@@ -16,16 +16,22 @@ python && make playground`, then open <http://127.0.0.1:8000>; no sign-in.
    - or **Unknown number**: a new caller, who should be put through to a colleague,
      since new customers can't sign up by phone
 2. **Speak or type.**
-   - **Type** in the box and press *Say it*. This always works.
-   - **Hold to talk** works in Chrome, Edge and Safari, not Firefox. Hold the button
-     (or Space) while you speak; let go to send. English only. Your browser sends your
-     voice to its own speech service, so type if you'd rather not.
+   - **Tap to talk:** tap the big button, speak, then tap it again to send. Your words
+     appear as you speak, with a timer. Or **hold** it while you speak and let go to
+     send. **Cancel** (or Esc) throws the line away. Works in Chrome, Edge and Safari,
+     not Firefox; English only. The first time, the browser asks for the microphone:
+     allow it, and keep talking.
+   - **Type** in the box under it and press *Say it*. This always works.
+   - Your browser sends your voice to its own speech service, so type if you'd rather
+     not.
    - **Check speech before sending:** tick it and what the browser heard goes into the
      box instead of straight to the receptionist. Fix any misheard word, then press
      *Say it*. Use it for names: the browser often drops Lithuanian letters ("Egle" for
      "Eglė"), and then the receptionist can't find the customer. The choice is
      remembered.
-   - **Replies are spoken aloud;** untick *Speak replies* to silence them.
+   - **Replies are spoken aloud;** untick *Speak replies* to silence them. Your own last
+     line stays above the receptionist's answer, and the answer dims while the next one
+     is on its way.
 3. **Watch the booking card.** Each detail comes out of the fog as the receptionist
    hears it: dates, number of people, the car's towing limit, power at the site, the
    sauna. **Hover over a detail** to see the words it came from. After a booking, a

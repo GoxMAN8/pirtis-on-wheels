@@ -92,8 +92,24 @@ function hush() {
   $("stove").classList.remove("speaking");
 }
 
-// ---- voice in: hold to talk, where the browser can listen ----
+// ---- voice in: tap to talk, or hold to talk, where the browser can listen ----
+// One button, two ways to use it, because people do both:
+// - a tap starts listening and leaves it on; a second tap sends
+// - a press held while speaking sends when it is let go
+// A press let go before the microphone has even started counts as a tap: the first
+// time, the browser asks for the microphone, and answering it means letting go.
+// The browser's recogniser also ends a session by itself after a pause; while the
+// caller still wants to talk it is started again, keeping what was heard.
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const TAP_MS = 350; // shorter than this is a tap, longer is a hold
+const RESTARTS = 6; // sessions the browser may end by itself before we stop too
+const FATAL = {
+  "not-allowed": "The browser blocked the microphone. Allow it in the site settings (the icon at the left of the address bar), then tap again. Or type below.",
+  "service-not-allowed": "The browser's speech service isn't allowed here (on a Mac, Safari needs Dictation turned on). Type below instead.",
+  "audio-capture": "No microphone was found. Plug one in, or type below.",
+  network: "The browser's speech service can't be reached. Type below instead.",
+  "language-not-supported": "This browser can't recognise English speech. Type below instead.",
+};
 let rec = null;
 let heard = "";
 let cutIn = false;
@@ -103,16 +119,31 @@ let cutIn = false;
 // was spoken over the receptionist still counts as cutting in.
 const REVIEW_KEY = "pirtis-review-speech";
 let pendingCutIn = false;
+const mic = { want: false, live: false, holding: false, latched: false, cancelled: false,
+  downAt: 0, startedAt: 0, restarts: 0, error: "", ignoreUp: false, timer: 0 };
 
 function listen() {
-  if (rec || S.busy || !S.call || S.call.status !== "open") return;
+  if (mic.want || S.busy || !S.call || S.call.status !== "open") return false;
   cutIn = "speechSynthesis" in window && speechSynthesis.speaking;
   hush();
   heard = "";
+  showError("");
+  Object.assign(mic, { want: true, live: false, latched: false, cancelled: false, startedAt: 0, restarts: 0, error: "" });
+  session();
+  setMic("starting");
+  return true;
+}
+
+function session() {
   rec = new Recognition();
   rec.lang = "en-GB";
   rec.interimResults = true;
   rec.continuous = true;
+  rec.onstart = () => {
+    mic.live = true;
+    if (!mic.startedAt) mic.startedAt = Date.now();
+    setMic("listening");
+  };
   rec.onresult = (e) => {
     let interim = "";
     for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -123,44 +154,109 @@ function listen() {
     $("interim").textContent = (heard + interim).trim();
   };
   rec.onerror = (e) => {
-    if (e.error !== "no-speech" && e.error !== "aborted") showError(`The microphone stopped: ${e.error}.`);
+    mic.error = e.error;
+    if (FATAL[e.error]) { mic.want = false; showError(FATAL[e.error]); }
   };
   rec.onend = () => {
     rec = null;
-    setListening(false);
-    const text = heard.trim();
-    if (!text) {
-      $("interim").textContent = "";
-    } else if ($("review").checked) {
-      pendingCutIn = cutIn;
-      $("text").value = text;
-      $("interim").textContent = "Check what was heard, fix any word, then press Say it.";
-      $("text").focus();
-      $("text").setSelectionRange(text.length, text.length);
-    } else {
-      send(text, cutIn);
-    }
+    if (mic.want && mic.restarts < RESTARTS) { mic.restarts += 1; session(); return; }
+    finish();
   };
-  rec.start();
-  setListening(true);
+  try {
+    rec.start();
+  } catch {
+    rec = null;
+    finish();
+  }
+}
+
+function finish() {
+  const text = mic.cancelled ? "" : heard.trim();
+  Object.assign(mic, { want: false, live: false, holding: false, latched: false });
+  setMic("idle");
+  if (!text) {
+    $("interim").textContent = mic.cancelled || FATAL[mic.error] ? "" : "Didn't catch anything. Tap and speak again, or type below.";
+  } else if ($("review").checked) {
+    pendingCutIn = cutIn;
+    $("text").value = text;
+    $("interim").textContent = "Check what was heard, fix any word, then press Say it.";
+    $("text").focus();
+    $("text").setSelectionRange(text.length, text.length);
+  } else {
+    send(text, cutIn);
+  }
 }
 
 function stopListening() {
+  if (!mic.want) return;
+  mic.want = false;
   if (rec) rec.stop();
+  else finish();
 }
 
-function setListening(on) {
+function cancelListening() {
+  if (!mic.want && !rec) return;
+  mic.cancelled = true;
+  mic.want = false;
+  if (rec) rec.abort();
+  else finish();
+}
+
+function setMic(state) {
+  const on = state !== "idle";
+  const verb = $("review").checked ? "check" : "send";
+  const label = {
+    idle: "Tap to talk",
+    starting: "Starting the microphone…",
+    listening: mic.holding ? `Listening · let go to ${verb}` : `Listening · tap to ${verb}`,
+  }[state];
+  $("talk").dataset.state = state;
   $("mic").setAttribute("aria-pressed", String(on));
-  $("mic").textContent = on ? `Listening… let go to ${$("review").checked ? "check" : "send"}` : "Hold to talk";
-  $("stove").classList.toggle("listening", on);
+  $("mic-label").textContent = label;
+  $("mic-cancel").hidden = !on;
+  $("mic-hint").textContent = on
+    ? (matchMedia("(pointer: coarse)").matches ? "Cancel throws it away." : "Esc or Cancel throws it away.")
+    : "Tap, speak, then tap again to send. Or hold it while you speak.";
+  $("stove").classList.toggle("listening", state === "listening");
   smoke.set(on ? 0.9 : 0.5);
+  clearInterval(mic.timer);
+  $("mic-time").hidden = state !== "listening";
+  if (state === "listening") {
+    const tick = () => {
+      const s = Math.floor((Date.now() - mic.startedAt) / 1000);
+      $("mic-time").textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+    };
+    tick();
+    mic.timer = setInterval(tick, 250);
+  }
+}
+
+// the press and the release, whether from a pointer or the keyboard
+function press() {
+  if (mic.want) { stopListening(); mic.ignoreUp = true; return; } // a tap while listening sends
+  if (!listen()) return;
+  mic.holding = true;
+  mic.downAt = Date.now();
+}
+
+function release() {
+  if (mic.ignoreUp) { mic.ignoreUp = false; return; }
+  if (!mic.holding) return;
+  mic.holding = false;
+  if (Date.now() - mic.downAt < TAP_MS || !mic.live) {
+    mic.latched = true; // a tap, or let go before the microphone was on: keep listening
+    if (mic.want) setMic(mic.live ? "listening" : "starting");
+    return;
+  }
+  stopListening(); // a hold: letting go sends
 }
 
 if (!Recognition) {
   $("mic").disabled = true;
-  $("mic").textContent = "No microphone here";
-  $("mic").title = "This browser can't listen. Type what you'd say instead.";
+  $("mic-label").textContent = "No microphone in this browser";
+  $("mic-hint").textContent = "This browser can't listen (Firefox can't). Type what you'd say below, or open the page in Chrome, Edge or Safari.";
   $("review-wrap").hidden = true;
+  $("send").classList.add("primary");
 } else {
   try {
     $("review").checked = localStorage.getItem(REVIEW_KEY) === "1";
@@ -169,14 +265,23 @@ if (!Recognition) {
     try { localStorage.setItem(REVIEW_KEY, $("review").checked ? "1" : "0"); } catch { /* not kept */ }
   });
   $("text").addEventListener("input", () => { if (!$("text").value.trim()) pendingCutIn = false; });
-  const mic = $("mic");
-  mic.addEventListener("pointerdown", (e) => { e.preventDefault(); listen(); });
-  mic.addEventListener("pointerup", stopListening);
-  mic.addEventListener("pointerleave", stopListening);
-  mic.addEventListener("keydown", (e) => {
-    if ((e.key === " " || e.key === "Enter") && !e.repeat) { e.preventDefault(); listen(); }
+  const btn = $("mic");
+  btn.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    e.preventDefault(); // no focus steal, no text selection, no long-press menu
+    try { btn.setPointerCapture(e.pointerId); } catch { /* the press still works */ }
+    press();
   });
-  mic.addEventListener("keyup", (e) => { if (e.key === " " || e.key === "Enter") stopListening(); });
+  btn.addEventListener("pointerup", release);
+  // the browser took the press away (a scroll, a system prompt): keep listening
+  btn.addEventListener("pointercancel", () => { mic.ignoreUp = false; if (mic.holding) { mic.holding = false; mic.latched = true; } });
+  btn.addEventListener("contextmenu", (e) => e.preventDefault());
+  btn.addEventListener("keydown", (e) => {
+    if ((e.key === " " || e.key === "Enter") && !e.repeat) { e.preventDefault(); press(); }
+  });
+  btn.addEventListener("keyup", (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); release(); } });
+  $("mic-cancel").addEventListener("click", cancelListening);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && mic.want) cancelListening(); });
 }
 
 // ---- the call ----
@@ -230,7 +335,8 @@ async function send(text, barge = false) {
   hush();
   S.busy = true;
   setBusy(true);
-  $("interim").textContent = `You: ${text}`;
+  showYou(text);
+  $("interim").textContent = "The receptionist is replying…";
   try {
     const view = await api("/api/turn", {
       session_id: S.call.session_id,
@@ -246,6 +352,8 @@ async function send(text, barge = false) {
     return true;
   } catch (e) {
     $("interim").textContent = "";
+    const said = S.call.items.filter((i) => i.role === "user"); // the line didn't arrive
+    showYou(said.length ? said[said.length - 1].content : "");
     showError(e.message);
     return false;
   } finally {
@@ -272,7 +380,14 @@ async function post(path, extra = {}) {
 
 function setBusy(on) {
   for (const id of ["send", "quiet", "hangup", "text"]) $(id).disabled = on;
+  if (Recognition) $("mic").disabled = on;
   $("stove").classList.toggle("thinking", on);
+  $("line").classList.toggle("stale", on);
+}
+
+function showYou(text) {
+  $("you-text").textContent = text || "";
+  $("you").hidden = !text;
 }
 
 function render(view) {
@@ -288,6 +403,8 @@ function render(view) {
 
   const ours = view.items.filter((i) => i.role === "assistant");
   const last = ours[ours.length - 1];
+  const yours = view.items.filter((i) => i.role === "user");
+  showYou(yours.length ? yours[yours.length - 1].content : "");
   clear($("line"),
     el("span", { class: "speaker", text: "Receptionist" }),
     last ? last.content + (last.interrupted ? " —" : "") : "");
@@ -613,7 +730,8 @@ async function boot() {
     clear($("personas"), personas.map((p) => el("li", {},
       el("button", { class: `persona ${p.kind}`, type: "button", onclick: () => { S.card = null; startCall(p); } },
         el("span", { class: "name", text: p.kind === "unknown" ? "Unknown number" : p.label }),
-        el("span", { class: "phone", text: p.kind === "unknown" ? "A number the rental has never seen" : `${p.phone} · on the books` })))));
+        el("span", { class: "phone", text: p.kind === "unknown" ? "A number the rental has never seen" : p.phone }),
+        p.kind === "unknown" ? null : el("span", { class: "phone", text: "on the books" })))));
     loadFixtures().catch(() => {});
     await loadCards().catch(() => {});
     const m = location.hash.match(/^#call=([\w-]+)(?:&card=([\w-]+))?$/);

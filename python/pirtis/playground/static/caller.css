@@ -57,13 +57,50 @@ main { max-width: 1240px; margin: 0 auto; padding: 0 24px 64px; }
 .stove.listening { opacity: 0.8; background: linear-gradient(90deg, transparent, var(--pass) 30%, var(--pass) 70%, transparent); }
 @keyframes coals { 50% { box-shadow: 0 0 26px 4px var(--ember); } }
 
+/* your last line, small, above the receptionist's answer */
+.you { margin: 0; color: var(--ink-2); font-size: 1rem; max-width: 52ch; }
+.you .speaker { display: block; font-size: 0.75rem; color: var(--muted); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 2px; }
+.line { transition: opacity 300ms ease; }
+.line.stale { opacity: 0.45; }  /* the answer to your last line is on its way */
+.stove.thinking {
+  opacity: 0.9; background-size: 200% 100%; animation: drift 1.1s linear infinite;
+  background-image: linear-gradient(90deg, transparent, var(--ember) 25%, transparent 50%, var(--ember) 75%, transparent);
+}
+@keyframes drift { to { background-position: -200% 0; } }
+
+/* talking: the main control. Tap to start and tap to send, or hold while speaking */
+.talk { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.mic {
+  display: inline-flex; align-items: center; gap: 12px; min-height: 64px; min-width: 17.5em;
+  padding: 0 26px 0 20px; border: 2px solid var(--ember); border-radius: 999px; cursor: pointer;
+  background: var(--ember); color: #1c191b; font: inherit; font-size: 1.125rem; font-weight: 700;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none;
+  transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease;
+}
+:root[data-theme="light"] .mic { color: #fff; }
+@media (prefers-color-scheme: light) { :root:where(:not([data-theme="dark"])) .mic { color: #fff; } }
+.mic:hover { filter: brightness(1.06); }
+.mic:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.mic[disabled] { opacity: 0.45; cursor: not-allowed; filter: none; }
+.mic-icon { width: 26px; height: 26px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.mic-time { font-family: var(--f-mono); font-variant-numeric: tabular-nums; font-weight: 500; opacity: 0.85; margin-left: auto; }
+.talk[data-state="starting"] .mic { background: transparent; color: var(--ink); }
+.talk[data-state="listening"] .mic { background: var(--pass); border-color: var(--pass); animation: ring 1.4s ease-out infinite; }
+@keyframes ring {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--pass) 55%, transparent); }
+  100% { box-shadow: 0 0 0 16px transparent; }
+}
+.mic-hint { flex-basis: 100%; margin: 0; font-size: 0.875rem; color: var(--muted); }
+
 .say { display: flex; gap: 10px; }
 .say .text { flex: 1; min-width: 0; min-height: 48px; font-size: 1.0625rem; background: var(--glass); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-color: var(--glass-edge); }
 .say .btn { min-height: 48px; }
-.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
 .toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 0.9375rem; color: var(--ink-2); cursor: pointer; }
-#mic[aria-pressed="true"] { border-color: var(--pass); color: var(--pass); }
-.call.closed .say, .call.closed .controls { display: none; }
+.end-actions { margin-left: auto; display: inline-flex; gap: 10px; }
+.btn.hang { color: var(--fail); border-color: color-mix(in srgb, var(--fail) 55%, transparent); background: transparent; }
+.btn.hang:hover { border-color: var(--fail); }
+.call.closed .say, .call.closed .talk, .call.closed .controls .toggle, .call.closed #hangup { display: none; }
 
 /* the fogged-glass booking card */
 .card {
@@ -127,8 +164,17 @@ main { max-width: 1240px; margin: 0 auto; padding: 0 24px 64px; }
   .top { padding: 12px 16px; }
   main { padding: 0 16px 48px; }
 }
+@media (max-width: 640px) {
+  .brand .muted { display: none; }  /* the brand and the links each keep one line */
+  .brand .stamp { font-size: 1.25rem; white-space: nowrap; }
+  .top-nav a { white-space: nowrap; }
+  .mic { flex: 1 1 100%; min-width: 0; justify-content: flex-start; }
+  .end-actions { margin-left: 0; }
+}
 @media (prefers-reduced-motion: reduce) {
   .fact.fog .value { filter: none; opacity: 0.35; }
+  .talk[data-state="listening"] .mic { animation: none; box-shadow: 0 0 0 4px color-mix(in srgb, var(--pass) 40%, transparent); }
+  .stove.thinking { animation: none; }
 }
 
 /* scenario cards and the rating form (the human evaluation) */

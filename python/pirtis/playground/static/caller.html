@@ -44,22 +44,33 @@
       <div class="stage">
         <p class="who"><span id="who"></span> <span id="status" class="chip"></span></p>
         <div id="scenario" class="scenario" hidden></div>
+        <p id="you" class="you" hidden><span class="speaker">You</span><span id="you-text"></span></p>
         <p id="line" class="line" aria-live="polite"></p>
-        <p id="interim" class="interim" aria-hidden="true"></p>
+        <p id="interim" class="interim" aria-live="polite"></p>
         <div id="stove" class="stove" aria-hidden="true"></div>
+
+        <div class="talk" id="talk" data-state="idle">
+          <button class="mic" id="mic" type="button" aria-pressed="false" aria-describedby="mic-hint">
+            <svg class="mic-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+            <span id="mic-label">Tap to talk</span>
+            <span id="mic-time" class="mic-time" hidden>0:00</span>
+          </button>
+          <button class="btn quiet" id="mic-cancel" type="button" hidden>Cancel</button>
+          <p id="mic-hint" class="mic-hint">Tap, speak, then tap again to send. Or hold it while you speak.</p>
+        </div>
 
         <form id="say" class="say">
           <label class="visually-hidden" for="text">What you say</label>
-          <input id="text" class="text" autocomplete="off" maxlength="500" placeholder="Say something to the receptionist">
-          <button class="btn primary" type="submit" id="send">Say it</button>
+          <input id="text" class="text" autocomplete="off" maxlength="500" placeholder="Or type what you'd say">
+          <button class="btn" type="submit" id="send">Say it</button>
         </form>
         <div class="controls">
-          <button class="btn" id="mic" type="button" aria-pressed="false">Hold to talk</button>
-          <button class="btn" id="quiet" type="button">Stay quiet 8 s</button>
-          <button class="btn ghost" id="hangup" type="button">Hang up</button>
-          <button class="btn" id="rate-open" type="button" hidden>Rate this call</button>
           <label class="toggle"><input type="checkbox" id="speak" checked> Speak replies</label>
           <label class="toggle" id="review-wrap" title="What the browser heard goes into the box above, so you can fix a misheard word before the receptionist gets it"><input type="checkbox" id="review"> Check speech before sending</label>
+          <span class="end-actions">
+            <button class="btn" id="rate-open" type="button" hidden>Rate this call</button>
+            <button class="btn hang" id="hangup" type="button">Hang up</button>
+          </span>
         </div>
         <p id="call-error" class="error-line" role="alert" hidden></p>
       </div>
@@ -91,6 +102,10 @@
             <input type="range" id="anger" min="0" max="1" step="0.1" value="0">
           </label>
           <label class="toggle"><input type="checkbox" id="barge"> Cut in on the receptionist's last line with your next one</label>
+          <div class="replay">
+            <button class="btn" id="quiet" type="button">Stay quiet 8 s</button>
+            <span class="muted">a silence: the receptionist checks in, then ends the call</span>
+          </div>
           <div class="replay">
             <label class="field">Replay a fixture through the real harness
               <select id="fixture"></select>

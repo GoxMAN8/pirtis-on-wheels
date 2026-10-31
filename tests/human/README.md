@@ -18,7 +18,7 @@ report how often it agrees with people (Cohen's κ).
 
 1. On the simulator's first screen, under *Test with a scenario card*, pick a card. It
    shows your goal, what you know, and one twist to throw in.
-2. Press *Call as …*. Speak (hold to talk) or type. Play the caller naturally: hedge,
+2. Press *Call as …*. Speak (tap to talk, or hold) or type. Play the caller naturally: hedge,
    correct yourself, cut in. Bring the twist in when it fits.
 3. When the call ends, or whenever you're done, rate it. *Rate this call* opens the form.
 
