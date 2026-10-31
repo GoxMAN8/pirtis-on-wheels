@@ -37,7 +37,8 @@ from pirtis.transcript.types import Transcript
 
 @dataclass(frozen=True)
 class Ask:
-    """Ask for one missing detail: name, dates (past_dates when theirs have passed),
+    """Ask for one missing detail: name (name_booking when the caller asks about a booking
+    they have), dates (past_dates when theirs have passed),
     people, tow, power, which_booking or new_dates; or, for a caller who only greeted us,
     what they need."""
 
@@ -210,7 +211,8 @@ def next_step(t: Transcript, s: CallState, api: ApiClient, units: list[Unit]) ->
     if not customer:
         name = normalise_name(s.full_name, caller_lines(t))
         if not is_full_name(name):
-            return Ask("name")
+            about_a_booking = s.intent in ("check_booking", "change", "cancel")
+            return Ask("name_booking" if about_a_booking else "name")
         found = api.identify_customer(t.caller.phone, name or "")
         if not found.ok:
             reason = "no customer matches this phone and name"

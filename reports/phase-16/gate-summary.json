@@ -1,0 +1,50 @@
+{
+  "extra": {
+    "cases": 32,
+    "runs": 96,
+    "k": 3,
+    "passed_cases": 32,
+    "deterministic_passed_cases": 32,
+    "judge_passed_cases": 32,
+    "failed": [],
+    "model_calls": 90,
+    "zero_call_runs": 6,
+    "input_tokens": 188895,
+    "output_tokens": 11593,
+    "est_cost_usd": 0.0353,
+    "p50_ms": 1703,
+    "p95_ms": 2208
+  },
+  "fixtures": {
+    "cases": 14,
+    "runs": 42,
+    "k": 3,
+    "passed_cases": 14,
+    "deterministic_passed_cases": 14,
+    "judge_passed_cases": 14,
+    "failed": [],
+    "model_calls": 33,
+    "zero_call_runs": 9,
+    "input_tokens": 71949,
+    "output_tokens": 4589,
+    "est_cost_usd": 0.0135,
+    "p50_ms": 1789,
+    "p95_ms": 2089
+  },
+  "total": {
+    "cases": 46,
+    "runs": 138,
+    "k": 3,
+    "passed_cases": 46,
+    "deterministic_passed_cases": 46,
+    "judge_passed_cases": 46,
+    "failed": [],
+    "model_calls": 123,
+    "zero_call_runs": 15,
+    "input_tokens": 260844,
+    "output_tokens": 16182,
+    "est_cost_usd": 0.0488,
+    "p50_ms": 1743,
+    "p95_ms": 2154
+  }
+}

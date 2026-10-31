@@ -61,6 +61,11 @@ OFF_TOPIC = (
 QUESTIONS = {
     # says out loud that we're deferring, so "does not say whether…" can't be misread
     "name": "I can help with that once I know who's calling. Can I get your full name, please?",
+    # about a booking they already have: says outright that it can't look yet (D-87)
+    "name_booking": (
+        "I can't look at your bookings until I know who's calling. "
+        "Can I get your full name, please?"
+    ),
     "dates": "Which dates were you thinking of?",
     "past_dates": "That date has already passed. Which dates were you thinking of?",
     "people": "How many of you will there be?",

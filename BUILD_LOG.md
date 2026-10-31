@@ -2085,3 +2085,151 @@ standing cost is about €5–6 a month, mostly the registry.
   - screenshots
   - the README
   - a final run
+
+---
+
+## Phase 16 — documentation, and the final run
+
+**Date:** 2026-10-31
+**Goal:** document the system so it can be read without running it, and finish with a
+final run. The docs: the architecture views drawn from the code, the evaluation as
+graphs and tables, screenshots, the READMEs, and, at your request, a guide to the live
+app (the link, signing in, how to use it).
+
+**Headline: the final run caught one more flake, and the fix shipped through the gate.**
+- The first final gate on the unchanged agent (454b3a30e0ee) **failed: 45/46 cases,
+  137/138 runs**. The kit's judge flipped its verdict once on fixture 01, on a reply
+  that was identical and correct in all three runs.
+- It was fixed in the wording (D-87), not re-run until green. The final gate on the fixed agent (bd98c5cf8006) passed: **46/46 cases, 138/138 runs**; deterministic 46/46, judge 46/46.
+- The four architecture views pass their checker with 0 errors and 0 warnings.
+- Every diagram and graph renders.
+
+### How it was built
+- **The final gate started first,** in the background: the extractor eval (41/41, every
+  field 100%), then the full gate.
+- **The architecture views** were drawn from the code, re-read for the facts that
+  matter:
+  - what the model prompt carries: the call's text and the caller's own bookings, never
+    the phone or other customers
+  - how a booking's write retries: a pre-flight, then a re-check on a 409, a look before
+    retrying on a 500
+  - how a version conflict retries
+  - what decide does when the model fails
+
+  The checker, run from outside the repo, passed first time.
+
+  Before trusting it, I removed the semicolons from the sequence diagrams' messages:
+  Mermaid can read them as the end of a statement.
+- **Writing the data flow surfaced a crossing nobody had drawn (C5).** Holding to talk in
+  Chrome sends the tester's voice to Google's speech service: the browser does that, not
+  us. It's in the crossings table, the privacy pass and the tester guide, which offers
+  typing instead.
+- **Rendering was checked in a browser:** every Mermaid block in the docs (11) went
+  through Mermaid 11, the major version GitHub uses. All rendered.
+- **Screenshots** from the local playground, with a real two-turn call so the booking
+  card is full:
+  - the caller simulator in both themes
+  - the admin console's Reliability view (dark) and its thermal view (light)
+  - the sign-in page
+- **The final gate failed on fixture 01.**
+  - **The failure:** run 2 was marked down on the kit's statement "The reply does not
+    say whether the booking is still on". The judge's reason agreed with the reply.
+    Runs 1 and 3 passed with the same reply and the same reason.
+  - **The measurement:** I didn't re-run the gate. Fixture 01 ran 20 times on the
+    unchanged agent: 20/20. That makes about 1 failure in 43 runs, or a 7% chance of
+    failing a 3-run gate.
+  - **The fix (D-87):** test-first, in the D-51 pattern. A question about an existing
+    booking before identification now gets "I can't look at your bookings until I know
+    who's calling. Can I get your full name, please?", which states outright the fact
+    the statement checks.
+  - **Then:** fixture 01 ran 20 times again, and the full gate ran on the new agent
+    version: 20/20, and 46/46 cases.
+
+### What was built
+- **`docs/architecture/`** (D-50), each file stamped with the commit it was checked
+  against:
+  - `containers.md`: level 1 and level 2, the system boundary, sync or async on every
+    edge, and a table of what we don't control: what happens when each is down, and the
+    fallback
+  - `data-flow.md`: nine stores, each labelled PII, pseudonymised or no PII; five trust
+    boundaries
+    - five numbered crossings, each with what happens before it crosses, the region, the
+      transfer mechanism and the retention
+    - the honest findings: the call's text leaves the EEA on the OpenAI path
+      (`[CONFIRM: OpenAI DPA]`), and a tester's voice goes to the browser's vendor
+    - a LINDDUN privacy pass
+  - `sequences.md`: a booking on read-back consent (409 and 500 branches, a validation
+    break) and a move or cancel (a version-conflict retry, then a hand-off)
+  - `deployment.md`: the Azure resources and the settings that matter
+- **`docs/evaluation.md`:**
+  - graphs: the naive starter against ours, the reliability curve, the extractor over
+    the build
+  - the gate's numbers, cost and latency
+  - every failure the gate and the curve caught, and its fix
+  - the human evaluation, marked as pending
+- **`docs/using-the-app.md`**, the tester guide:
+  - the link, signing in, ringing the receptionist, scenario cards and rating
+  - the admin console's views, the limits a tester may meet
+  - the owner's account commands
+- **`docs/img/`:** five screenshots.
+- **The root `README.md`:** our section after the kit's own text. What we built, with
+  one diagram; where it stands; how to try it, live and locally; both model paths; the
+  deployment; a map of the documents. `python/README.md` has a short pointer.
+- **SPEC:** pointers from §2 and §9b to the diagrams, from §9 to the guide; D-87.
+- **The agent (D-87):** `name_booking` in `speech.py`, chosen in `policy.py`; six new
+  tests. `agent_version` is now **bd98c5cf8006**.
+- **Tests:** 692 in total.
+
+### Commands and results
+| Command | Result |
+|---|---|
+| `make eval-extract` (454b3a30e0ee) | **41/41**, every field 100% |
+| `make gate` (454b3a30e0ee, the unchanged agent) | **FAILED 45/46 cases, 137/138 runs**; deterministic 46/46, judge 45/46 |
+| fixture 01, 20 runs (454b3a30e0ee) | 20/20 |
+| the D-87 tests before the code | 6 red |
+| `make check` | ruff and strict mypy clean (56 files), **692 tests passed** |
+| fixture 01, 20 runs (bd98c5cf8006) | **20/20**; both judge statements passed every time |
+| **`make gate` (bd98c5cf8006)** | **46/46 cases, 138/138 runs; deterministic 46/46, judge 46/46**; 123 model calls (0 on 15 runs); p50 1.74 s, p95 2.15 s |
+| the architecture checker | **PASS, 0 errors, 0 warnings** |
+| every Mermaid block (11), rendered with Mermaid 11 | all rendered |
+| `terraform validate`, `terraform fmt -check` | valid, formatted |
+
+**Reports:** `reports/phase-16/`
+- `gate-454b3a30e0ee-failed.txt`, `flake01-before.txt`, `flake01-after.txt`
+- `gate-full.txt` and `gate-summary.json` (bd98c5cf8006)
+- `eval.txt`, `eval.json`
+- `docs-checks.txt`, `pytest.txt`
+
+### Decisions
+- **D-87:** a question about an existing booking before identification is deferred out
+  loud.
+
+### Deviations from the plan
+- **A final gate failed,** and the phase changed the agent to fix it. That is what the
+  gate is for. The failed run stays in the record: in SPEC §7b and in the Reliability
+  view's history.
+- **Screenshots come from the browser pane, not Playwright:** the same pages, with no
+  test browser to install.
+- **The judge–human agreement and the rubric means are missing:** the human evaluation
+  is your session.
+- **The tester guide carries the live app's address,** at your request. Until now I had
+  kept it out of the repo.
+
+### Spend
+≈ $0.25 this phase: the extractor eval, two full gates with the judge, 40 runs of fixture 01, and the screenshots' call. ≈ $1.6 in total of the $6.
+
+### Open issues and risks
+- **The human evaluation** is still to run.
+- **The kit's judge varies a little even at temperature 0.** A statement it can read
+  either way will fail a correct reply now and then. D-51 and D-87 make our replies say
+  such facts outright; the curve is how to find the next one.
+- **The `[CONFIRM: …]` items in `data-flow.md`** (OpenAI's region, DPA and retention;
+  the browser's speech vendor) need someone who can read those contracts.
+
+### What's next
+- **Tomorrow, with your testers:**
+  - the human evaluation, on the live app
+  - `make calibrate` in `deploy/`
+  - the variant review, then `make variants-accept` and the candidates' 5-run curve
+- **For the interview:** `docs/using-the-app.md` to show the app live, `docs/evaluation.md`
+  for the numbers, and SPEC's decision log for the why behind each choice.

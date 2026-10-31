@@ -1,0 +1,14 @@
+# Phase 16 · the architecture views checked for shape (stamp, boundary, sync/async, store labels, trust boundaries,
+#   numbered crossings with a row each, unhappy branches, evidence paths that exist), by a checker run from outside the repo
+# commit: docs: architecture, evaluation, tester guide · 2026-10-31
+
+architecture docs -- spike_hw_assignment
+  info  containers.md: stamp 3e57ec9 on 2026-10-31, 0 commits since outside docs/
+  info  data-flow.md: stamp 3e57ec9 on 2026-10-31, 0 commits since outside docs/
+  info  sequences.md: stamp 3e57ec9 on 2026-10-31, 0 commits since outside docs/
+  PASS  (0 errors, 0 warnings)
+
+
+# every Mermaid block in the docs rendered with mermaid 11.4.1 (the major GitHub uses), in a browser:
+  README.md#1 ok · containers.md#1 ok · containers.md#2 ok · data-flow.md#1 ok · sequences.md#1 ok
+  sequences.md#2 ok · deployment.md#1 ok · evaluation.md#1 ok · evaluation.md#2 ok · evaluation.md#3 ok · evaluation.md#4 ok

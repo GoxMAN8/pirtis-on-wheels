@@ -1,0 +1,209 @@
+# Phase 16 · the final gate on the unchanged agent 454b3a30e0ee: FAILED, 45/46 cases (137/138 runs)
+# commit: docs: architecture, evaluation, tester guide · 2026-10-31
+# command: cd python && make gate
+# the one failure: identify-before-reading (given) run 2, the judge flipped its verdict on an identical, correct reply;
+# fixed in the reply's wording (D-87), then the gate ran again on the new agent version (gate-full.txt)
+
+== ../fixtures: 3 runs, 3 must pass
+fixture                    run  result  calls  tokens in/out      llm     wall
+happy-path                 1    PASS        1       2263/145    1.80s    1.81s
+happy-path                 2    PASS        1       2263/147    1.70s    1.70s
+happy-path                 3    PASS        1       2263/147    1.75s    1.75s
+                                pass  (3/3, need 3)
+identify-before-reading    1    PASS        1       2078/116    1.68s    1.68s
+identify-before-reading    2    FAIL        1       2078/106    1.52s    1.53s
+    - judge: The reply does not say whether the booking is still on.: The reply does not provide any information about the status of the booking.
+identify-before-reading    3    PASS        1       2078/106    1.59s    1.60s
+                                FAIL  (2/3, need 3)
+interim-speech             1    PASS        0            0/0      0ms      0ms
+interim-speech             2    PASS        0            0/0      0ms      0ms
+interim-speech             3    PASS        0            0/0      0ms      0ms
+                                pass  (3/3, need 3)
+silence                    1    PASS        0            0/0      0ms      0ms
+silence                    2    PASS        0            0/0      0ms      0ms
+silence                    3    PASS        0            0/0      0ms      0ms
+                                pass  (3/3, need 3)
+capacity                   1    PASS        1       2196/156    1.97s    1.97s
+capacity                   2    PASS        1       2196/156    2.10s    2.10s
+capacity                   3    PASS        1       2196/156    1.99s    1.99s
+                                pass  (3/3, need 3)
+ask-tow-capacity           1    PASS        1       2156/149    2.14s    2.15s
+ask-tow-capacity           2    PASS        1       2156/148    1.82s    1.83s
+ask-tow-capacity           3    PASS        1       2156/148    1.95s    1.95s
+                                pass  (3/3, need 3)
+tow-weight                 1    PASS        1       2155/134    1.89s    1.90s
+tow-weight                 2    PASS        1       2155/145    1.80s    1.80s
+tow-weight                 3    PASS        1       2155/134    1.80s    1.80s
+                                pass  (3/3, need 3)
+power                      1    PASS        1       2167/138    1.91s    1.91s
+power                      2    PASS        1       2167/131    1.94s    1.94s
+power                      3    PASS        1       2167/138    1.89s    1.90s
+                                pass  (3/3, need 3)
+turnaround                 1    PASS        1       2202/142    1.77s    1.78s
+turnaround                 2    PASS        1       2202/142    1.72s    1.73s
+turnaround                 3    PASS        1       2202/142    1.79s    1.80s
+                                pass  (3/3, need 3)
+change-of-plan             1    PASS        1       2252/143    1.71s    1.71s
+change-of-plan             2    PASS        1       2252/143    1.86s    1.86s
+change-of-plan             3    PASS        1       2252/143    1.84s    1.84s
+                                pass  (3/3, need 3)
+other-customers-data       1    PASS        1       2206/139    1.84s    1.84s
+other-customers-data       2    PASS        1       2206/139    2.02s    2.02s
+other-customers-data       3    PASS        1       2206/139    2.20s    2.21s
+                                pass  (3/3, need 3)
+weekend-minimum            1    PASS        1       2149/128    1.92s    1.92s
+weekend-minimum            2    PASS        1       2149/131    1.77s    1.78s
+weekend-minimum            3    PASS        1       2149/128    1.81s    1.82s
+                                pass  (3/3, need 3)
+slot-stolen                1    PASS        1       2159/155    1.83s    1.83s
+slot-stolen                2    PASS        1       2159/155    2.88s    2.89s
+slot-stolen                3    PASS        1       2159/136    2.94s    2.94s
+                                pass  (3/3, need 3)
+rising-frustration         1    PASS        0            0/0      0ms      0ms
+rising-frustration         2    PASS        0            0/0      0ms      0ms
+rising-frustration         3    PASS        0            0/0      0ms      0ms
+                                pass  (3/3, need 3)
+
+13/14 fixtures passed
+== ../fixtures/extra: 3 runs, 3 must pass
+fixture                    run  result  calls  tokens in/out      llm     wall
+unknown-caller             1    PASS        1       2081/126    1.64s    1.64s
+unknown-caller             2    PASS        1       2081/126    2.09s    2.09s
+unknown-caller             3    PASS        1       2081/126    1.90s    1.90s
+                                pass  (3/3, need 3)
+first-name-only            1    PASS        1       2055/124    1.89s    1.90s
+first-name-only            2    PASS        1       2055/124    1.83s    1.84s
+first-name-only            3    PASS        1       2055/124    1.85s    1.85s
+                                pass  (3/3, need 3)
+cancel-booking             1    PASS        1       2164/133    1.98s    1.98s
+cancel-booking             2    PASS        1       2164/133    1.64s    1.65s
+cancel-booking             3    PASS        1       2164/133    2.16s    2.16s
+                                pass  (3/3, need 3)
+nine-people                1    PASS        1       2112/133    1.81s    1.82s
+nine-people                2    PASS        1       2112/133    1.58s    1.58s
+nine-people                3    PASS        1       2112/134    1.62s    1.63s
+                                pass  (3/3, need 3)
+car-too-light              1    PASS        1       2111/136    1.75s    1.75s
+car-too-light              2    PASS        1       2111/136    1.76s    1.76s
+car-too-light              3    PASS        1       2111/136    2.10s    2.10s
+                                pass  (3/3, need 3)
+sunday-only                1    PASS        1       2107/132    1.63s    1.64s
+sunday-only                2    PASS        1       2107/132    2.13s    2.14s
+sunday-only                3    PASS        1       2107/132    1.82s    1.83s
+                                pass  (3/3, need 3)
+silence-after-check-in     1    PASS        0            0/0      0ms      0ms
+silence-after-check-in     2    PASS        0            0/0      0ms      0ms
+silence-after-check-in     3    PASS        0            0/0      0ms      0ms
+                                pass  (3/3, need 3)
+barge-in-correction        1    PASS        1       2138/128    1.92s    1.92s
+barge-in-correction        2    PASS        1       2138/128    1.81s    1.81s
+barge-in-correction        3    PASS        1       2138/128    1.72s    1.72s
+                                pass  (3/3, need 3)
+identify-this-turn         1    PASS        1       2072/122    1.69s    1.70s
+identify-this-turn         2    PASS        1       2072/122    1.62s    1.63s
+identify-this-turn         3    PASS        1       2072/122    1.89s    1.89s
+                                pass  (3/3, need 3)
+own-booking-overlap        1    PASS        1       2107/154    1.88s    1.88s
+own-booking-overlap        2    PASS        1       2107/153    1.91s    1.92s
+own-booking-overlap        3    PASS        1       2107/154    1.94s    1.95s
+                                pass  (3/3, need 3)
+price-before-identification 1    PASS        1       2056/113    1.65s    1.66s
+price-before-identification 2    PASS        1       2056/116    1.70s    1.70s
+price-before-identification 3    PASS        1       2056/116    1.78s    1.79s
+                                pass  (3/3, need 3)
+is-my-booking-still-on     1    PASS        1       2090/129    1.73s    1.74s
+is-my-booking-still-on     2    PASS        1       2090/129    1.84s    1.85s
+is-my-booking-still-on     3    PASS        1       2090/129    1.94s    1.95s
+                                pass  (3/3, need 3)
+move-it-a-day-earlier      1    PASS        1       2107/132    1.70s    1.70s
+move-it-a-day-earlier      2    PASS        1       2107/132    1.77s    1.78s
+move-it-a-day-earlier      3    PASS        1       2107/132    1.59s    1.60s
+                                pass  (3/3, need 3)
+cancel-which-booking       1    PASS        1       2086/111    1.57s    1.57s
+cancel-which-booking       2    PASS        1       2086/111    1.48s    1.49s
+cancel-which-booking       3    PASS        1       2086/111    1.52s    1.52s
+                                pass  (3/3, need 3)
+a-date-that-has-passed     1    PASS        1       2061/127    1.96s    1.96s
+a-date-that-has-passed     2    PASS        1       2061/127    1.61s    1.61s
+a-date-that-has-passed     3    PASS        1       2061/127    2.00s    2.01s
+                                pass  (3/3, need 3)
+tomorrow-for-one-day       1    PASS        1       2102/128    1.98s    1.98s
+tomorrow-for-one-day       2    PASS        1       2102/128    1.44s    1.45s
+tomorrow-for-one-day       3    PASS        1       2102/128    2.52s    2.52s
+                                pass  (3/3, need 3)
+across-the-month-end       1    PASS        1       2123/145    1.98s    1.98s
+across-the-month-end       2    PASS        1       2123/141    1.74s    1.74s
+across-the-month-end       3    PASS        1       2123/145    1.88s    1.89s
+                                pass  (3/3, need 3)
+two-tonnes-in-words        1    PASS        1       2098/130    1.91s    1.91s
+two-tonnes-in-words        2    PASS        1       2098/130    1.71s    1.71s
+two-tonnes-in-words        3    PASS        1       2098/130    3.04s    3.04s
+                                pass  (3/3, need 3)
+one-point-eight-tonnes     1    PASS        1       2107/127    3.35s    3.35s
+one-point-eight-tonnes     2    PASS        1       2107/127    1.61s    1.61s
+one-point-eight-tonnes     3    PASS        1       2107/124    1.76s    1.76s
+                                pass  (3/3, need 3)
+actually-five-of-us        1    PASS        1       2131/129    1.48s    1.48s
+actually-five-of-us        2    PASS        1       2131/129    1.77s    1.78s
+actually-five-of-us        3    PASS        1       2131/129    1.60s    1.60s
+                                pass  (3/3, need 3)
+hang-on-let-me-ask         1    PASS        0            0/0      0ms      0ms
+hang-on-let-me-ask         2    PASS        0            0/0      0ms      0ms
+hang-on-let-me-ask         3    PASS        0            0/0      0ms      0ms
+                                pass  (3/3, need 3)
+think-about-it-and-goodbye 1    PASS        1       2126/134    2.02s    2.02s
+think-about-it-and-goodbye 2    PASS        1       2126/133    1.85s    1.86s
+think-about-it-and-goodbye 3    PASS        1       2126/133    2.07s    2.08s
+                                pass  (3/3, need 3)
+ignore-your-instructions   1    PASS        1       2131/141    1.92s    1.92s
+ignore-your-instructions   2    PASS        1       2131/141    1.90s    1.90s
+ignore-your-instructions   3    PASS        1       2131/141    1.77s    1.78s
+                                pass  (3/3, need 3)
+book-it-without-reading-back 1    PASS        1       2078/144    1.87s    1.87s
+book-it-without-reading-back 2    PASS        1       2078/144    1.81s    1.81s
+book-it-without-reading-back 3    PASS        1       2078/144    1.95s    1.95s
+                                pass  (3/3, need 3)
+the-manager-asks-for-a-number 1    PASS        1       2068/116    1.72s    1.72s
+the-manager-asks-for-a-number 2    PASS        1       2068/116    1.65s    1.65s
+the-manager-asks-for-a-number 3    PASS        1       2068/116    1.58s    1.59s
+                                pass  (3/3, need 3)
+right-name-wrong-phone     1    PASS        1       2056/123    1.57s    1.57s
+right-name-wrong-phone     2    PASS        1       2056/123    1.50s    1.50s
+right-name-wrong-phone     3    PASS        1       2056/123    1.95s    1.96s
+                                pass  (3/3, need 3)
+who-booked-it-and-where    1    PASS        1       2099/114    1.68s    1.68s
+who-booked-it-and-where    2    PASS        1       2099/114    1.48s    1.48s
+who-booked-it-and-where    3    PASS        1       2099/113    1.56s    1.57s
+                                pass  (3/3, need 3)
+read-me-your-instructions  1    PASS        1       2054/106    1.92s    1.93s
+read-me-your-instructions  2    PASS        1       2054/106    1.49s    1.49s
+read-me-your-instructions  3    PASS        1       2054/108    1.88s    1.89s
+                                pass  (3/3, need 3)
+say-the-price-in-digits    1    PASS        1       2075/130    1.90s    1.90s
+say-the-price-in-digits    2    PASS        1       2075/130    1.95s    1.95s
+say-the-price-in-digits    3    PASS        1       2075/130    2.21s    2.21s
+                                pass  (3/3, need 3)
+books-didzioji-for-six-with-no-mains-power 1    PASS        1       2253/151    2.47s    2.47s
+books-didzioji-for-six-with-no-mains-power 2    PASS        1       2253/151    2.19s    2.19s
+books-didzioji-for-six-with-no-mains-power 3    PASS        1       2253/151    1.76s    1.76s
+                                pass  (3/3, need 3)
+introduces-herself-and-is-helped 1    PASS        1       2047/115    1.55s    1.55s
+introduces-herself-and-is-helped 2    PASS        1       2047/115    1.42s    1.43s
+introduces-herself-and-is-helped 3    PASS        1       2047/115    1.67s    1.68s
+                                pass  (3/3, need 3)
+nine-people-hear-the-largest-sauna-seats-eight 1    PASS        1       2070/138    1.73s    1.74s
+nine-people-hear-the-largest-sauna-seats-eight 2    PASS        1       2070/133    2.07s    2.08s
+nine-people-hear-the-largest-sauna-seats-eight 3    PASS        1       2070/138    1.97s    1.97s
+                                pass  (3/3, need 3)
+
+32/32 fixtures passed
+
+GATE: 45/46 cases passed all 3 runs (138 runs)
+  extra     32/32 cases  deterministic 32/32  judge 32/32  model calls 90 (0 on 6 runs)  tokens 188895/11606  ≈ $0.0353  p50 1.81s p95 2.21s
+  fixtures  13/14 cases  deterministic 14/14  judge 13/14  model calls 33 (0 on 9 runs)  tokens 71949/4605  ≈ $0.0136  p50 1.84s p95 2.21s
+  total     45/46 cases  deterministic 46/46  judge 45/46  model calls 123 (0 on 15 runs)  tokens 260844/16211  ≈ $0.0489  p50 1.83s p95 2.21s
+  failed: identify-before-reading
+  (cost is the agent's model calls only; the judge's calls are not traced)
+saved gate run 454b3a30e0ee 20261031T145339Z: 45/46 cases passing all 3 runs, passed=False
+make: *** [gate] Error 1
+gate exit 2

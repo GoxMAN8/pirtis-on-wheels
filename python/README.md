@@ -86,3 +86,16 @@ Data that crosses a boundary keeps the wire spelling: the transcript, the API re
 You may use any tools you like, including AI. After you submit, we will go through the code with you. Be ready to explain every line, also the lines your tools wrote.
 
 Send us the repo. Plan for two to three hours. If you run out of time, write a short note about what you would do next.
+
+## Our solution
+
+The receptionist is built in `pirtis/agent/`. Around it, never imported by it:
+- `pirtis/playground/`: a caller simulator and an admin console
+- `pirtis/ops/`: the data layer, the gate job, evaluation tools
+
+Start with the root [README](../README.md#our-solution-the-python-receptionist).
+Everyday commands are in the `Makefile`:
+- `make check`
+- `make gate`
+- `make eval-extract`
+- `make playground`

@@ -33,6 +33,9 @@ like a person on the phone.
 
 ## 2. Architecture
 
+> The diagrams of record are in `docs/architecture/`: containers, data flow, sequences
+> and deployment, each stamped with the commit it was checked against.
+
 **The model listens; code talks.** Language understanding is the model's job. Rules,
 decisions, writes and the wording of anything factual belong to code. This is the
 pattern of "LLM as dialogue understanding plus deterministic flows" used in
@@ -332,6 +335,9 @@ blocks deployment.
 | 2026-10-31 | **ours: final Phase 13 agent (454b3a30e0ee)** | **all 46 cases, 3 runs, 3 must pass** | **46/46 cases, 138/138 runs; deterministic 46/46, judge 46/46**; p50 1.74 s, p95 2.21 s | 123 (0 on 15 runs) | 260,844 / 16,200 |
 | 2026-10-31 | ours, **the nightly gate job in the container** (454b3a30e0ee) | given + red team (21 cases), 3 runs | **21/21 cases, 63/63 runs; deterministic 21/21, judge 21/21, extractor 18/18**; p50 1.73 s, p95 2.23 s | 54 (0 on 9 runs) | 115,632 / 7,245 |
 | 2026-10-31 | ours, **the gate job in Azure** (454b3a30e0ee) | given + red team (21 cases), 3 runs | **21/21 cases, 63/63 runs; deterministic 21/21, judge 21/21, extractor 18/18**; p50 1.65 s, p95 2.00 s | 54 (0 on 9 runs) | 115,632 / 7,252 |
+| 2026-10-31 | ours, the final gate, unchanged agent (454b3a30e0ee) | all 46 cases, 3 runs, 3 must pass | **FAILED 45/46 cases, 137/138 runs**: deterministic 46/46, judge 45/46 (fixture 01 run 2: the judge flipped on a correct reply); then fixture 01 alone, 20 runs: 20/20 | 123 (0 on 15 runs) | 260,844 / 16,211 |
+| 2026-10-31 | ours, D-87 (bd98c5cf8006) | fixture 01, 20 runs | **20/20** | 1 per run | — |
+| 2026-10-31 | **ours: the final agent (bd98c5cf8006)** | **all 46 cases, 3 runs, 3 must pass** | **46/46 cases, 138/138 runs; deterministic 46/46, judge 46/46**; p50 1.74 s, p95 2.15 s | 123 (0 on 15 runs) | 260,844 / 16,182 |
 
 At the Phase 6 gate, model turns took p50 1.54 s and p95 1.77 s (max 1.84 s), with
 about 1.7k prompt tokens each. After understanding v2 they take p50 1.76 s and p95
@@ -390,7 +396,7 @@ A private deployment on Azure, from one container image with two workloads:
 - **the gate:** a nightly Container Apps Job (03:00 UTC), also startable by hand
 
 **Live:** in Germany West Central, resource group `pirtis-rg`, since 2026-10-31. The
-URL is `make url`; it is not written here.
+address, signing in and a tour are in `docs/using-the-app.md`.
 
 Written in Terraform (OpenTofu-compatible) under `deploy/`, kept deliberately minimal
 (D-57). There are nine resources:
@@ -450,6 +456,9 @@ default, and `gate-job` for the job.
 Commands, idle cost and teardown are in `deploy/README.md`.
 
 ### 9b. Data model and flows
+
+> Where personal data goes, the trust boundaries and every crossing are drawn in
+> `docs/architecture/data-flow.md`.
 
 We persist only data we own; the rental data stays in the kit's in-memory API (D-58).
 All entities are versioned pydantic models (`schema_version = 1`, unknown fields
@@ -744,6 +753,7 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | D-84 | 2026-10-31 | The alerts read the one-line JSON events: the gate job's line and the playground's call turns. Every exit of the gate job prints its line, even a crash or a missing key, so one alert covers regressions and broken runs. Replayed fixtures stay off the turn log, as gate turns do. Each query first unions an empty table, so the rules exist before the first log. The alert test runs the job with a key that can't work: no tokens, and its records go to /tmp, not the share | A job that died before printing would have gone unseen; a replayed fault case would have paged the owner | an alert on the job's execution status (a second signal for the same failure); creating the alerts in a second apply after the first logs | accepted |
 | D-85 | 2026-10-31 | `make deploy` first asks whether the gate holds: the newest saved gate run for this agent version that covered every case must have passed. Otherwise the full gate runs and a failure stops the deploy. The app and the job exist only once an image digest is given, so `make infra` and `make deploy` share one configuration | D-21 (a failing gate blocks a deploy) without paying for a full gate when nothing changed. A nightly run covers only some cases, so it never counts | the full gate on every deploy; `-target` applies | accepted |
 | D-86 | 2026-10-31 | Hardening after an adversarial review of the sign-in and the deploy kit. Five wrong passwords lock the address, never the account. A guess is counted before it is hashed, and at most two hashes run at once. A session is signed over the password hash, so a new password ends the old sessions. Spending is capped per account each minute and for everyone each day; a replay costs two units. Openness is judged on the decoded path. The page after sign-in is checked on the parsed address. A bad `Content-Length` is refused. Terraform's state is treated as a secret (owner-only, local). Removing the last account fails closed | The review reproduced a memory exhaustion of the 0.5 GiB container through parallel sign-ins, a permanent lockout of a named account, an open redirect through a tab in `next`, and every static file readable through `/static/fonts/..%2f`; it also showed that the state holds keys | rate-limiting sign-in by account only; Key Vault references for the secrets (the storage keys stay in the state either way, so the state must be protected regardless) | accepted |
+| D-87 | 2026-10-31 | Before the caller is identified, a question about a booking they already have (check, change, cancel) is answered "I can't look at your bookings until I know who's calling. Can I get your full name, please?"; other questions keep "I can help with that once I know who's calling" | The final gate on 454b3a30e0ee failed 45/46: in fixture 01 the kit's judge marked "does not say whether the booking is still on" false on a correct reply, with a reason that agreed with it. Identical reply, 2 of 3 runs passed; 1 failure in about 43 runs overall. The reply now states that fact outright (the D-51 pattern) | re-running the gate until green; leaving a known 7% chance of a failed gate on the kit's own fixture | accepted |
 
 ---
 
@@ -768,3 +778,4 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | 2026-10-31 | 13 | Expanded testing. 12 hidden-style cases (30–41) and 7 red-team cases (50–56), each with a gold state; their first live run was 12/19 and found three defects (a booking after a prompt injection, "didn't catch that" for a clear request, a past date not named) and four judge blind spots. Fixed test-first: past dates (D-71), an `off_topic` intent (D-73), consent voided by an injection or a price demand (D-74), the sauna from the caller's quote (D-75), the caller's own name only (D-78), a hedged group size raised in code (D-79). Judge statements the kit's judge can't check reworded or dropped, behaviour still covered (D-72). Metamorphic variants with the kit's API as the oracle: 59 of 64 kept, waiting for review (D-76). The human-evaluation kit: 15 cards, a rating form in the simulator, a Human eval view, judge calibration with Cohen's κ (D-77); the sessions are tomorrow. A k = 5 reliability curve found one flake (case 62), fixed by D-79. **Gate 46/46 cases, 138/138 runs; extractor 41/41**. 643 tests (175 new) | Test what the hidden fixtures and hostile callers will do, measure flakiness the 3-run gate can't see, and prepare the human check on the judge | D-71 – D-79 |
 | 2026-10-31 | 14 | The container image and the gate job. `gate-job` runs the frozen gate in one process with the kit's Runner: the nightly suite (given + red team) by default, every suite on request. It saves the gate run with the extractor's pass^k beside it, stores turn records with source `gate` (never logged), prunes past retention, prints one JSON line and exits 1 on failure; `llm_errors` tells an outage from a regression. `deploy/Dockerfile`: two stages, bases pinned by digest, locked dependencies, uid 10001, read-only code, an allow-listed build context; 224 MB, built for arm64 and amd64. Running it found every turn logged twice, once per stream; fixed in both entry points (D-82). **In the container, with the real model, the nightly job passed 21/21 cases, 63/63 runs, extractor 18/18**, one line on stdout. 654 tests (11 new) | One image for both cloud workloads, and a gate the cloud can run and alert on without a shell | D-80 – D-82 |
 | 2026-10-31 | 15 | Azure, live in Germany West Central: 15 resources in Terraform, the app (0–1) behind a sign-in with accounts we create (D-83, at your request; replaces the allow-list), the nightly gate job, an action group and three alerts on the one-line events (D-84). A deploy asks whether the gate holds first (D-85). In Azure the gate job passed 21/21 cases, 63/63 runs, extractor 18/18, and wrote to the share as the non-root user. The alert test fired the gate-regression alert end to end; its email arrived. The live image is built from this phase's commit. An adversarial review found 11 issues, none reaching data; 10 fixed test-first and re-probed live, the state treated as a secret (D-86). 686 tests (32 new) | Run privately in the cloud where testers can sign in, watched by alerts with owners | D-83 – D-86 |
+| 2026-10-31 | 16 | Documentation and the final run. `docs/architecture/` (containers, data flow with nine labelled stores, five trust boundaries and five tabled crossings, two sequences with their unhappy branches, deployment), checked for shape with 0 errors and 0 warnings. `docs/evaluation.md` with graphs, `docs/using-the-app.md` (the live link, sign-in, a tour), screenshots, the READMEs. The final gate on the unchanged agent failed 45/46 on a judge flip in fixture 01; fixed in the wording (D-87), then **46/46 cases, 138/138 runs** on bd98c5cf8006. Extractor 41/41. 692 tests | Readable without running it, and a final run that holds | D-87 |

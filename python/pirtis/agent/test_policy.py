@@ -127,8 +127,21 @@ def test_00_yes_but_five_of_us_re_offers_and_never_books() -> None:
 
 def test_01_booking_question_before_identification_asks_for_the_name() -> None:
     d, api = run("identify-before-reading", intent="check_booking")
-    assert d == Ask("name")
+    assert d == Ask("name_booking")  # says outright it can't look yet (D-87)
     assert methods(api) == [api_client.METHOD_UNITS_LIST]
+
+
+@pytest.mark.parametrize("intent", ["check_booking", "change", "cancel"])
+def test_a_question_about_a_booking_before_identification_defers_the_booking(
+    intent: str,
+) -> None:
+    d, _ = run("identify-before-reading", intent=intent)
+    assert d == Ask("name_booking")
+
+
+def test_a_new_booking_before_identification_just_asks_the_name() -> None:
+    d, _ = run("identify-before-reading", intent="book")
+    assert d == Ask("name")
 
 
 def test_04_too_small_offers_the_one_that_fits() -> None:

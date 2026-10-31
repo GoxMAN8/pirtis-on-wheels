@@ -205,6 +205,7 @@ SAMPLES: list[Decision] = [
         Ask(slot)
         for slot in (
             "name",
+            "name_booking",
             "dates",
             "past_dates",
             "people",
@@ -326,3 +327,12 @@ def test_a_past_date_is_named_as_past() -> None:
 def test_an_off_topic_request_hears_what_we_can_do() -> None:
     line = _spoken(render(OffTopic()))[0]
     assert "sauna" in line and line.count("?") == 1
+
+
+def test_before_identification_a_booking_question_is_deferred_out_loud() -> None:
+    """The kit's judge flips "does not say whether the booking is still on" on a reply that
+    only asks a name now and then; the reply says outright that it can't look yet (D-87)."""
+    [say] = [a for a in render(Ask("name_booking"), NEUTRAL) if a["type"] == "say"]
+    text = str(say["text"])
+    assert "can't look at your bookings until I know who's calling" in text
+    assert text.endswith("Can I get your full name, please?")

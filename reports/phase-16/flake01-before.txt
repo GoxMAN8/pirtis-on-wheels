@@ -1,0 +1,28 @@
+# Phase 16 · fixture 01, 20 runs on 454b3a30e0ee with the old wording (a measurement, not a gate)
+# command: uv run harness --id identify-before-reading --runs 20 --need 20
+
+fixture                    run  result  calls  tokens in/out      llm     wall
+identify-before-reading    1    PASS        1       2078/116    1.61s    1.61s
+identify-before-reading    2    PASS        1       2078/116    1.61s    1.61s
+identify-before-reading    3    PASS        1       2078/116    1.47s    1.48s
+identify-before-reading    4    PASS        1       2078/116    1.56s    1.56s
+identify-before-reading    5    PASS        1       2078/116    1.77s    1.77s
+identify-before-reading    6    PASS        1       2078/106    1.58s    1.58s
+identify-before-reading    7    PASS        1       2078/116    1.92s    1.92s
+identify-before-reading    8    PASS        1       2078/106    1.60s    1.60s
+identify-before-reading    9    PASS        1       2078/116    1.83s    1.83s
+identify-before-reading    10   PASS        1       2078/116    1.66s    1.66s
+identify-before-reading    11   PASS        1       2078/106    1.40s    1.40s
+identify-before-reading    12   PASS        1       2078/106    1.63s    1.64s
+identify-before-reading    13   PASS        1       2078/116    1.74s    1.74s
+identify-before-reading    14   PASS        1       2078/116    1.57s    1.57s
+identify-before-reading    15   PASS        1       2078/116    1.92s    1.93s
+identify-before-reading    16   PASS        1       2078/116    1.43s    1.44s
+identify-before-reading    17   PASS        1       2078/116    1.56s    1.57s
+identify-before-reading    18   PASS        1       2078/116    1.75s    1.75s
+identify-before-reading    19   PASS        1       2078/116    1.93s    1.93s
+identify-before-reading    20   PASS        1       2078/116    1.78s    1.78s
+                                pass  (20/20, need 20)
+
+1/1 fixtures passed
+exit 0
