@@ -392,3 +392,108 @@ total of the $6.
   - the `say` handler's digit guard; the new `sms` and `note` actions
 
   No model calls.
+
+---
+
+## Phase 4 — speech and handlers, test-first
+
+**Date:** 2026-10-31
+**Goal:** make the voice rules certain in code before the turn gate and policy rely on
+them: numbers as words everywhere, one question per turn, short lines, a calmer voice
+for an upset caller, a warm transfer that carries a summary, and written confirmation.
+
+### How it was built
+Test-first. `test_speech.py` and `test_actions.py` were written first and failed at
+import (the functions didn't exist). Then the code was written until all passed.
+
+### What was built
+- **`words.py` (new, pure):**
+  - `spoken_number` (0–9999, British "and"), `spoken_ordinal`, `spoken_date`,
+    `spoken_range` (month said once; both months when they differ), `spoken_euros`
+    (singular for 1)
+  - **`digits_to_words`**, the guard. It runs most-specific-first:
+    - ISO dates → spoken dates
+    - times ("10:30" → "ten thirty", "10:00" → "ten o'clock")
+    - prices (`€420`, `420€`, `240 euros`)
+    - percentages
+    - weights (`2,000 kg`, `750kg` → "… kilos")
+    - "2k" → "two thousand"
+    - ordinals ("6th" → "sixth")
+    - decimals ("1.8" → "one point eight")
+    - grouped thousands
+    - and, digit by digit, codes, numbers with leading zeros, anything above 9999, and
+      phone numbers ("plus three seven zero …")
+  - A test feeds it a messy string and asserts no digit survives.
+- **`reading.py` (new):** `last_message`, `latest_caller_turn` (the caller's lines
+  since we last spoke; a pause-and-continue is one turn), `emotion` (the strongest of
+  the named scores). The turn gate now uses it.
+- **`speech.py` (deepened):**
+  - `tone(t)` → `("calm", 0.95)` when the latest caller turn has Anger or Distress
+    ≥ 0.5, else `("neutral", 1.0)`. Only the latest turn counts, so a caller who has
+    calmed down gets the normal voice back.
+  - Every rendered line carries the voice.
+  - Per-queue warm-transfer lines:
+    - a new customer hears why ("new customers are set up by a colleague")
+    - a requested transfer gets "Of course…"
+    - an internal error gets an apology
+  - The transfer action carries the summary.
+  - `check_in_line()`: "Are you still there? No rush if you need a moment."
+  - `goodbye_line()`.
+  - A booking is confirmed aloud ("…and I'll text you the details") **and** by an
+    `sms` with figures.
+- **`actions.py`:**
+  - `say` runs the digit guard and collapses whitespace, so no digit can be spoken
+    whatever wrote the text (including the model's free answers later)
+  - `transfer` carries `summary`
+  - **new `sms`** (always to the number that called) and **`note`** (trace fields; the
+    judge and the asserts ignore it)
+  - helpers `sms()`, `handoff()`, `note()`
+  - the kit-facing names `Handler`, `HandlerContext`, `handlers` are unchanged
+- **`policy.Handoff`** gained `summary`.
+- **`agent.decide`** passes the caller's tone into every line, error paths included.
+- **Layering:** words ← actions ← speech. The word functions live in their own module
+  because `actions` needs the guard and `speech` needs the action helpers; keeping
+  them apart avoids an import cycle.
+
+### Files
+- New: `pirtis/agent/words.py`, `pirtis/agent/reading.py`, `test_speech.py`,
+  `test_actions.py`, `reports/phase-04/`.
+- Changed: `speech.py`, `actions.py`, `turn.py`, `policy.py` (`Handoff.summary`),
+  `agent.py`, `SPEC.md`, `BUILD_LOG.md`.
+
+### Commands and results
+| Command | Result |
+|---|---|
+| new tests before implementing | failed at import, as intended |
+| `make check` | lint clean, strict mypy clean (13 files), **142 tests passed**, 0 failed (71 new) |
+| zero-token replays (00, 04, 05) | all pass; 00 now ends with the spoken confirmation and an `sms` |
+
+**Reports:**
+- `reports/phase-04/pytest.txt`: 142 tests by name
+- `reports/phase-04/lines.txt`: every line the receptionist can say, as the handlers
+  deliver it, the guard's rewrites, and the replays
+
+### Decisions
+- No new decisions; this phase implements D-06 (announced transfer), D-17 (spoken
+  forms), D-18 (`sms`), D-24 (voice rules tested) and D-37 (`note`).
+
+### Deviations from the plan
+- **No live model check.** The plan said none was needed, and the replays exercise the
+  new handlers through the real harness. Spend this phase: $0.
+- The plan named the helpers inside `speech.py`. The pure word functions moved to
+  `words.py` to avoid an import cycle; behaviour is as planned.
+
+### Open issues and risks
+- `digits_to_words` reads letter-digit mixes as joined words ("4B" → "fourB"). That's
+  harmless for the guard (no digit is spoken), and our own templates never produce
+  them.
+- `NoFit` still has one generic line; Phase 6 gives each reason its own wording
+  (nobody seats nine; the car can't tow any unit).
+
+### What the next phase needs from you
+- Nothing beyond the go-ahead. Phase 5 builds the full turn gate, test-first:
+  - silence → check-in, a second silence or silence after a goodbye → hang up
+  - filler-only and "hang on" lines → wait
+  - the strict "talk to a person" regex, and anger plus a barge-in → warm transfer
+  - Fixtures 03, 13 and 26 should then pass. No model calls, except one targeted live
+    check (well under a cent).

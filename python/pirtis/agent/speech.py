@@ -1,89 +1,52 @@
 """Speech: what the receptionist says, written by code.
 
-Every number, date and price is spoken as words, and every reply asks at most one
-question. The model never writes these lines, so it cannot get a fact wrong in them.
+Every number, date and price is spoken as words, every reply asks at most one
+question, and the voice gets calmer when the caller is upset. The model never writes
+these lines, so it cannot get a fact wrong in them.
 """
 
 from datetime import date
 
+from pirtis.agent.actions import handoff, sms
 from pirtis.agent.policy import Ask, Booked, Decision, Handoff, NoFit, Offer
-from pirtis.transcript.types import Action, say, transfer
+from pirtis.agent.reading import emotion, latest_caller_turn
+from pirtis.agent.words import spoken_euros, spoken_number, spoken_range
+from pirtis.api.types import Booking, Unit
+from pirtis.transcript.types import Action, Transcript, say
 
-_ONES = [
-    "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
-    "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen",
-    "eighteen", "nineteen",
-]  # fmt: skip
-_TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
-_ORDINALS = [
-    "", "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth",
-    "tenth", "eleventh", "twelfth", "thirteenth", "fourteenth", "fifteenth", "sixteenth",
-    "seventeenth", "eighteenth", "nineteenth", "twentieth",
-]  # fmt: skip
+# (emotion, speed) hints for the voice
+Voice = tuple[str, float]
+NEUTRAL: Voice = ("neutral", 1.0)
+CALM: Voice = ("calm", 0.95)
+UPSET_AT = 0.5
 
 
-def spoken_number(n: int) -> str:
-    """0 to 9999 in words, British style: 240 is "two hundred and forty"."""
-    if n < 0:
-        return "minus " + spoken_number(-n)
-    if n < 20:
-        return _ONES[n]
-    if n < 100:
-        tens, ones = divmod(n, 10)
-        return _TENS[tens] + ("-" + _ONES[ones] if ones else "")
-    if n < 1000:
-        hundreds, rest = divmod(n, 100)
-        return _ONES[hundreds] + " hundred" + (" and " + spoken_number(rest) if rest else "")
-    if n < 10000:
-        thousands, rest = divmod(n, 1000)
-        head = _ONES[thousands] + " thousand"
-        if not rest:
-            return head
-        return head + (" and " if rest < 100 else " ") + spoken_number(rest)
-    raise ValueError(f"no spoken form for {n}")
+def tone(t: Transcript) -> Voice:
+    """A calmer, slightly slower voice when the caller's latest turn sounds angry or
+    distressed. Only the latest turn counts: a caller who has calmed down gets back the
+    normal voice."""
+    upset = emotion(latest_caller_turn(t), "Anger", "Distress")
+    return CALM if upset >= UPSET_AT else NEUTRAL
 
 
-def spoken_ordinal(n: int) -> str:
-    """1 to 31: "first" to "thirty-first"."""
-    if n <= 20:
-        return _ORDINALS[n]
-    tens, ones = divmod(n, 10)
-    if not ones:
-        return _TENS[tens][:-1] + "ieth"  # thirty -> thirtieth
-    return _TENS[tens] + "-" + _ORDINALS[ones]
-
-
-def spoken_date(iso: str) -> str:
-    """ "Tuesday the sixth of October"."""
-    d = date.fromisoformat(iso)
-    return f"{d.strftime('%A')} the {spoken_ordinal(d.day)} of {d.strftime('%B')}"
-
-
-def spoken_range(start: str, end: str) -> str:
-    """One day, or "Tuesday the sixth to Wednesday the seventh of October", with the
-    month said once when both days share it."""
-    if start == end:
-        return spoken_date(start)
-    s, e = date.fromisoformat(start), date.fromisoformat(end)
-    if (s.year, s.month) == (e.year, e.month):
-        return (
-            f"{s.strftime('%A')} the {spoken_ordinal(s.day)} to "
-            f"{e.strftime('%A')} the {spoken_ordinal(e.day)} of {e.strftime('%B')}"
-        )
-    return f"{spoken_date(start)} to {spoken_date(end)}"
-
-
-def spoken_euros(n: int) -> str:
-    return spoken_number(n) + (" euro" if n == 1 else " euros")
-
-
-_QUESTIONS = {
+QUESTIONS = {
     "name": "Can I get your full name, please?",
     "dates": "Which dates were you thinking of?",
     "people": "How many of you will there be?",
     "tow": "How much can your car tow, braked? It's in the car's handbook.",
     "power": "Is there mains power where the sauna is going?",
 }
+
+HANDOFF_LINES = {
+    "new_customers": "I can't find an account under that name and number, and new "
+    "customers are set up by a colleague. I'll put you through now.",
+    "front_desk": "Of course. I'll put you through to a colleague now.",
+    "bookings_support": "Sorry, something went wrong on my side. I'll put you through to "
+    "a colleague who can sort it out.",
+}
+HANDOFF_DEFAULT = "I'll put you through to a colleague now."
+
+NO_FIT = "I'm sorry, none of our saunas fit that. Would other dates work for you?"
 
 _WHY_NOT = {
     "weight": "{was} is too heavy for your car",
@@ -92,27 +55,29 @@ _WHY_NOT = {
 }
 
 
-def render(d: Decision) -> list[Action]:
-    """The actions for one decision."""
+def check_in_line() -> str:
+    """After a silence: two short sentences, no pressure."""
+    return "Are you still there? No rush if you need a moment."
+
+
+def goodbye_line() -> str:
+    return "Thanks for calling Pirtis on Wheels. Goodbye!"
+
+
+def render(d: Decision, voice: Voice = NEUTRAL) -> list[Action]:
+    """The actions for one decision, spoken in the given voice."""
     match d:
         case Ask(slot=slot):
-            return [_say(_QUESTIONS[slot])]
+            return [_say(QUESTIONS[slot], voice)]
         case Offer():
-            return [_say(offer_line(d))]
+            return [_say(offer_line(d), voice)]
         case Booked(booking=b, unit=u):
-            return [
-                _say(
-                    f"That's booked: {u.name}, {spoken_range(b.start, b.end)}, "
-                    f"for {spoken_number(b.people)} people. The total is {spoken_euros(b.total)}."
-                )
-            ]
-        case Handoff(queue=queue, reason=reason):
-            return [
-                _say("I'll put you through to a colleague who can help."),
-                transfer(queue, reason),
-            ]
+            return [_say(booked_line(b, u), voice), sms(sms_text(b, u))]
+        case Handoff(queue=queue, reason=reason, summary=summary):
+            line = HANDOFF_LINES.get(queue, HANDOFF_DEFAULT)
+            return [_say(line, voice), handoff(queue, reason, summary)]
         case NoFit():
-            return [_say("I'm sorry, none of our saunas fit that. Would other dates work for you?")]
+            return [_say(NO_FIT, voice)]
 
 
 def offer_line(o: Offer) -> str:
@@ -130,5 +95,26 @@ def offer_line(o: Offer) -> str:
     return f"{first} That's {spoken_euros(o.total)}. Shall I book it?"
 
 
-def _say(text: str) -> Action:
-    return say(text, "neutral", 1.0)
+def booked_line(b: Booking, u: Unit) -> str:
+    return (
+        f"That's booked: {u.name}, {spoken_range(b.start, b.end)}, for "
+        f"{spoken_number(b.people)} people. The total is {spoken_euros(b.total)}, and I'll "
+        "text you the details."
+    )
+
+
+def sms_text(b: Booking, u: Unit) -> str:
+    """The written confirmation. A text is read, not heard, so figures are fine here."""
+    s, e = date.fromisoformat(b.start), date.fromisoformat(b.end)
+    return (
+        f"Pirtis on Wheels: {u.name} is booked from {_short(s)} to {_short(e)} {e.year}, "
+        f"{b.people} people, total €{b.total}. Booking {b.id}."
+    )
+
+
+def _short(d: date) -> str:
+    return f"{d.strftime('%a')} {d.day} {d.strftime('%b')}"
+
+
+def _say(text: str, voice: Voice) -> Action:
+    return say(text, voice[0], voice[1])

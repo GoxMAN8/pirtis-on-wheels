@@ -1,0 +1,48 @@
+# Phase 04 · every line the receptionist can say, as the handlers deliver it
+# commit: feat(agent): speech and actions, deepened · 2026-10-31 · generated from render() and the handlers, no model calls
+
+== one line per decision kind (neutral voice)
+Ask      speech   Can I get your full name, please?
+Ask      speech   Which dates were you thinking of?
+Ask      speech   How many of you will there be?
+Ask      speech   How much can your car tow, braked? It's in the car's handbook.
+Ask      speech   Is there mains power where the sauna is going?
+Offer    speech   I can offer Mažoji, Tuesday the sixth to Wednesday the seventh of October, for four people. That's two hundred and forty euros. Shall I book it?
+Offer    speech   Mažoji only takes four, so for eight of you I can offer Didžioji, Saturday the third to Sunday the fourth of October. That's four hundred and twenty euros. Shall I book it?
+Offer    speech   Didžioji is too heavy for your car, so I can offer Vidutinė, Saturday the tenth to Sunday the eleventh of October. That's three hundred and twenty euros. Shall I book it?
+Offer    speech   Vidutinė needs mains power, so I can offer Didžioji, Saturday the tenth to Sunday the eleventh of October. That's four hundred and twenty euros. Shall I book it?
+Offer    speech   Vidutinė isn't free then, so I can offer Didžioji, Saturday the tenth to Sunday the eleventh of October. That's four hundred and twenty euros. Shall I book it?
+Booked   speech   That's booked: Mažoji, Tuesday the sixth to Wednesday the seventh of October, for four people. The total is two hundred and forty euros, and I'll text you the details.
+Booked   sms      Pirtis on Wheels: Mažoji is booked from Tue 6 Oct to Wed 7 Oct 2026, 4 people, total €240. Booking bk_101.
+Handoff  speech   I can't find an account under that name and number, and new customers are set up by a colleague. I'll put you through now.
+Handoff  transfer to=new_customers reason='no customer matches' summary=''
+Handoff  speech   Of course. I'll put you through to a colleague now.
+Handoff  transfer to=front_desk reason='caller asked for a person' summary=''
+Handoff  speech   Sorry, something went wrong on my side. I'll put you through to a colleague who can sort it out.
+Handoff  transfer to=bookings_support reason='api error' summary=''
+NoFit    speech   I'm sorry, none of our saunas fit that. Would other dates work for you?
+
+== fixed lines
+check-in: Are you still there? No rush if you need a moment.
+goodbye:  Thanks for calling Pirtis on Wheels. Goodbye!
+
+== an upset caller gets the calm voice
+{"emotion": "calm", "speed": 0.95}
+
+== the say handler's digit guard (model-written text goes through it too)
+"That's 240 euros."        -> "That's two hundred and forty euros."
+'It costs €420.'           -> 'It costs four hundred and twenty euros.'
+'It weighs 2,000 kg.'      -> 'It weighs two thousand kilos.'
+'about 1.8 tonnes'         -> 'about one point eight tonnes'
+'from 2026-10-06'          -> 'from Tuesday the sixth of October'
+'pick up at 10:30'         -> 'pick up at ten thirty'
+'+37061234567'             -> 'plus three seven zero six one two three four five six seven'
+
+== zero-token replays through the real harness (scripted model, gold call state)
+-- ask-tow-capacity: PASS · model calls 1
+   speech: How much can your car tow, braked? It's in the car's handbook.
+-- capacity: PASS · model calls 1
+   speech: Mažoji only takes four, so for eight of you I can offer Didžioji, Saturday the third to Sunday the fourth of October. That's four hundred and twenty euros. Shall I book it?
+-- happy-path: PASS · model calls 1
+   speech: That's booked: Mažoji, Tuesday the sixth to Wednesday the seventh of October, for four people. The total is two hundred and forty euros, and I'll text you the details.
+   sms: Pirtis on Wheels: Mažoji is booked from Tue 6 Oct to Wed 7 Oct 2026, 4 people, total €240. Booking bk_101.

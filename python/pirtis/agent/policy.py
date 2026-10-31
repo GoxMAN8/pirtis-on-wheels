@@ -45,10 +45,12 @@ class Booked:
 
 @dataclass(frozen=True)
 class Handoff:
-    """Pass the call to a person in the named queue."""
+    """Pass the call to a person in the named queue, with what we already know so the
+    caller doesn't have to repeat it."""
 
     queue: str
     reason: str
+    summary: str = ""
 
 
 @dataclass(frozen=True)

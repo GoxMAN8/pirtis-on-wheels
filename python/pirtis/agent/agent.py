@@ -13,7 +13,7 @@ The model listens; code talks. handlers, in actions.py, carry the actions out.
 import logging
 
 from pirtis.agent.policy import Handoff, next_step
-from pirtis.agent.speech import render
+from pirtis.agent.speech import render, tone
 from pirtis.agent.turn import gate
 from pirtis.agent.understand import UnderstandError, extract
 from pirtis.api.client import Client as ApiClient
@@ -32,16 +32,17 @@ def decide(t: Transcript, api: ApiClient, llm: LlmClient) -> list[Action]:
     gated = gate(t)
     if gated is not None:
         return gated
+    voice = tone(t)
     try:
         units = api.list_units()
         state = extract(t, llm, units)
-        return render(next_step(t, state, api, units))
+        return render(next_step(t, state, api, units), voice)
     except UnderstandError as e:
         log.warning("understanding failed: %s", e)
-        return [say(SORRY, "neutral", 1.0)]
+        return [say(SORRY, *voice)]
     except ApiError as e:
         log.warning("api error: %s", e)
-        return render(Handoff("bookings_support", f"api error {e.status} {e.code}"))
+        return render(Handoff("bookings_support", f"api error {e.status} {e.code}"), voice)
     except Exception:  # anything else is our bug; the caller still gets a person
         log.exception("decide failed")
-        return render(Handoff("bookings_support", "internal error"))
+        return render(Handoff("bookings_support", "internal error"), voice)

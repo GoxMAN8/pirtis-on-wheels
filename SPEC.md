@@ -75,9 +75,11 @@ library, the kit's own modules and pydantic (D-32, D-49).
 | `understand.py` | `extract(t, llm, units) -> CallState` (frozen pydantic model, strict schema generated from the class); raises `UnderstandError` if it can't validate |
 | `rules.py` | `violations(req, unit, free_days, own_bookings) -> list[str]` mirrors every write rule of the API |
 | `policy.py` | `next_step(t, state, api, units) -> Decision`; the offer engine (`apply_weekend_min`, `find_window`, `choose_offer`); `last_offer(t, units)` parses our previous read-back |
-| `speech.py` | `render(decision, t) -> list[Action]`; spoken numbers, dates and prices; tone |
+| `speech.py` | `render(decision, voice) -> list[Action]`; the templates; `tone(t)` (a calm, slower voice when the caller's latest turn is angry or distressed); check-in and goodbye lines; the written confirmation text |
+| `words.py` | numbers (0–9999), ordinals, dates, ranges and euros as words; `digits_to_words`, the guard every spoken line passes through. Pure, imported by speech and the handlers alike |
+| `reading.py` | transcript helpers shared by the gate, policy and speech: the caller's latest turn, emotion scores, the last line |
 | `telemetry.py` | `TurnRecord` (no content) and `to_otel()`; emitted on logger `pirtis.turn` |
-| `actions.py` | `handlers` (`say`, `wait`, `transfer`, `end_call`, `sms`, `note`) and helpers |
+| `actions.py` | `handlers`: `say` (digit guard, whitespace collapsed), `wait`, `transfer` (carries a handoff summary), `end_call`, `sms` (to the calling number only), `note` (trace fields); helpers `sms()`, `handoff()`, `note()` |
 | `agent.py` | `decide` wires gate → understand → policy → speech; never raises |
 
 Around the agent, never imported by it:
@@ -430,3 +432,4 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | 2026-10-31 | 1 | `SPEC.md` written: design, rules, voice UX, visual design, frozen gate, data model, monitoring, decision log | Decisions fixed before code | D-01 – D-49 |
 | 2026-10-31 | 2 | pydantic, pinned ruff and mypy; strict mypy on the agent; `Makefile` with `check` and the frozen `gate`; own fixtures 20–29 with a test that checks them against the API; the gate's exit code fixed for make 3.81 | Tooling and the measuring stick before the agent | D-20, D-21, D-49, D-50, D-51 |
 | 2026-10-31 | 3 | Walking skeleton replaces the starter agent: turn gate (interim speech), `CallState` v1 with its strict schema generated from the class, policy v1 (identify, ask one detail, search with all filters, offer, book only on a yes to our own offer), spoken templates; zero-token replay tests; first live run 7/14 and 6/10 with no API errors | Prove every layer end to end before deepening any | D-02, D-08, D-09, D-10, D-17, D-33, D-49 |
+| 2026-10-31 | 4 | Speech and handlers deepened test-first: `words.py` (spoken forms and the digit guard for dates, times, prices, weights, percentages, decimals, "2k", ordinals, codes and phone numbers), `reading.py`, tone from the latest caller turn, per-queue warm-transfer lines with a summary on the transfer, check-in and goodbye lines, a booking confirmed aloud and by text; `sms` and `note` handlers. 71 new tests (142 in total) | The voice rules made certain in code, before the turn gate and policy rely on them | D-06, D-17, D-18, D-24, D-37 |
