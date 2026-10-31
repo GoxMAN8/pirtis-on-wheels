@@ -39,6 +39,7 @@ DOCS = {
         ],
     ),
     "evaluation.pdf": ("Evaluation", ["docs/evaluation.md"]),
+    "data-science.pdf": ("Data science: methods and metrics", ["docs/data-science.md"]),
     "spec.pdf": ("SPEC: design, decisions and change log", ["SPEC.md"]),
     "deploy.pdf": ("Deploy", ["deploy/README.md"]),
     "build-log.pdf": ("Build log", ["BUILD_LOG.md"]),

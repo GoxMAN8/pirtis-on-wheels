@@ -2,6 +2,8 @@
 
 How well the receptionist works, measured four ways. Every number links back to the raw
 output in `reports/`, and SPEC §7b lists every run.
+How each metric is defined and computed, and how far to trust it, is in
+[data-science.md](data-science.md).
 - **The frozen gate:** every case, 3 runs, all 3 must pass, the kit's judge included.
 - **The extractor eval:** did the model hear each call right?
 - **A reliability curve:** 5 runs of every case, to catch what a 3-run gate misses.
