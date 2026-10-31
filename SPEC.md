@@ -79,9 +79,9 @@ library, the kit's own modules and pydantic (D-32, D-49).
 | `speech.py` | `render(decision, voice) -> list[Action]`; the templates; `tone(t)` (a calm, slower voice when the caller's latest turn is angry or distressed); check-in and goodbye lines; the written confirmation text |
 | `words.py` | numbers (0–9999), ordinals, dates, ranges and euros as words; `digits_to_words`, the guard every spoken line passes through. Pure, imported by speech and the handlers alike |
 | `reading.py` | transcript helpers shared by the gate, policy and speech: the caller's latest turn, emotion scores, the last line |
-| `telemetry.py` | `TurnRecord` (no content) and `to_otel()`; emitted on logger `pirtis.turn` |
+| `telemetry.py` | `TurnRecord` (versioned, no content) built once per turn; `to_otel()` renders OpenTelemetry GenAI names; `emit()` writes one JSON line on the `pirtis.turn` logger, silent unless the running app attaches a handler, and never raises |
 | `actions.py` | `handlers`: `say` (digit guard, whitespace collapsed), `wait`, `transfer` (carries a handoff summary), `end_call`, `sms` (to the calling number only), `note` (trace fields); helpers `sms()`, `handoff()`, `note()` |
-| `agent.py` | `decide` wires gate → understand → policy → speech; never raises |
+| `agent.py` | `decide` wires gate → understand → policy → speech and never raises. Every turn ends with a `note` (decision, intent, gate, fallback, `agent_version`, `turn_id`) and emits one `TurnRecord`; model calls are counted by wrapping the client in the kit's `Recorder`, and API calls by slicing `api.log()`. The library adds a `NullHandler`, so nothing prints unless the app configures logging |
 
 Around the agent, never imported by it:
 - `pirtis/ops/`: data layer, gate job, variant generator
@@ -245,6 +245,8 @@ blocks deployment.
 
 | 2026-10-31 | **ours, understanding v2** (`agent_version` b37713964b41) | given + extra, **3 runs, 3 must pass** | **14/14 and 10/10: 72/72 runs, pass^3 = 1.0** | 60 (0 on 12 runs) | 121,110 / 8,244 |
 
+| 2026-10-31 | ours: note + telemetry (`agent_version` 8a552e2b0636) | **all 24 cases** (14 given + 10 ours), 1 run | **24/24**; one note in every run's result; nothing on stderr | 20 | 40,370 / 2,742 |
+
 At the Phase 6 gate, model turns took p50 1.54 s and p95 1.77 s (max 1.84 s), with
 about 1.7k prompt tokens each. After understanding v2 they take p50 1.76 s and p95
 2.14 s (one outlier at 4.2 s), with about 2.0k prompt tokens: the price of the quote
@@ -340,14 +342,17 @@ flowchart LR
 
 ## 10. Telemetry and monitoring
 
-**One `TurnRecord` per turn** (D-26):
-- identity: version, timestamp, call and turn ids, agent version
-- what happened: gate outcome, intent, decision, action types
-- cost: model calls, input and output tokens, latency
-- API calls: method, status, code
-- outcome: fallback flag, transfer reason, hashed phone
+**One `TurnRecord` per turn** (D-26), as built in `telemetry.py`:
+- identity: `telemetry_version`, `ts`, `call_id`, `turn_id`, `agent_version`
+- what happened: `gate` (none, wait, check_in, hang_up, transfer), `intent`, `decision`
+  (the policy's decision type), `action_types`
+- cost: `llm_calls`, `input_tokens`, `output_tokens`, `latency_ms`
+- API calls: `api_calls` as method, status and code
+- outcome: `fallback`, `transfer_reason`, and `phone_hash` (a salted hash of the
+  digits; the salt comes from `PIRTIS_HASH_SALT`)
 
-It holds no transcript text and no names. Field names render to OpenTelemetry GenAI
+It holds no transcript text and no names. A sample is in
+`reports/phase-08/turn-record-sample.json`. Field names render to OpenTelemetry GenAI
 attributes (`gen_ai.request.model`, `gen_ai.usage.input_tokens`, …) through one
 renderer, so a convention change touches one function.
 
@@ -474,3 +479,4 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | 2026-10-31 | 5 | Full turn gate, test-first: still talking, filler-only or "hang on" → wait; a strict "talk to a person" pattern, or anger ≥ 0.7 with a barge-in → announced, calm transfer with a summary; we spoke last → wait, check in after 6 s of silence, hang up after a second silence, end quietly after a goodbye. Ask-for-name and tow questions reworded after two judge errors. 200 tests; 03, 13 and 26 pass with 0 model calls | Turn-taking without spending a model call | D-04, D-05, D-06, D-51 |
 | 2026-10-31 | 6 | Rules mirror with property tests against the API; offer engine (weekend minimum, both-way date shifts, must-have and heater-reason units, catalogue limits); read-back parser; own-booking clashes; moves and cancels with version retry; 409 re-check-and-retry and 500 check-then-retry; every intent (price, refusal, status, goodbye, hold, a second misunderstanding → person); `CallState` v2. Fixture 29's second criterion reworded: it contradicted the first. **Frozen gate passes: 72/72 runs** | Make a rule violation impossible by construction and handle every turn the fixtures describe | D-07, D-10, D-12–D-16, D-19, D-31, D-34, D-35, D-52, D-53 |
 | 2026-10-31 | 7 | Gold call states for the 20 model-facing fixtures; the extractor eval (`make eval-extract`); sharper prompt rules; sanity bounds and an answer cap; quote checks in code for unit and consent; booking notes without site or car details; `agent_version`. Extractor pass^3 went 10/20 (1 run) → 12/20 → **20/20**; the frozen gate still passes 72/72 | Measure and fix the model's understanding apart from the policy and the judge | D-36, D-54, D-55, D-56 |
+| 2026-10-31 | 8 | `decide` restructured around an `Outcome`; a `note` ends every turn; `telemetry.py` builds and emits one content-free `TurnRecord` per turn, with an OpenTelemetry rendering; a `NullHandler` silences library logging. One-run gate: all 24 cases pass, with one note in every result | Observability without personal data, and traceable runs | D-26, D-37 |

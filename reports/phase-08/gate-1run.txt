@@ -1,0 +1,63 @@
+# Phase 08 · all 24 cases (14 given + 10 ours), 1 run: 24/24
+# commit: feat(agent): note on every turn, privacy-safe telemetry · 2026-10-31
+# command: cd python && make gate RUNS=1 NEED=1
+
+== ../fixtures: 1 runs, 1 must pass
+fixture                    run  result  calls  tokens in/out      llm     wall
+happy-path                 1    PASS        1       2135/146    1.89s    1.89s
+                                pass  (1/1, need 1)
+identify-before-reading    1    PASS        1       1950/116    1.72s    1.72s
+                                pass  (1/1, need 1)
+interim-speech             1    PASS        0            0/0      0ms      0ms
+                                pass  (1/1, need 1)
+silence                    1    PASS        0            0/0      0ms      0ms
+                                pass  (1/1, need 1)
+capacity                   1    PASS        1       2068/155    1.70s    1.70s
+                                pass  (1/1, need 1)
+ask-tow-capacity           1    PASS        1       2028/146    1.68s    1.69s
+                                pass  (1/1, need 1)
+tow-weight                 1    PASS        1       2027/148    1.69s    1.70s
+                                pass  (1/1, need 1)
+power                      1    PASS        1       2039/137    1.60s    1.61s
+                                pass  (1/1, need 1)
+turnaround                 1    PASS        1       2074/142    1.72s    1.73s
+                                pass  (1/1, need 1)
+change-of-plan             1    PASS        1       2124/143    1.45s    1.46s
+                                pass  (1/1, need 1)
+other-customers-data       1    PASS        1       2078/139    1.52s    1.52s
+                                pass  (1/1, need 1)
+weekend-minimum            1    PASS        1       2021/129    1.54s    1.54s
+                                pass  (1/1, need 1)
+slot-stolen                1    PASS        1       2031/154    1.74s    1.74s
+                                pass  (1/1, need 1)
+rising-frustration         1    PASS        0            0/0      0ms      0ms
+                                pass  (1/1, need 1)
+
+14/14 fixtures passed
+== ../fixtures/extra: 1 runs, 1 must pass
+fixture                    run  result  calls  tokens in/out      llm     wall
+unknown-caller             1    PASS        1       1953/125    1.53s    1.54s
+                                pass  (1/1, need 1)
+first-name-only            1    PASS        1       1927/124    1.45s    1.46s
+                                pass  (1/1, need 1)
+cancel-booking             1    PASS        1       2036/135    1.47s    1.48s
+                                pass  (1/1, need 1)
+nine-people                1    PASS        1       1984/126    1.46s    1.47s
+                                pass  (1/1, need 1)
+car-too-light              1    PASS        1       1983/136    1.48s    1.49s
+                                pass  (1/1, need 1)
+sunday-only                1    PASS        1       1979/133    1.44s    1.45s
+                                pass  (1/1, need 1)
+silence-after-check-in     1    PASS        0            0/0      0ms      0ms
+                                pass  (1/1, need 1)
+barge-in-correction        1    PASS        1       2010/132    1.42s    1.42s
+                                pass  (1/1, need 1)
+identify-this-turn         1    PASS        1       1944/122    1.60s    1.60s
+                                pass  (1/1, need 1)
+own-booking-overlap        1    PASS        1       1979/154    1.61s    1.62s
+                                pass  (1/1, need 1)
+
+10/10 fixtures passed
+
+agent model calls 20, tokens in/out 40370/2742, est. $0.0077 (judge calls not counted)
+exit 0

@@ -858,3 +858,110 @@ of the $6.
   - logging that takes over the stray stderr warning
 
   Zero-token tests, then a one-run gate.
+
+---
+
+## Phase 8 — a note on every turn, privacy-safe telemetry
+
+**Date:** 2026-10-31
+**Goal:** make every turn traceable (what was decided, by which code, at what cost)
+without recording anything the caller said, and stop the library printing to the
+harness's output.
+
+**Headline: all 24 cases pass (14 given + 10 ours), one run each.** Every run's result
+carries exactly one note, and nothing is printed to stderr.
+
+### How it was built
+Test-first. `test_telemetry.py` (8 tests) failed at import; then `telemetry.py` and
+the new `decide`.
+
+### What was built
+- **`telemetry.py` (new):**
+  - **`TurnRecord`**, a versioned model:
+    - identity: `telemetry_version`, `ts`, `call_id`, `turn_id`, `agent_version`
+    - what happened: `gate`, `intent`, `decision`, `action_types`
+    - cost: `llm_calls`, `input_tokens`, `output_tokens`, `latency_ms`
+    - API calls: `api_calls` as method, status and code
+    - outcome: `fallback`, `transfer_reason`
+    - `phone_hash`: a salted hash of the digits, with the salt from
+      `PIRTIS_HASH_SALT`
+  - **No text, no names, no number.**
+  - **`to_otel()`** renders the record as OpenTelemetry attributes: GenAI names where
+    the convention has them, including both `gen_ai.system` and the newer
+    `gen_ai.provider.name`, and `pirtis.*` for the rest.
+  - **`emit()`** writes one JSON line (`"event": "turn"`) on the `pirtis.turn`
+    logger. That logger has a `NullHandler` and level INFO, so it's silent unless the
+    app attaches a handler, which the playground and the gate job will. It never
+    raises.
+- **`agent.py`:**
+  - `decide` now wraps `_turn`, which returns the actions and an `Outcome`: the gate
+    kind, intent, decision and fallback.
+  - It counts this turn's model calls by wrapping the client in the kit's `Recorder`,
+    and takes this turn's API calls by slicing `api.log()`.
+  - It builds and emits the record, then **appends a `note`** with the decision,
+    intent, gate, fallback, `agent_version` and `turn_id`.
+  - A `NullHandler` on `pirtis.agent` keeps the warning that printed in Phase 3 off
+    the harness's stderr.
+
+### Commands and results
+| Command | Result |
+|---|---|
+| new tests before implementing | failed at import, as intended |
+| `make check` | lint, strict mypy (24 files), **343 tests passed**, 0 failed |
+| `make gate RUNS=1 NEED=1` | **24/24 cases** (14 given + 10 ours); 20 model calls; ≈ $0.008 agent |
+| notes in the 24 results | **24/24 runs carry exactly one note**, all with agent version `8a552e2b0636` |
+
+What the notes show, at a glance (`reports/phase-08/notes.txt`):
+
+| Case | Decision or gate |
+|---|---|
+| happy-path, slot-stolen | Booked |
+| change-of-plan | Moved |
+| cancel-booking | Cancelled |
+| other-customers-data | Refuse |
+| own-booking-overlap | OwnClash |
+| nine-people, car-too-light | NoFit |
+| unknown-caller | Handoff |
+| interim-speech | gate wait |
+| silence | gate check_in |
+| rising-frustration | gate transfer |
+| silence-after-check-in | gate hang_up |
+| everything else | Offer or Ask |
+
+**Reports:** `reports/phase-08/`:
+- `gate-1run.txt`
+- `notes.txt`
+- `turn-record-sample.json`: one real record, captured from a zero-token replay of
+  happy-path. Its token counts read 0 because the scripted test model reports no
+  usage; live runs fill them in.
+- `pytest.txt` (343 tests)
+
+### Decisions
+- No new decisions; this phase implements D-26 (telemetry) and D-37 (`note`).
+
+### Deviations from the plan
+- **No full 3-run gate.** No prompt or policy logic changed; only wiring was added.
+  The one-run gate plus the zero-token tests cover it. The next full gate runs in
+  Phase 9.
+- **The full zero-token replay** of every model-facing fixture already landed in
+  Phase 7 (20 gold replays). This phase adds the note and record checks to it.
+
+### Spend
+≈ $0.01 this phase; ≈ $0.25 in total of the $6.
+
+### Open issues and risks
+- **Records are only logged so far.** They aren't persisted anywhere until the data
+  layer (Phase 10) and the playground and gate job attach a handler (Phases 11 and
+  14).
+- **The salt has a default.** It must be set per deployment (Key Vault in Phase 15)
+  for the phone hash to mean anything outside a demo.
+
+### What the next phase needs from you
+- Nothing beyond the go-ahead. Phase 9 covers live tuning, the full gate and the
+  voice-UX audit:
+  - the full 3-run gate on all 24 cases
+  - the extractor eval
+  - an audit that every voice rule in SPEC §5 is enforced by a named test, closing
+    any gaps
+
+  About 6 cents.

@@ -1,0 +1,64 @@
+{
+  "event": "turn",
+  "telemetry_version": 1,
+  "ts": "<UTC timestamp>",
+  "call_id": "call_00",
+  "turn_id": "2537afef9286ce4c",
+  "agent_version": "8a552e2b0636",
+  "gate": "none",
+  "intent": "book",
+  "decision": "Booked",
+  "action_types": [
+    "say",
+    "sms",
+    "note"
+  ],
+  "llm_calls": 1,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "latency_ms": "<ms>",
+  "api_calls": [
+    {
+      "method": "units.list",
+      "status": 200,
+      "code": ""
+    },
+    {
+      "method": "bookings.list",
+      "status": 200,
+      "code": ""
+    },
+    {
+      "method": "units.availability",
+      "status": 200,
+      "code": ""
+    },
+    {
+      "method": "bookings.create",
+      "status": 200,
+      "code": ""
+    }
+  ],
+  "fallback": false,
+  "transfer_reason": "",
+  "phone_hash": "f295086601efcaa1",
+  "otel": {
+    "gen_ai.operation.name": "chat",
+    "gen_ai.system": "openai",
+    "gen_ai.provider.name": "openai",
+    "gen_ai.request.model": "gpt-4o-mini",
+    "gen_ai.usage.input_tokens": 0,
+    "gen_ai.usage.output_tokens": 0,
+    "pirtis.call.id": "call_00",
+    "pirtis.turn.id": "2537afef9286ce4c",
+    "pirtis.agent.version": "8a552e2b0636",
+    "pirtis.gate": "none",
+    "pirtis.intent": "book",
+    "pirtis.decision": "Booked",
+    "pirtis.latency_ms": "<ms>",
+    "pirtis.llm.calls": 1,
+    "pirtis.api.calls": 4,
+    "pirtis.api.errors": 0,
+    "pirtis.fallback": false
+  }
+}

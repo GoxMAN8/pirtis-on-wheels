@@ -1,0 +1,28 @@
+# Phase 08 · the note in every run's result: one per run, with the decision and gate
+# commit: feat(agent): note on every turn, privacy-safe telemetry · 2026-10-31
+# generated from runs/gate/*/*/run-1/result.json
+
+barge-in-correction        PASS  decision=Offer      intent=book                 gate=none      version=8a552e2b0636
+cancel-booking             PASS  decision=Cancelled  intent=cancel               gate=none      version=8a552e2b0636
+car-too-light              PASS  decision=NoFit      intent=book                 gate=none      version=8a552e2b0636
+first-name-only            PASS  decision=Ask        intent=book                 gate=none      version=8a552e2b0636
+identify-this-turn         PASS  decision=Ask        intent=book                 gate=none      version=8a552e2b0636
+nine-people                PASS  decision=NoFit      intent=book                 gate=none      version=8a552e2b0636
+own-booking-overlap        PASS  decision=OwnClash   intent=book                 gate=none      version=8a552e2b0636
+silence-after-check-in     PASS  decision=-          intent=-                    gate=hang_up   version=8a552e2b0636
+sunday-only                PASS  decision=Offer      intent=book                 gate=none      version=8a552e2b0636
+unknown-caller             PASS  decision=Handoff    intent=book                 gate=none      version=8a552e2b0636
+ask-tow-capacity           PASS  decision=Ask        intent=book                 gate=none      version=8a552e2b0636
+capacity                   PASS  decision=Offer      intent=book                 gate=none      version=8a552e2b0636
+change-of-plan             PASS  decision=Moved      intent=change               gate=none      version=8a552e2b0636
+happy-path                 PASS  decision=Booked     intent=book                 gate=none      version=8a552e2b0636
+identify-before-reading    PASS  decision=Ask        intent=check_booking        gate=none      version=8a552e2b0636
+interim-speech             PASS  decision=-          intent=-                    gate=wait      version=8a552e2b0636
+other-customers-data       PASS  decision=Refuse     intent=other_customer_info  gate=none      version=8a552e2b0636
+power                      PASS  decision=Offer      intent=book                 gate=none      version=8a552e2b0636
+rising-frustration         PASS  decision=-          intent=-                    gate=transfer  version=8a552e2b0636
+silence                    PASS  decision=-          intent=-                    gate=check_in  version=8a552e2b0636
+slot-stolen                PASS  decision=Booked     intent=book                 gate=none      version=8a552e2b0636
+tow-weight                 PASS  decision=Offer      intent=book                 gate=none      version=8a552e2b0636
+turnaround                 PASS  decision=Offer      intent=book                 gate=none      version=8a552e2b0636
+weekend-minimum            PASS  decision=Offer      intent=book                 gate=none      version=8a552e2b0636
