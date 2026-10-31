@@ -2,7 +2,9 @@
 
 [evaluation.md](evaluation.md) has the **results**. This page has the **methods**: what
 each number means, how it is computed, which code computes it, and how far to trust it.
-The decisions behind each one are in [SPEC §13](../SPEC.md#13-decision-log).
+The decisions these methods carry out are summarised in the README's
+[core technical decisions](../README.md#data-science-and-evaluation) (8–13); the full
+reasoning is in [SPEC §13](../SPEC.md#13-decision-log).
 
 The receptionist is a stochastic system: one model call a turn, at temperature 0, and
 gpt-4o-mini still varies between runs. The kit's judge, another model call, varies too.
