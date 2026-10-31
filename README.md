@@ -183,9 +183,10 @@ How each metric is computed, and how far to trust it: [docs/data-science.md](doc
 
 - **Caller simulator:** speak or type, a booking card that shows the words each fact
   came from, test controls (anger, barge-in, silence) and fixture replay.
-- **Admin console:** the gate's thermal view by agent version, the booking funnel,
-  intent drift, a latency ECDF, cost, per-turn traces with the model's evidence, a fleet
-  calendar with a "what if", and the human evaluation.
+- **Admin console:** the gate's thermal view by agent version, with the kit's cases kept
+  apart from ours; the booking funnel, intent drift, a latency ECDF, cost, per-turn
+  traces with the model's evidence, a fleet calendar with a "what if", and the human
+  evaluation.
 - **Data layer:** six versioned record types, a privacy class on every field, retention
   per type, and atomic one-file-per-record storage.
 - **Azure deployment:** one image runs both the app (which scales to zero) and a nightly
@@ -207,8 +208,9 @@ How each metric is computed, and how far to trust it: [docs/data-science.md](doc
 | `go/`, `ts/`, `rust/` | the kit's starters in other languages, untouched |
 
 **Try it:**
-- **The live app:** [docs/using-the-app.md](docs/using-the-app.md) has the link, how to
-  sign in, and what to try.
+- **The live app:** [docs/using-the-app.md](docs/using-the-app.md) has the link and
+  sign-in; then the [tester guide](docs/guide-caller.md) or the
+  [admin guide](docs/guide-admin.md).
 - **Locally:**
 
   ```bash
@@ -249,7 +251,9 @@ nightly gate job, and three alerts. One `make` command per step; see
 | [docs/evaluation.md](docs/evaluation.md) | the results as graphs and tables: reliability, the extractor, the baseline against ours, cost and latency |
 | [docs/data-science.md](docs/data-science.md) | the methods behind the results: every metric's definition and code, the gate's statistical power, pass^k, the extractor eval, metamorphic variants, judge calibration, drift, telemetry, and the limits of the numbers |
 | [tests/human/README.md](tests/human/README.md) | the human evaluation's protocol and rubric |
-| [docs/using-the-app.md](docs/using-the-app.md) | the live app: the link, signing in, a tour |
+| [docs/using-the-app.md](docs/using-the-app.md) | the live app: the link, signing in, and which guide is yours |
+| [docs/guide-caller.md](docs/guide-caller.md) | for testers: making calls, what to try, the test controls, scenario cards and rating |
+| [docs/guide-admin.md](docs/guide-admin.md) | for reviewers and the owner: every admin view and how to act on it, turning feedback into test cases, owner commands |
 | [BUILD_LOG.md](BUILD_LOG.md) | phase by phase: what was built, what failed and why, every decision |
 | [reports/](reports/) | the raw output behind every number |
 | [docs/pdf/](docs/pdf/) | the same documents as PDFs, diagrams drawn: readme, using the app, architecture, evaluation, data science, spec, deploy, build log. Rebuilt with `python3 docs/tools/make_pdfs.py` after an edit |

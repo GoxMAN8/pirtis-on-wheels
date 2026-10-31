@@ -28,7 +28,10 @@ MERMAID = "https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"
 # output name -> (title, the files it prints, in order)
 DOCS = {
     "readme.pdf": ("Pirtis on Wheels: the receptionist", ["README.md"]),
-    "using-the-app.pdf": ("Using the app", ["docs/using-the-app.md"]),
+    "using-the-app.pdf": (
+        "Using the app",
+        ["docs/using-the-app.md", "docs/guide-caller.md", "docs/guide-admin.md"],
+    ),
     "architecture.pdf": (
         "Architecture",
         [
