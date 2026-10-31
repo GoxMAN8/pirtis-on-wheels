@@ -2,7 +2,10 @@
 **/.env
 **/runs/
 **/var/
-deploy/terraform/.terraform*
+deploy/terraform/.terraform/
+deploy/terraform/terraform.tfvars
+deploy/.users
+deploy/.passwords/
 *.tfstate*
 deploy/.image-digest
 INITIAL_INSTRUCTIONS.md

@@ -82,3 +82,18 @@ def test_a_rating_of_an_expired_call_is_left_out(tmp_path: Path) -> None:
     store = FileStore(tmp_path)
     store.put(rating("20260101-deadbeef", "AB"))
     assert calibrate(store, judge_saying(True), CARDS).ratings == 0
+
+
+def test_with_no_rated_calls_nothing_is_saved(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An empty calibration in the Human eval view would read as a result."""
+    from pirtis.ops import calibrate as module
+    from pirtis.ops.model import Calibration
+
+    store = FileStore(tmp_path)
+    monkeypatch.setattr(module, "store_from_env", lambda: store)
+    monkeypatch.setattr(module, "open_ai_from_env", lambda: Fake())
+    module.main()
+    assert store.query(Calibration) == []
+    assert "nothing to calibrate" in capsys.readouterr().out

@@ -1,0 +1,44 @@
+# Phase 15 · Azure infrastructure: what Terraform manages, checked
+# commit: feat(deploy): Azure, sign-in and monitoring · 2026-10-31
+# commands: cd deploy && terraform -chdir=terraform validate; make infra; make storage-link; make image; make deploy; make secrets; make user NAME=...
+
+== terraform validate (azurerm 4.81.0, random 3.9.1; Terraform 1.5.7)
+Success! The configuration is valid.
+
+
+== the 15 resources in the state
+  azurerm_container_app.playground[0]
+  azurerm_container_app_environment.this
+  azurerm_container_app_job.gate[0]
+  azurerm_container_registry.this
+  azurerm_log_analytics_workspace.this
+  azurerm_monitor_action_group.owner
+  azurerm_monitor_scheduled_query_rules_alert_v2.errors
+  azurerm_monitor_scheduled_query_rules_alert_v2.gate
+  azurerm_monitor_scheduled_query_rules_alert_v2.latency
+  azurerm_resource_group.this
+  azurerm_role_assignment.pull
+  azurerm_storage_account.data
+  azurerm_storage_share.data
+  azurerm_user_assigned_identity.pull
+  random_string.suffix
+
+== a plan against the live deployment
+  No changes. Your infrastructure matches the configuration.
+  (the first deploy showed 3 changes every time: Azure gives the environment a Consumption workload
+   profile that the config did not declare. Declared in main.tf; no drift since.)
+
+== the state is a secret (finding 4 of the security review)
+  -rw-------@ terraform/terraform.tfstate
+  -rw-------@ terraform/terraform.tfstate.backup
+  git: ignored
+
+== platform properties, checked in the configuration
+  region: germanywestcentral (EU); the variable refuses a non-EU/EEA region
+  scale: the app 0 to 1 replicas, 0.25 CPU / 0.5 GiB; the job the same, no retries, 30 min timeout
+  registry: Basic, admin account off; pulls only through the managed identity (AcrPull)
+  storage: LRS, TLS 1.2 minimum, HTTPS only, no public blob access; one 1 GiB share
+  logs: 30 days, 1 GB a day at most
+  image: by digest (the variable refuses a tag)
+  secrets: none in the .tf files or the Makefile; placeholders, set by CLI
+  platform: Container Apps only

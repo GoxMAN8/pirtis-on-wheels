@@ -19,5 +19,8 @@ Test lists are re-runnable: check out that commit and run the command.
 | `image.txt` | the container image: size, layers, what it holds (checked inside it), the amd64 run |
 | `container-checks.txt` | the playground run from the image: pages, a real call, a restart, its log streams |
 | `gate-job.txt` | the gate job's one line, the gate run and turn records it saved |
+| `infra.txt` | the cloud resources Terraform manages, a plan against the live deployment, the state's protection, the platform properties checked |
+| `cloud-checks.txt` | the live deployment probed from outside, as a stranger, and read back from its own logs and storage |
+| `security-review.md` | an independent adversarial review's findings, and what was done with each |
 
 Phase 1 produced documents only, so it has no folder.

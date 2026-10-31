@@ -26,7 +26,7 @@ import tempfile
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 
 from pirtis.agent.actions import handlers
 from pirtis.agent.agent import decide
@@ -179,30 +179,38 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--trace", default="", help="keep the trace files here; default a temp dir")
     args = p.parse_args(argv)
 
+    def fail(error: str, code: int) -> NoReturn:
+        """Every way the job ends prints the one line the gate-regression alert reads."""
+        print(error, file=sys.stderr)
+        line = {"event": "gate", "passed": False, "agent_version": AGENT_VERSION}
+        print(json.dumps({**line, "suites": args.suites, "error": error[:300]}), flush=True)
+        sys.exit(code)
+
     if args.trace and Path(args.trace).is_dir() and any(Path(args.trace).iterdir()):
-        print(f"{args.trace} is not empty; old results would join this run", file=sys.stderr)
-        sys.exit(2)
+        fail(f"{args.trace} is not empty; old results would join this run", 2)
     load_dotenv(str(PYTHON / ".env"))
     try:
         llm = open_ai_from_env()
     except RuntimeError as e:
-        print(f"{e}\nset LLM_API_KEY, and optionally LLM_BASE_URL", file=sys.stderr)
-        sys.exit(2)
+        fail(f"{e}; set LLM_API_KEY, and optionally LLM_BASE_URL", 2)
     logging.basicConfig(level=logging.WARNING, stream=sys.stderr)
     cases = select(args.suites, [s.strip() for s in args.id.split(",") if s.strip()])
     if not cases:
-        print("no cases matched", file=sys.stderr)
-        sys.exit(2)
+        fail("no cases matched", 2)
 
-    with tempfile.TemporaryDirectory(prefix="gate-") as tmp:
-        line = run_job(
-            cases,
-            llm,
-            store_from_env(),
-            trace_dir=Path(args.trace or tmp),
-            extract=not args.no_extract,
-            which=args.suites,
-        )
+    try:
+        with tempfile.TemporaryDirectory(prefix="gate-") as tmp:
+            line = run_job(
+                cases,
+                llm,
+                store_from_env(),
+                trace_dir=Path(args.trace or tmp),
+                extract=not args.no_extract,
+                which=args.suites,
+            )
+    except Exception as e:  # the job broke before it could judge the agent
+        logging.getLogger("pirtis.gate").exception("the gate job failed")
+        fail(f"the job failed: {type(e).__name__}: {e}", 1)
     print(json.dumps(line), flush=True)
     sys.exit(0 if line["passed"] else 1)
 

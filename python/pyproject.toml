@@ -12,6 +12,7 @@ dependencies = [
 harness = "pirtis.cmd.harness:main"
 playground = "pirtis.playground.server:main"
 gate-job = "pirtis.ops.gate_job:main"
+calibrate = "pirtis.ops.calibrate:main"
 
 [dependency-groups]
 dev = [

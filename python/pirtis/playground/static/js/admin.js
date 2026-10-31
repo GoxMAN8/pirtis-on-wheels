@@ -2,7 +2,7 @@
 // the fleet. Charts are Observable Plot (vendored); every chart has a table view, a
 // hover layer, and colours read from the theme's validated tokens.
 
-import { api, clear, cssVar, el, fmt, initTheme } from "./common.js";
+import { api, clear, cssVar, el, fmt, initAccount, initTheme } from "./common.js";
 
 const $ = (id) => document.getElementById(id);
 const view = $("view");
@@ -10,6 +10,7 @@ const tip = $("tip");
 const Plot = window.Plot;
 
 initTheme($("theme"));
+initAccount($("account"));
 api("/api/health").then((h) => { $("version").textContent = `agent ${h.agent_version}`; }).catch(() => {});
 
 const SUITES = { fixtures: "Given by the kit", extra: "Ours", variants: "Variants" };

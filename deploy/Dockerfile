@@ -36,14 +36,16 @@ COPY tests/human/ /app/tests/human/
 WORKDIR /app/python
 USER 10001
 
-# PIRTIS_PROMOTE_DIR is empty: a promoted case downloads instead of being written (D-66)
+# PIRTIS_PROMOTE_DIR is empty: a promoted case downloads instead of being written (D-66).
+# PIRTIS_AUTH=required: without accounts (PIRTIS_USERS) the playground refuses to start (D-83).
 ENV PATH=/app/python/.venv/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIRTIS_HOST=0.0.0.0 \
     PORT=8000 \
     PIRTIS_DATA_DIR=/data \
-    PIRTIS_PROMOTE_DIR=""
+    PIRTIS_PROMOTE_DIR="" \
+    PIRTIS_AUTH=required
 
 EXPOSE 8000
 CMD ["playground"]

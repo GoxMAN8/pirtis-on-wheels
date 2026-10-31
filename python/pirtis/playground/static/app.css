@@ -166,3 +166,22 @@ table.data td.num, table.data th.num { text-align: right; font-family: var(--f-m
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
 }
+
+/* ---- account and sign-in ---- */
+.account { display: inline-flex; align-items: center; gap: 4px; font-size: 0.875rem; }
+.account:empty { display: none; }
+.account .who { white-space: nowrap; }
+@media (max-width: 640px) { .account .who { display: none; } } /* the bar keeps just Sign out */
+body.signin {
+  min-height: 100vh; display: grid; place-items: center; padding: 24px 16px;
+  /* the stove's glow, low and warm, as the one decoration */
+  background: radial-gradient(60% 45% at 50% 100%, rgba(240, 116, 58, 0.16), transparent 70%), var(--page);
+}
+.signin-card {
+  width: min(400px, 100%); display: grid; gap: 14px; padding: 28px 24px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow);
+}
+.signin-brand { font-size: 2.25rem; color: var(--ember-text); }
+.signin-title { font-size: 1.25rem; }
+.signin-form { display: grid; gap: 12px; margin-top: 6px; }
+.signin-form .btn { justify-self: start; }

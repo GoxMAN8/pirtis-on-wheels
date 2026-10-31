@@ -1,12 +1,13 @@
 // The caller simulator: dial in as a seed customer or an unknown number, talk (or type),
 // and watch the booking card condense as the receptionist learns each detail.
 
-import { api, clear, currentTheme, el, fmt, initTheme, reducedMotion } from "./common.js";
+import { api, clear, currentTheme, el, fmt, initAccount, initTheme, reducedMotion } from "./common.js";
 
 const $ = (id) => document.getElementById(id);
 const S = { call: null, personas: [], spoken: 0, rated: new Map(), busy: false, cards: [], card: null, scored: false };
 
 initTheme($("theme"));
+initAccount($("account"));
 
 // ---- smoke: soft plumes rising from the stove; more of them while someone speaks ----
 const smoke = (() => {

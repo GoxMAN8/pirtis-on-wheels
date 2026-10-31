@@ -1,0 +1,51 @@
+# Phase 15 · the live deployment, checked from outside and in its own logs
+# commit: feat(deploy): Azure, sign-in and monitoring · 2026-10-31
+# commands: curl as a stranger (no account); az containerapp job start / execution list;
+#           az storage file list/download (the account key piped, never printed);
+#           az monitor log-analytics query. <app> is the app's address (`make url`).
+
+== health and wake-up
+  GET <app>/api/health -> 200 {"ok": true, "agent_version": "454b3a30e0ee", "today": "2026-09-28"}
+  the first request after idle or a new revision: 41 s, then 51 s (scale from zero, the
+  share's mount, Python's start)
+  revision: Active, Healthy, RunningAtMaxScale (1 replica)
+  plain http:// -> 301 to https://
+
+== a stranger, before the security review's fixes
+  302 /  -> /login?next=/        302 /admin -> /login?next=/admin
+  401 /api/turns                 401 /api/gate-runs
+  302 /static/js/admin.js        200 /login, /static/js/login.js, /api/me
+  headers: Content-Security-Policy, X-Content-Type-Options, Referrer-Policy; no HSTS yet
+
+== a stranger, after them (the deployed image)
+  302 /static/fonts/..%2fadmin.html          302 /static/fonts/..%2fjs/admin.js
+  302 /static/fonts/%2e%2e/js/admin.js       302 /static/fonts/..%5cadmin.html
+      (before the fix, the first two served the files: finding 6)
+  200 /static/js/next.js (open on purpose: the sign-in page's redirect check)
+  403 a POST with Origin: https://evil.example
+  Content-Length: -1 on /api/login: no HTTP answer (the ingress drops it; the app's own
+      guard answers 400, tested locally)
+  Strict-Transport-Security: max-age=31536000
+
+== the gate job, run by hand (make gate-now): Succeeded in 4 min 20 s
+  the share, written by the job as uid 10001: gate_run/454b3a30e0ee/20261031T113815Z.json
+  (this settles Phase 14's open question: the non-root image can write the Azure Files mount)
+  that gate run: passed, 21/21 cases, 63 runs, k = 3; deterministic 21/21, judge 21/21;
+  extractor 18/18; 54 model calls (0 on 9 runs); p50 1.65 s, p95 2.00 s; $0.0217
+
+== the alert test (make alert-test): the job with a key that can't work; Failed (exit 1), as meant
+  its line in Log Analytics: passed false, pass_k 0.0952, llm_errors 54,
+  extract_error "llm: status 401: Incorrect API key provided: not-a-ke****pose ...",
+  19 cases failed (the two the gate settles without the model still passed)
+  its records went to /tmp in that run, not the share: the Reliability history is untouched
+
+== the job's lines in Log Analytics (ContainerAppConsoleLogs_CL), both arrived:
+  11:38:16Z  {"passed": true,  ... "suites": "nightly", "cases": 21, "llm_errors": 0, "turns_saved": 63}
+  11:40:04Z  {"passed": false, ... "llm_errors": 54, "extract_error": "llm: status 401 ..."}
+  turn lines in the logs: 0 (none of the job's 126 turns was logged, as D-80 and D-82 intend)
+
+== the alerts
+  the three rules exist (created before the first log, by the empty-table union)
+  gate regression: the alert test's line arrived about 11:47Z; by 11:52Z the rule had not
+  fired yet (it runs every 15 minutes). The email is still to be confirmed.
+  agent errors, slow turns: no call traffic yet, so nothing to fire on

@@ -86,10 +86,13 @@ library, the kit's own modules and pydantic (D-32, D-49).
 Around the agent, never imported by it:
 - `pirtis/ops/`: the data layer (`model.py`, the records; `store.py`, the
   `FileStore`), the gate report, the extractor eval, the gate job (`gate_job.py`), the
-  variant generator, the human-evaluation cards, judge calibration and the reliability
-  curve
+  deploy's gate check (`gate_check.py`), the variant generator, the human-evaluation
+  cards, judge calibration and the reliability curve
+- `pirtis/playground/auth.py`: the sign-in (accounts, sessions, the lockout, the
+  account commands)
 - `deploy/`: the container image (`Dockerfile`; the build context is the repo root,
-  allow-listed by `.dockerignore`)
+  allow-listed by `.dockerignore`), the Azure Terraform (`terraform/`), the commands in
+  bootstrap order (`Makefile`) and the saved log queries (`monitoring/queries.kql`)
 - `pirtis/playground/`: the caller simulator and admin console on one stdlib server.
   `calls.py` runs a call turn by turn (decide and the handlers exactly as the harness
   does) and keeps it on disk; `analytics.py` computes the admin views from content-free
@@ -328,6 +331,7 @@ blocks deployment.
 | 2026-10-31 | ours: a hedge takes the higher number in code (454b3a30e0ee) | the 4 hedge-sensitive cases, 5 runs each | **20/20** | 1 per run | — |
 | 2026-10-31 | **ours: final Phase 13 agent (454b3a30e0ee)** | **all 46 cases, 3 runs, 3 must pass** | **46/46 cases, 138/138 runs; deterministic 46/46, judge 46/46**; p50 1.74 s, p95 2.21 s | 123 (0 on 15 runs) | 260,844 / 16,200 |
 | 2026-10-31 | ours, **the nightly gate job in the container** (454b3a30e0ee) | given + red team (21 cases), 3 runs | **21/21 cases, 63/63 runs; deterministic 21/21, judge 21/21, extractor 18/18**; p50 1.73 s, p95 2.23 s | 54 (0 on 9 runs) | 115,632 / 7,245 |
+| 2026-10-31 | ours, **the gate job in Azure** (454b3a30e0ee) | given + red team (21 cases), 3 runs | **21/21 cases, 63/63 runs; deterministic 21/21, judge 21/21, extractor 18/18**; p50 1.65 s, p95 2.00 s | 54 (0 on 9 runs) | 115,632 / 7,252 |
 
 At the Phase 6 gate, model turns took p50 1.54 s and p95 1.77 s (max 1.84 s), with
 about 1.7k prompt tokens each. After understanding v2 they take p50 1.76 s and p95
@@ -381,9 +385,12 @@ in `python/.env`, which git ignores.
 ## 9. Deployment
 
 A private deployment on Azure, from one container image with two workloads:
-- **the playground:** caller simulator plus admin console, as a Container App scaling
-  from 0 to 1
-- **the gate:** a nightly Container Apps Job, also startable by hand
+- **the playground:** caller simulator plus admin console, behind a sign-in, as a
+  Container App scaling from 0 to 1
+- **the gate:** a nightly Container Apps Job (03:00 UTC), also startable by hand
+
+**Live:** in Germany West Central, resource group `pirtis-rg`, since 2026-10-31. The
+URL is `make url`; it is not written here.
 
 Written in Terraform (OpenTofu-compatible) under `deploy/`, kept deliberately minimal
 (D-57). There are nine resources:
@@ -400,15 +407,31 @@ Plus alerts. There's no Key Vault, no Blob containers and no Tables.
 
 - **Where:** an EU region.
 - **Identity:** a managed identity used only to pull the image from the registry.
-- **Secrets:** the model key and the hash salt are Container App secrets, set by
-  `az containerapp secret set`; never in Terraform, state or the repo.
+- **Secrets:** the model key, the hash salt, the session key and the sign-in accounts
+  (names and scrypt hashes) are Container App secrets, set by
+  `az containerapp secret set` (`make secrets`, `make users`). They're never in the
+  Terraform files or the repo. Terraform declares each with the placeholder `unset` and
+  ignores later changes, and the app refuses to start on a placeholder.
+- **Terraform's state is a secret itself (D-86):** it holds the storage account's keys
+  and, after any refresh, the values of the Container App secrets. It is local,
+  git-ignored and written owner-only (`umask 077`); a remote, encrypted backend is the
+  next step.
 - **The share's link to the environment:** Container Apps still needs the storage
   account key for an SMB mount (managed-identity mounts are in preview). It's piped from
   `az storage account keys list` straight into `az containerapp env storage set` and
   never stored.
-- **Images:** deployed by digest.
-- **Access:** an ingress IP allow-list plus a per-minute request cap.
-- **Logs:** Log Analytics with 30-day retention.
+- **Images:** built for linux/amd64, tagged with `git describe --dirty` and deployed
+  by digest.
+- **Access (D-83):** a sign-in with accounts we create (`make user NAME=…`), so testers
+  can reach the whole app from anywhere. Before sign-in, only the sign-in page, its
+  assets and the health check answer. Spending model calls is capped per account each
+  minute and for everyone each day (2,000 units, about $1). An IP allow-list stays
+  available as an option (`allowed_ips`). `make rotate-session` signs everyone out.
+- **A deploy checks the gate first (D-85):** a saved full pass for the current agent
+  version counts; otherwise `make gate` runs, and a failure stops the deploy.
+- **Logs:** Log Analytics with 30-day retention and a 1 GB daily cap.
+- **Teardown:** `make destroy` asks for the resource group's name, then removes
+  everything.
 
 **The image** (`deploy/Dockerfile`, D-81) serves both workloads: the playground by
 default, and `gate-job` for the job.
@@ -520,8 +543,18 @@ renderer, so a convention change touches one function.
 | Agent errors | any fallback, or any API status ≥ 400, in the last hour | repo owner | read the turn records, replay the call in the simulator |
 | Slow turns | p95 latency > 3 s over the last hour | repo owner | check model latency and prompt size |
 
-Each alert path is fired once at launch to prove it works (D-29). The admin console
-also shows **intent-mix drift**: the PSI of the last 7 days against the 7 before; above
+The alerts are Log Analytics rules (`deploy/terraform/monitoring.tf`) that read those
+one-line events, evaluated every 15 minutes over the last hour, and email the owner
+through one action group. Each description names the owner and the action. Gate and
+replay turns never reach the log, so the fault cases can't fire them (D-84). Saved
+queries for intents, transfers, fallbacks, tokens, latency and gate history are in
+`deploy/monitoring/queries.kql`.
+
+**Fired at launch (D-29):** the gate-regression path end to end, with `make alert-test`
+(the job with a key that can't work: no tokens, and its records go to /tmp, not the
+share). The agent-errors and slow-turns rules fire only on real call traffic; until a
+signed-in tester makes calls, only their creation is proven, not a firing. The admin
+console also shows **intent-mix drift**: the PSI of the last 7 days against the 7 before; above
 0.10 is a warning, above 0.25 an alert (D-43).
 
 ---
@@ -587,8 +620,19 @@ extractor eval and a gate run.
   not measured yet.
 - The code-level hedge check (D-79) reads numbers of people said as "N … maybe/or M";
   a hedge said another way relies on the model alone.
-- The image runs as uid 10001. Whether it can write to the Azure Files mount depends
-  on the mount's options, not the image; that is checked at deployment.
+- The app scales to zero: the first request after a quiet spell, or after a new
+  revision, takes 40–50 seconds.
+- The sign-in lockout and the spending caps are counted in memory, so they reset when
+  the single replica restarts.
+- Terraform's state holds the storage keys and, once refreshed, the Container App
+  secrets. It is kept local and owner-only (D-86); a remote, encrypted backend is the
+  next step.
+- `make secrets` and `make users` pass secret values as `az` arguments, which are
+  visible in the deploying machine's process list while the command runs.
+- A gate job that never starts at all (a scheduler or image-pull failure) isn't
+  alerted; every run that starts prints its line, even when it fails.
+- The agent-errors and slow-turns alerts haven't fired end to end yet (see §10).
+- A HEAD request gets 501; only GET and POST are served.
 - The image isn't scanned for vulnerabilities yet, and its base digests are bumped by
   hand.
 - The fleet calendar and each simulated call start from the seed; one call's booking is
@@ -596,7 +640,9 @@ extractor eval and a gate run.
 
 **Next steps:**
 - real telephony: call automation and streaming speech in front of `decide`
-- remote Terraform state and CI on every push
+- remote, encrypted Terraform state and CI on every push, with an image scan
+- Key Vault references for the Container App secrets, so the state never sees their
+  values
 - a managed-identity mount for the file share once it's generally available, removing
   the storage key from the environment
 - an alert on intent drift
@@ -639,7 +685,7 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | D-25 | 2026-10-31 | A single playground page | — | — | superseded by D-40 |
 | D-26 | 2026-10-31 | One versioned `TurnRecord` per turn, no content, OpenTelemetry names via a renderer, silent by default | Observability without personal data | logging transcripts | accepted |
 | D-27 | 2026-10-31 | Azure: one image, a playground app (0–1) and a nightly gate job; Terraform; EU region; managed identity; key only in Key Vault | Private, cheap when idle, no stored secrets | a VM; keys in config | superseded by D-57 |
-| D-28 | 2026-10-31 | Access: an IP allow-list, a per-minute cap, one replica | Every visit costs model calls | sign-in (more moving parts) | accepted |
+| D-28 | 2026-10-31 | Access: an IP allow-list, a per-minute cap, one replica | Every visit costs model calls | sign-in (more moving parts) | superseded by D-83 |
 | D-29 | 2026-10-31 | Alerts: gate regression, agent errors, slow turns; each with an owner and an action; fired once at launch | An untested alert is no alert | — | accepted |
 | D-30 | 2026-10-31 | Improvement loop: feedback → human-promoted fixture → gate → fix → change log → deploy | Failures become permanent tests | automatic promotion | accepted |
 | D-31 | 2026-10-31 | `violations()` mirrors every write rule, runs before every offer and write, and is property-tested against the API | A 422 becomes impossible by construction | trusting the API to catch it | accepted (A) |
@@ -694,6 +740,10 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | D-80 | 2026-10-31 | The gate job is one process running the kit's Runner with the real agent. By default it runs the nightly suite (the given cases and the red team, D-48); `--suites all` matches `make gate`. It builds the gate run from the gate report's own rows, reports the extractor's pass^k on the same cases beside the gate (never part of it, §7), stores turn records with source `gate` and logs none, prunes on every run, prints one JSON line and exits 1 on failure. `llm_errors` separates a model outage from a regression | The cloud needs the gate without make or a shell, and the alert needs one line to read | `make gate` inside the container (make and the dev tools in the image, text to parse); gate turns on stdout (the fault cases' deliberate API errors would fire the error alert every night) | accepted |
 | D-81 | 2026-10-31 | The image: two stages, both bases pinned by digest, locked dependencies, no build tools at runtime. It keeps the repo layout under `/app` with an editable install, runs as uid 10001 with read-only code and `/data` writable, and builds from an allow-listed context | Reproducible, smaller (224 MB unpacked, 43 MB of it uv before the split) and least privilege; a new secret file can't enter by default | one stage with uv (a package manager at runtime); `--no-editable` (the code finds fixtures and cards relative to its source); a deny-list `.dockerignore` | accepted |
 | D-82 | 2026-10-31 | A turn's telemetry line reaches exactly one log stream: the playground's stdout, and none at all from the gate job. Both entry points stop the turn logger propagating; the agent is unchanged | Found by running the image: every turn appeared on stdout and again as `INFO:pirtis.turn:` on stderr, through the root handler `logging.basicConfig` adds. The cloud's logs collect both streams, so every query would count each turn twice | `propagate = False` inside the agent's `telemetry.py` (a logging fix would change `agent_version` and need a fresh gate, and each entry point still owns its streams) | accepted |
+| D-83 | 2026-10-31 | Access is a sign-in with accounts we create, not an IP allow-list. An account is a name plus a scrypt hash, made by `make user`, which writes the password to a mode-600 file and never prints it; the accounts are one Container App secret. A session is an HMAC-signed cookie (HttpOnly, SameSite=Strict, Secure and HSTS over HTTPS, 12 hours). Five wrong passwords lock that account, and the address they came from, for 15 minutes. A cross-site POST is refused. The image requires accounts and refuses to start without them; locally, with none, the playground stays open. Removing an account ends its sessions | You asked that testers sign in and use the whole app themselves; an allow-list keeps out everyone not on your network | Entra ID or Easy Auth (testers would need accounts in our directory, or an OAuth app per provider); a shared password (no way to revoke one tester) | accepted |
+| D-84 | 2026-10-31 | The alerts read the one-line JSON events: the gate job's line and the playground's call turns. Every exit of the gate job prints its line, even a crash or a missing key, so one alert covers regressions and broken runs. Replayed fixtures stay off the turn log, as gate turns do. Each query first unions an empty table, so the rules exist before the first log. The alert test runs the job with a key that can't work: no tokens, and its records go to /tmp, not the share | A job that died before printing would have gone unseen; a replayed fault case would have paged the owner | an alert on the job's execution status (a second signal for the same failure); creating the alerts in a second apply after the first logs | accepted |
+| D-85 | 2026-10-31 | `make deploy` first asks whether the gate holds: the newest saved gate run for this agent version that covered every case must have passed. Otherwise the full gate runs and a failure stops the deploy. The app and the job exist only once an image digest is given, so `make infra` and `make deploy` share one configuration | D-21 (a failing gate blocks a deploy) without paying for a full gate when nothing changed. A nightly run covers only some cases, so it never counts | the full gate on every deploy; `-target` applies | accepted |
+| D-86 | 2026-10-31 | Hardening after an adversarial review of the sign-in and the deploy kit. Five wrong passwords lock the address, never the account. A guess is counted before it is hashed, and at most two hashes run at once. A session is signed over the password hash, so a new password ends the old sessions. Spending is capped per account each minute and for everyone each day; a replay costs two units. Openness is judged on the decoded path. The page after sign-in is checked on the parsed address. A bad `Content-Length` is refused. Terraform's state is treated as a secret (owner-only, local). Removing the last account fails closed | The review reproduced a memory exhaustion of the 0.5 GiB container through parallel sign-ins, a permanent lockout of a named account, an open redirect through a tab in `next`, and every static file readable through `/static/fonts/..%2f`; it also showed that the state holds keys | rate-limiting sign-in by account only; Key Vault references for the secrets (the storage keys stay in the state either way, so the state must be protected regardless) | accepted |
 
 ---
 
@@ -717,3 +767,4 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | 2026-10-31 | 12 | The improvement loop, built and run. *Save as test case* on any rated line writes `fixtures/extra/NN_<title>.yaml` (from 60) through a form: the call as decide saw it, bookings it had made set up under free ids, the expected action and booking change, judge statements, seed people only, the reviewer's confirmation, read back by the kit's loader. Run for real: a 👍 booking promoted as a regression guard (60, green); exploring found two defects, promoted as 61 and 62 and run red 0/3. Fixed test-first: a `greeting` intent (D-67) and the capacity limit said at once (D-68). The fix's wording made the model read "the wood smoke sets off my asthma" as wood; the extractor eval caught it and the gate failed (26/27, a wood sauna offered to an asthmatic caller), fixed by putting the heater reason before the heater and keeping a must-have through any heater filter (D-69). **Gate 27/27 cases, 81/81 runs, extractor 23/23.** The gold-count test now checks every suite (D-70). 468 tests (36 new) | Close the loop from a caller's bad experience to a test that keeps it fixed, and prove it on real defects | D-66 – D-70 |
 | 2026-10-31 | 13 | Expanded testing. 12 hidden-style cases (30–41) and 7 red-team cases (50–56), each with a gold state; their first live run was 12/19 and found three defects (a booking after a prompt injection, "didn't catch that" for a clear request, a past date not named) and four judge blind spots. Fixed test-first: past dates (D-71), an `off_topic` intent (D-73), consent voided by an injection or a price demand (D-74), the sauna from the caller's quote (D-75), the caller's own name only (D-78), a hedged group size raised in code (D-79). Judge statements the kit's judge can't check reworded or dropped, behaviour still covered (D-72). Metamorphic variants with the kit's API as the oracle: 59 of 64 kept, waiting for review (D-76). The human-evaluation kit: 15 cards, a rating form in the simulator, a Human eval view, judge calibration with Cohen's κ (D-77); the sessions are tomorrow. A k = 5 reliability curve found one flake (case 62), fixed by D-79. **Gate 46/46 cases, 138/138 runs; extractor 41/41**. 643 tests (175 new) | Test what the hidden fixtures and hostile callers will do, measure flakiness the 3-run gate can't see, and prepare the human check on the judge | D-71 – D-79 |
 | 2026-10-31 | 14 | The container image and the gate job. `gate-job` runs the frozen gate in one process with the kit's Runner: the nightly suite (given + red team) by default, every suite on request. It saves the gate run with the extractor's pass^k beside it, stores turn records with source `gate` (never logged), prunes past retention, prints one JSON line and exits 1 on failure; `llm_errors` tells an outage from a regression. `deploy/Dockerfile`: two stages, bases pinned by digest, locked dependencies, uid 10001, read-only code, an allow-listed build context; 224 MB, built for arm64 and amd64. Running it found every turn logged twice, once per stream; fixed in both entry points (D-82). **In the container, with the real model, the nightly job passed 21/21 cases, 63/63 runs, extractor 18/18**, one line on stdout. 654 tests (11 new) | One image for both cloud workloads, and a gate the cloud can run and alert on without a shell | D-80 – D-82 |
+| 2026-10-31 | 15 | Azure, live in Germany West Central: 15 resources in Terraform, the app (0–1) behind a sign-in with accounts we create (D-83, at your request; replaces the allow-list), the nightly gate job, an action group and three alerts on the one-line events (D-84). A deploy asks whether the gate holds first (D-85). In Azure the gate job passed 21/21 cases, 63/63 runs, extractor 18/18, and wrote to the share as the non-root user. The alert test produced its failing line; the email is to be confirmed. An adversarial review found 11 issues, none reaching data; 10 fixed test-first and re-probed live, the state treated as a secret (D-86). 686 tests (32 new) | Run privately in the cloud where testers can sign in, watched by alerts with owners | D-83 – D-86 |

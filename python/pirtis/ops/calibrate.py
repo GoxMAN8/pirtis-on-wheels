@@ -121,6 +121,9 @@ def main() -> None:
     llm = Recorder(open_ai_from_env())
     store = store_from_env()
     result = calibrate(store, llm, {c.id: c for c in load_cards()})
+    if result.ratings == 0:  # an empty calibration in the Human eval view would read as a result
+        print("no rated calls in the store yet: nothing to calibrate, nothing saved")
+        return
     store.put(result)
     print(f"judge calibration on {result.ratings} rated calls ({llm.stats().calls} judge calls)")
     for item, row in result.items.items():

@@ -184,3 +184,29 @@ def test_main_refuses_a_trace_folder_with_old_results(
     with pytest.raises(SystemExit) as done:
         gate_job.main(["--trace", str(tmp_path / "old")])
     assert done.value.code == 2
+
+
+def test_every_way_the_job_fails_still_prints_one_gate_line(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The gate-regression alert reads that line: a job that dies without it goes unseen."""
+
+    def no_key() -> Fake:
+        raise RuntimeError("LLM_API_KEY is not set")
+
+    def broken(*args: object, **kwargs: object) -> dict[str, object]:
+        raise OSError("the share is not mounted")
+
+    monkeypatch.setenv("PIRTIS_DATA_DIR", str(tmp_path / "data"))
+    for patch, code in ((("open_ai_from_env", no_key), 2), (("run_job", broken), 1)):
+        with monkeypatch.context() as m:
+            if patch[0] == "run_job":
+                m.setattr(gate_job, "open_ai_from_env", lambda: Fake())
+            m.setattr(gate_job, *patch)
+            with pytest.raises(SystemExit) as done:
+                gate_job.main(["--id", "interim-speech", "--no-extract"])
+        assert done.value.code == code
+        [out] = capsys.readouterr().out.splitlines()
+        line = json.loads(out)
+        assert line["event"] == "gate" and line["passed"] is False and line["error"]
+        assert line["agent_version"] == AGENT_VERSION

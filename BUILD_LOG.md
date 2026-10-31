@@ -1917,3 +1917,172 @@ The go-ahead for **Phase 15: Azure infrastructure and monitoring**:
 
 It needs your Azure subscription (read and write in one resource group), an email for
 alerts, and your public IP for the allow-list.
+
+---
+
+## Phase 15 — Azure, a sign-in for testers, and monitoring
+
+**Date:** 2026-10-31
+**Goal:** the app and the nightly gate running privately in Azure, with three alerts
+that each name an owner and an action. Mid-phase you added a requirement: testers sign
+in and use the whole app themselves.
+
+**Headline: live in Germany West Central.** Behind a sign-in with accounts we create,
+the app's gate job passed the nightly suite in Azure, 21/21 cases, 63/63 runs, extractor
+18/18. It wrote to the mounted share as the non-root user. The gate-regression alert
+was triggered end to end: its line reached Log Analytics with `passed false` and `llm_errors 54`. The rule's email had not arrived when this was written (see Open issues). An independent security review found 11 issues,
+none reaching data. Ten were fixed test-first and re-probed live; one is written down.
+
+### How it was built
+- **The sign-in, which the plan didn't have.** The plan protected the app with an IP
+  allow-list, which keeps out every tester not on your network. It is now a sign-in
+  (D-83): accounts are names plus scrypt hashes, made by `make user`, which writes the
+  password to a mode-600 file and never prints it. Sessions are signed cookies. The
+  image refuses to start without accounts. Seventeen tests came first. A browser check
+  against the local container covered a stranger's redirect, a wrong password, the
+  right one returning to the page asked for, the bar on desktop and phone, and sign-out.
+  - **A bug the first run caught:** adding an account failed when its folder didn't
+    exist yet.
+  - **A slip of mine:** my first attempt at that fix never landed. A `sed` error stopped
+    the command chain, and I only saw it when the test stayed red.
+- **Two gaps found while designing the alerts,** both fixed test-first:
+  - The gate job printed nothing when it failed before running (no key, a broken
+    store), so the regression alert could miss a dead job. Every exit now prints the
+    line.
+  - A fixture replayed in the console logged its turns like a live call. Replaying a
+    fault case would have paged the owner. Replays now stay off the turn log.
+- **The deploy's gate check (D-85):** a saved full pass for the current agent version
+  counts; otherwise the full gate runs. Its five tests were written together with the
+  code rather than red first: it is small and pure.
+- **The Terraform:** 15 resources, validated and planned before anything was created.
+  The app and the job exist only once an image digest is given, so one configuration
+  serves `make infra` and `make deploy`. You confirmed the subscription, the alert
+  email, the nightly schedule and three accounts before the first apply.
+- **What the first deploy found:**
+  - **Terraform's own approval prompt** can't be answered from a script. It stays the
+    default; `APPROVE=-auto-approve` opts out.
+  - **The image tag said `b68a26e`** while the image held this phase's uncommitted
+    code. Tags now come from `git describe --dirty`; the wrong tag was removed from the
+    registry.
+  - **Every plan wanted 3 changes:** Azure gives the environment a "Consumption" workload
+    profile the config didn't declare. Declared; no drift since.
+  - **The first request after idle takes 40–50 s** (scale from zero).
+- **An adversarial security review** of the sign-in and the deploy kit, by a separate
+  reviewer working from the code alone (`reports/phase-15/security-review.md`). It
+  reproduced:
+  - a memory exhaustion of the 0.5 GiB container through parallel sign-ins
+  - a permanent lockout of any named account
+  - an open redirect through a tab character in `next`
+  - every static file readable to a stranger through `/static/fonts/..%2f`
+
+  It also showed that Terraform's state holds the storage keys, and a refresh-only
+  plan confirmed that state would also take the secrets' values. My comments had said
+  otherwise. All but one finding was fixed test-first (D-86), and the live app was
+  probed again as a stranger. The exception is secret values visible in `ps` on the
+  deploying laptop, written down as a known limit.
+
+### What was built
+- **`pirtis/playground/auth.py`**, plus the sign-in page:
+  - accounts: name plus scrypt hash; `add` and `remove`
+  - sessions: HMAC-signed over the name, the expiry and the password hash
+  - lockout: per address, five guesses in 15 minutes, counted before hashing; at most
+    two hashes at once
+  - the page: `login.html` and `js/login.js` in the smoke-sauna identity; `js/next.js`
+    checks the page to return to
+  - the bar: "Signed in as … · Sign out" in both UIs; any 401 sends the browser to
+    sign-in
+- **The server:**
+  - pages redirect to sign-in and the API answers 401; only the sign-in page, its
+    assets and the health check are open, judged on the decoded path
+  - cross-site POSTs are refused; HSTS is sent over HTTPS
+  - spending is capped per account each minute and for everyone each day; a replay
+    costs two units
+  - a bad `Content-Length` is refused; replays stay off the turn log
+- **The gate job:** every exit prints its line.
+- **`pirtis/ops/gate_check.py`**, the deploy's question: does the gate hold for this
+  agent?
+- **`deploy/terraform/`** (azurerm 4.81, Terraform 1.5 or OpenTofu):
+  - the base: resource group, Log Analytics (30 days, 1 GB a day), Container Apps
+    environment, Basic registry with admin off, a pull-only managed identity, LRS
+    storage with one 1 GiB share
+  - the app: 0–1 replicas, probes on `/api/health`
+  - the gate job: nightly at 03:00 UTC, no retries
+  - an action group and three alerts whose queries union an empty table first, so they
+    exist before the first log
+- **`deploy/Makefile`:**
+  - in bootstrap order: `infra`, `storage-link`, `image`, `deploy`, `secrets`, `user`
+  - and `users`, `rotate-session`, `restart`, `url`, `logs`, `gate-now`, `alert-test`,
+    `destroy`
+  - Terraform runs under `umask 077`
+- **`deploy/monitoring/queries.kql`**: intents, transfers and fallbacks, model-free
+  turns, tokens, latency, agent errors, gate history.
+- **`calibrate` as a command**, plus `make calibrate` in `deploy/`, so calibration runs where tomorrow's ratings are. It now saves nothing when there are no ratings. It hasn't run in the cloud yet.
+- **Tests:** 686 in total, 32 new.
+
+### Commands and results
+| Command | Result |
+|---|---|
+| sign-in tests before the code | red: no module; then the server tests red on the missing argument |
+| `make check` | ruff and strict mypy clean (56 files), **686 tests passed** |
+| local container, sign-in in the browser | stranger redirected; wrong password refused with its message; right password lands on the page asked for; sign-out ends the session; the cookie is invisible to page scripts |
+| `terraform validate` / `plan` | valid; 15 to add, nothing applied |
+| `make infra` | 13 resources, the three alerts included |
+| `make storage-link`, `make image`, `make deploy` | linked; amd64 image pushed by digest; the gate held for 454b3a30e0ee (46/46 saved), so the app and the job were created |
+| `make secrets`, three `make user` | secrets set without printing; three accounts, passwords only in `deploy/.passwords/` |
+| the cloud, as a stranger | redirects, 401s, HTTPS only; after the fixes, every traversal variant closed; cross-site POST 403; HSTS |
+| a plan after the workload-profile fix | **No changes** |
+| **`make gate-now` in Azure** | **Succeeded: 21/21 cases, 63/63 runs, extractor 18/18**, p95 2.00 s; the gate run written to the share by uid 10001 |
+| `make alert-test` | the line: `passed false`, `llm_errors 54`, a 401 in `extract_error`; the rule had not fired by 11:52 UTC (the line arrived about 11:47; the rule runs every 15 minutes) |
+| turn lines in Log Analytics after both runs | **0** (126 gate turns, none logged) |
+
+**Reports:** `reports/phase-15/`
+- `infra.txt`, `cloud-checks.txt`, `security-review.md`, `pytest.txt`
+- `screens/`: the sign-in page, the admin console signed in at phone width, the
+  caller's bar signed in on desktop
+
+### Decisions
+- **D-83:** a sign-in with accounts we create, superseding D-28's allow-list.
+- **D-84:** alerts on the one-line events; every gate-job exit prints its line;
+  replays off the turn log; the alert test.
+- **D-85:** a deploy asks whether the gate holds for this agent version.
+- **D-86:** the hardening after the security review, and the state treated as a secret.
+
+### Deviations from the plan
+- **Sign-in instead of the IP allow-list,** at your request; the allow-list stays
+  optional.
+- **The image is built locally and pushed,** not built in the registry: no build
+  service to depend on, and the same Dockerfile I checked in Phase 14.
+- **The state holds secrets.** The plan said it never would. It holds the storage keys
+  by nature, and the secrets after a refresh, so it is now treated as a secret itself.
+- **Only the gate-regression alert was fired end to end.** The other two need real call
+  traffic, and I don't sign in to the cloud app myself.
+
+### Spend
+≈ $0.06 of model credit this phase: the cloud gate run. The alert test spent nothing,
+since every call was refused. ≈ $1.3 in total of the $6. Azure: the deployment's
+standing cost is about €5–6 a month, mostly the registry.
+
+### Open issues and risks
+- **The alert email isn't confirmed yet.** Check the aimrank.io inbox for "Gate regression". If none arrives, the first suspect is the `Microsoft.AlertsManagement` resource provider, which isn't registered in this subscription; registering it is your call.
+- **The deployed image is still the `-dirty` build.** It is the same code as this commit; rebuilding from the clean commit (`make image deploy`) is left.
+- **The agent-errors and slow-turns alerts** fire only on real calls; your first
+  signed-in calls give their queries data.
+- **The lockout and the spending caps live in memory,** so they reset when the replica
+  restarts.
+- **The state is local:** if this laptop is lost, `terraform import` or a fresh
+  resource group rebuilds it.
+
+### What the next phase needs from you
+- **Sign in to check the cloud app yourself:**
+  - your password is in `deploy/.passwords/gedas.txt`, and the address comes from
+    `make url` in `deploy/`
+  - testers' passwords are in `tester1.txt` and `tester2.txt`; hand them over
+    privately, then delete the files
+- **Tomorrow's human evaluation** can run in the cloud: testers sign in, pick a card,
+  call and rate. Then `make calibrate` locally against the share, or in the container.
+- The go-ahead for **Phase 16: the documentation**:
+  - the architecture views
+  - evaluation graphs
+  - screenshots
+  - the README
+  - a final run

@@ -3,9 +3,11 @@ console (/admin), over a small JSON API.
 
     uv run playground [--host 127.0.0.1] [--port 8000]
 
-Locally it listens on 127.0.0.1; in the container on 0.0.0.0, behind the ingress
-allow-list (D-28). Requests that can spend model tokens share a per-minute cap, and
-every request body is a pydantic model that refuses unknown fields (D-49).
+Locally it listens on 127.0.0.1 and is open; in the container it listens on 0.0.0.0
+behind a sign-in with accounts we create (auth.py, D-83): a stranger reaches only the
+sign-in page and the health check. Requests that can spend model tokens share a
+per-minute cap, and every request body is a pydantic model that refuses unknown fields
+(D-49).
 
 The admin console's read endpoints return turn records, gate runs and the seed's
 calendar, none of which holds a name or a phone. Only two return what was said, the
@@ -22,10 +24,11 @@ import time
 from collections import deque
 from datetime import UTC, date, datetime, timedelta
 from http import HTTPStatus
+from http.cookies import CookieError, SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Annotated, Any, Literal, TextIO
-from urllib.parse import parse_qs, unquote, urlsplit
+from urllib.parse import parse_qs, quote, unquote, urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
@@ -42,6 +45,7 @@ from pirtis.ops.model import Calibration, Feedback, GateRun, HumanRating, Turn
 from pirtis.ops.store import FileStore, store_from_env
 from pirtis.ops.turns import seen_at
 from pirtis.playground import analytics
+from pirtis.playground.auth import COOKIE, SESSION_S, Auth, auth_from_env
 from pirtis.playground.calls import UNKNOWN_PHONE, CallClosed, Calls, LiveCall, plain
 from pirtis.playground.promote import Expected, PromoteError, build, save
 from pirtis.transcript.types import Item
@@ -67,12 +71,25 @@ SECURITY = {
     ),
 }
 MAX_BODY = 16_000
+# what a stranger may reach when sign-in is on: the sign-in page, its assets, the health
+# check the platform probes, and signing in and out
+OPEN = {"/login", "/api/health", "/api/login", "/api/logout", "/api/me"}
+OPEN |= {"/static/app.css", "/static/js/login.js", "/static/js/next.js"}
+OPEN_PREFIXES = ("/static/fonts/",)
+WRONG = "That name and password don't match. After five wrong tries, sign-in pauses for 15 minutes."
 
 log = logging.getLogger("pirtis.playground")
+_replaying = threading.local()  # set on the thread running a fixture replay
+_request = threading.local()  # the signed-in account of the request on this thread
 
 
 class _Body(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+class LoginBody(_Body):
+    name: str = Field(max_length=32)
+    password: str = Field(max_length=200)
 
 
 class StartBody(_Body):
@@ -161,22 +178,35 @@ class HttpError(Exception):
 
 
 class RateLimit:
-    """At most n requests in any 60 seconds."""
+    """What spending model calls may cost: at most per_min units a minute for each
+    account (or for everyone, while the playground is open), and per_day units a UTC
+    day for all accounts together. A unit is about one model call."""
 
-    def __init__(self, per_min: int) -> None:
+    def __init__(self, per_min: int, per_day: int = 2000) -> None:
         self.per_min = per_min
-        self._times: deque[float] = deque()
+        self.per_day = per_day
+        self._times: dict[str, deque[float]] = {}
+        self._day = ""
+        self._spent_today = 0
         self._lock = threading.Lock()
 
-    def take(self) -> bool:
+    def take(self, who: str = "", units: int = 1) -> str:
+        """ "" when allowed; otherwise why not."""
         now = time.monotonic()
+        today = datetime.now(UTC).date().isoformat()
         with self._lock:
-            while self._times and now - self._times[0] > 60:
-                self._times.popleft()
-            if len(self._times) >= self.per_min:
-                return False
-            self._times.append(now)
-            return True
+            if today != self._day:
+                self._day, self._spent_today = today, 0
+            if self._spent_today + units > self.per_day:
+                return "Today's budget for model calls is used up. It resets at midnight UTC."
+            times = self._times.setdefault(who, deque())
+            while times and now - times[0] > 60:
+                times.popleft()
+            if len(times) + units > self.per_min:
+                return "Too many requests this minute. Wait a few seconds and try again."
+            times.extend([now] * units)
+            self._spent_today += units
+            return ""
 
 
 class App:
@@ -188,12 +218,15 @@ class App:
         rate_per_min: int,
         access_log: bool,
         promote_dir: Path | None,
+        auth: Auth | None = None,
+        spend_per_day: int = 2000,
     ) -> None:
         self.store = store
+        self.auth = auth  # None: no sign-in, as on 127.0.0.1 while developing
         self.llm = llm
         self.judge = judge
         self.calls = Calls(store, llm, seed=FIXTURES / "seeds" / "base.json", today=TODAY)
-        self.limit = RateLimit(rate_per_min)
+        self.limit = RateLimit(rate_per_min, spend_per_day)
         self.access_log = access_log
         self.promote_dir = promote_dir  # None: promoted cases are downloaded, not written
         self.fixtures: dict[str, tuple[str, Fixture]] = {}
@@ -349,10 +382,14 @@ class App:
     def replay(self, body: ReplayBody) -> Any:
         if body.fixture not in self.fixtures:
             raise HttpError(404, f"no fixture {body.fixture}")
-        self._spend()
+        self._spend(2)  # the agent's call and the judge's
         _, f = self.fixtures[body.fixture]
         runner = Runner(llm=self.llm, judge=self.judge, decide=decide, handlers=handlers)
-        r = runner.run(f).runs[0]
+        _replaying.on = True  # a fixture run, not a call: its turns stay off the turn log
+        try:
+            r = runner.run(f).runs[0]
+        finally:
+            _replaying.on = False
         return {
             "fixture": f.id,
             "passed": r.passed(),
@@ -460,9 +497,10 @@ class App:
             raise HttpError(404, "no such call")
         return call
 
-    def _spend(self) -> None:
-        if not self.limit.take():
-            raise HttpError(429, "Too many requests this minute. Wait a few seconds and try again.")
+    def _spend(self, units: int = 1) -> None:
+        why = self.limit.take(getattr(_request, "user", None) or "", units)
+        if why:
+            raise HttpError(429, why)
 
     def _turns(self, q: dict[str, str]) -> list[Turn]:
         since = datetime.now(UTC) - timedelta(days=_int(q, "days", 7, 1, 90))
@@ -538,6 +576,7 @@ def _handler(app: App) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
         server_version = "pirtis-playground"
         sys_version = ""
+        user: str | None = None  # the signed-in account, when sign-in is on
 
         def do_GET(self) -> None:
             self._serve("GET")
@@ -547,6 +586,17 @@ def _handler(app: App) -> type[BaseHTTPRequestHandler]:
 
         def _serve(self, method: str) -> None:
             url = urlsplit(self.path)
+            self.user = app.auth.user_of(self._cookie()) if app.auth else None
+            _request.user = self.user
+            if app.auth and self.user is None and not _is_open(url.path):
+                if method == "GET" and not url.path.startswith("/api/"):
+                    to = {"Location": "/login?next=" + quote(url.path)}
+                    return self._send(302, b"", "text/plain; charset=utf-8", to)
+                return self._send_json(401, {"error": "Sign in first."})
+            if app.auth and method == "POST" and not self._same_origin():
+                return self._send_json(403, {"error": "That request came from another site."})
+            if url.path in ("/api/login", "/api/logout", "/api/me"):
+                return self._account(method, url.path)
             try:
                 if method == "GET" and not url.path.startswith("/api/"):
                     return self._static(url.path)
@@ -568,6 +618,46 @@ def _handler(app: App) -> type[BaseHTTPRequestHandler]:
                 "application/json; charset=utf-8",
             )
 
+        def _account(self, method: str, path: str) -> None:
+            if method == "GET" and path == "/api/me":
+                return self._send_json(200, {"user": self.user, "auth": app.auth is not None})
+            if method != "POST" or app.auth is None or path == "/api/me":
+                return self._send_json(404, {"error": "no such endpoint"})
+            if path == "/api/logout":
+                return self._send_json(200, {"user": None}, {"Set-Cookie": self._set_cookie("", 0)})
+            try:
+                body = LoginBody.model_validate(self._json())
+            except (ValidationError, HttpError):
+                return self._send_json(401, {"error": WRONG})
+            name = body.name.strip().lower()
+            if not app.auth.check(name, body.password, self._address()):
+                return self._send_json(401, {"error": WRONG})
+            cookie = self._set_cookie(app.auth.issue(name), SESSION_S)
+            return self._send_json(200, {"user": name}, {"Set-Cookie": cookie})
+
+        def _cookie(self) -> str:
+            jar: SimpleCookie = SimpleCookie()
+            try:
+                jar.load(self.headers.get("Cookie", ""))
+            except CookieError:
+                return ""
+            morsel = jar.get(COOKIE)
+            return morsel.value if morsel else ""
+
+        def _set_cookie(self, value: str, max_age: int) -> str:
+            https = self.headers.get("X-Forwarded-Proto", "").lower() == "https"
+            secure = "; Secure" if https else ""
+            return f"{COOKIE}={value}; Path=/; HttpOnly; SameSite=Strict; Max-Age={max_age}{secure}"
+
+        def _address(self) -> str:
+            # behind the ingress, the last address it appended is the caller's own
+            forwarded = self.headers.get("X-Forwarded-For", "")
+            return forwarded.split(",")[-1].strip() or self.client_address[0]
+
+        def _same_origin(self) -> bool:
+            origin = self.headers.get("Origin")
+            return origin is None or urlsplit(origin).netloc == self.headers.get("Host", "")
+
         def _route(self, method: str, path: str, q: dict[str, str]) -> tuple[int, Any]:
             parts = [unquote(p) for p in path.split("/")[2:]]
             if method == "GET":
@@ -584,7 +674,10 @@ def _handler(app: App) -> type[BaseHTTPRequestHandler]:
             raise HttpError(404, "no such endpoint")
 
         def _json(self) -> Any:
-            n = int(self.headers.get("Content-Length") or 0)
+            raw = self.headers.get("Content-Length") or "0"
+            if not raw.isdigit():  # a negative length would read until the client hangs up
+                raise HttpError(400, "a bad Content-Length")
+            n = int(raw)
             if n > MAX_BODY:
                 raise HttpError(413, "the request body is too large")
             try:
@@ -593,7 +686,7 @@ def _handler(app: App) -> type[BaseHTTPRequestHandler]:
                 raise HttpError(400, "the body must be JSON") from None
 
         def _static(self, path: str) -> None:
-            rel = {"/": "caller.html", "/admin": "admin.html"}.get(path)
+            rel = {"/": "caller.html", "/admin": "admin.html", "/login": "login.html"}.get(path)
             if rel is None and path.startswith("/static/"):
                 rel = unquote(path[len("/static/") :])
             target = (STATIC / rel).resolve() if rel else None
@@ -607,13 +700,23 @@ def _handler(app: App) -> type[BaseHTTPRequestHandler]:
                 200, target.read_bytes(), TYPES.get(target.suffix, "application/octet-stream")
             )
 
-        def _send(self, status: int, body: bytes, ctype: str) -> None:
+        def _send_json(self, status: int, body: Any, headers: dict[str, str] | None = None) -> None:
+            raw = json.dumps(body, ensure_ascii=False).encode()
+            self._send(status, raw, "application/json; charset=utf-8", headers)
+
+        def _send(
+            self, status: int, body: bytes, ctype: str, headers: dict[str, str] | None = None
+        ) -> None:
             self.send_response(status)
             self.send_header("Content-Type", ctype)
+            for k, v in (headers or {}).items():
+                self.send_header(k, v)
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store" if "json" in ctype else "no-cache")
             for k, v in SECURITY.items():
                 self.send_header(k, v)
+            if self.headers.get("X-Forwarded-Proto", "").lower() == "https":
+                self.send_header("Strict-Transport-Security", "max-age=31536000")  # stay on https
             self.end_headers()
             self.wfile.write(body)
 
@@ -632,6 +735,15 @@ def _handler(app: App) -> type[BaseHTTPRequestHandler]:
     return Handler
 
 
+def _is_open(path: str) -> bool:
+    """Judged on the decoded path, as the file lookup sees it: /static/fonts/..%2fadmin.html
+    must not count as a font."""
+    plain = unquote(path)
+    if "\\" in plain or ".." in plain.split("/"):
+        return False
+    return plain in OPEN or plain.startswith(OPEN_PREFIXES)
+
+
 def _explain(e: ValidationError) -> str:
     return "; ".join(
         f"{'.'.join(str(p) for p in err['loc']) or 'body'}: {err['msg']}" for err in e.errors()
@@ -645,22 +757,27 @@ def make_server(
     host: str = "127.0.0.1",
     port: int = 8000,
     rate_per_min: int = 30,
+    spend_per_day: int = 2000,
     judge: LlmClient | None = None,
     access_log: bool = False,
     promote_dir: Path | None = None,
+    auth: Auth | None = None,
 ) -> ThreadingHTTPServer:
-    app = App(store, llm, judge, rate_per_min, access_log, promote_dir)
+    app = App(store, llm, judge, rate_per_min, access_log, promote_dir, auth, spend_per_day)
     srv = ThreadingHTTPServer((host, port), _handler(app))
     srv.daemon_threads = True
     return srv
 
 
 def log_turns(stream: TextIO) -> None:
-    """One JSON line per turn on stream, no content: what the cloud's log queries read.
-    Only there: the line must not also reach the root logger's stderr handler, because
-    the cloud's logs collect both streams and every turn would be counted twice."""
+    """One JSON line per call turn on stream, no content: what the cloud's log queries
+    read. Only there: the line must not also reach the root logger's stderr handler,
+    because the cloud's logs collect both streams and every turn would be counted twice.
+    Replayed fixtures stay off it."""
     out = logging.StreamHandler(stream)
     out.setFormatter(logging.Formatter("%(message)s"))
+    # a replayed fixture is a test, not traffic: its fault cases make API errors on purpose
+    out.addFilter(lambda _: not getattr(_replaying, "on", False))
     turn_log = logging.getLogger("pirtis.turn")
     turn_log.addHandler(out)
     turn_log.propagate = False
@@ -678,6 +795,11 @@ def main(argv: list[str] | None = None) -> None:
     except RuntimeError as e:
         print(f"{e}\nset LLM_API_KEY, and optionally LLM_BASE_URL", file=sys.stderr)
         sys.exit(2)
+    try:
+        auth = auth_from_env()
+    except (RuntimeError, ValueError) as e:  # fail closed: no accounts, no server
+        print(e, file=sys.stderr)
+        sys.exit(2)
     log_turns(sys.stdout)
     logging.basicConfig(level=logging.WARNING, stream=sys.stderr)
 
@@ -690,10 +812,17 @@ def main(argv: list[str] | None = None) -> None:
         host=args.host,
         port=args.port,
         rate_per_min=rate,
+        spend_per_day=int(os.environ.get("PIRTIS_SPEND_PER_DAY", "2000")),
         access_log=True,
         promote_dir=Path(promote) if promote else None,
+        auth=auth,
     )
-    print(f"playground on http://{args.host}:{args.port}  ·  admin at /admin", file=sys.stderr)
+    n = len(auth.users) if auth else 0
+    who = f"sign-in on, {n} account{'' if n == 1 else 's'}" if auth else "open, no sign-in"
+    print(
+        f"playground on http://{args.host}:{args.port}  ·  admin at /admin  ·  {who}",
+        file=sys.stderr,
+    )
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

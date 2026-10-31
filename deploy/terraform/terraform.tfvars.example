@@ -1,0 +1,10 @@
+# Copy to terraform.tfvars (git-ignored) and fill in.
+alert_email = "you@example.com"
+
+# Optional. Empty: reachable from anywhere, behind the sign-in (D-83).
+# allowed_ips = ["203.0.113.7/32"]
+
+# Optional. Azure OpenAI's v1 endpoint instead of OpenAI.
+# llm_base_url = "https://<resource>.openai.azure.com/openai/v1"
+
+# location = "swedencentral"   # if Germany West Central has no capacity

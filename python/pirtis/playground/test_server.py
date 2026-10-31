@@ -295,3 +295,22 @@ def test_a_turn_line_goes_to_its_stream_once_and_never_to_the_root_logger() -> N
         turn_log.propagate = True
     assert out.getvalue() == '{"event": "turn"}\n'
     assert sink.getvalue() == ""
+
+
+def test_a_replay_never_reaches_the_turn_log_but_a_call_does(client: Client) -> None:
+    """A replayed fault case makes API errors on purpose; the cloud's error alert reads
+    the turn log, so replays stay off it, as the gate job's turns do."""
+    out = io.StringIO()
+    turn_log = logging.getLogger("pirtis.turn")
+    before = list(turn_log.handlers)
+    try:
+        log_turns(out)
+        assert client.post("/api/replay", {"fixture": "interim-speech"})[0] == 200
+        assert '"event": "turn"' not in out.getvalue()
+        sid = client.post("/api/session", {"phone": JONAS})[1]["session_id"]
+        assert client.post("/api/turn", {"session_id": sid, "text": LINES[0]})[0] == 200
+        assert out.getvalue().count('"event": "turn"') == 1
+    finally:
+        for h in [h for h in turn_log.handlers if h not in before]:
+            turn_log.removeHandler(h)
+        turn_log.propagate = True

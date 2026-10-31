@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pirtis on Wheels · Sign in</title>
+  <link rel="preload" href="/static/fonts/big-shoulders-display-latin-800.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/atkinson-hyperlegible-next-latin-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body class="signin">
+  <main class="signin-card">
+    <p class="stamp signin-brand">Pirtis on Wheels</p>
+    <h1 class="signin-title">Sign in to try the receptionist</h1>
+    <p class="muted">The caller simulator and the admin console, with made-up customers.</p>
+    <form id="signin" class="signin-form" novalidate>
+      <label class="field">Name
+        <input id="name" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="32" required>
+      </label>
+      <label class="field">Password
+        <input id="password" name="password" type="password" autocomplete="current-password" maxlength="200" required>
+      </label>
+      <p id="error" class="error-line" role="alert" hidden></p>
+      <button class="btn primary" type="submit">Sign in</button>
+    </form>
+    <p class="fine muted">No account? Ask whoever sent you the link; accounts are made by hand.</p>
+  </main>
+  <script type="module" src="/static/js/login.js"></script>
+</body>
+</html>

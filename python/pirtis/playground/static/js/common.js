@@ -14,9 +14,26 @@ export async function api(path, body) {
     body: JSON.stringify(body),
   };
   const res = await fetch(path, init);
+  if (res.status === 401) toSignIn(); // the session ended: sign in, then come back here
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new ApiError(res.status, data.error || `The server answered ${res.status}.`);
   return data;
+}
+
+function toSignIn() {
+  location.assign(`/login?next=${encodeURIComponent(location.pathname + location.hash)}`);
+}
+
+// "Signed in as ana · Sign out", when the playground has sign-in on; nothing when it's open
+export async function initAccount(slot) {
+  const { user } = await api("/api/me").catch(() => ({}));
+  if (!user) return;
+  const out = el("button", { class: "btn quiet", type: "button", text: "Sign out" });
+  out.addEventListener("click", async () => {
+    await api("/api/logout", {}).catch(() => null);
+    location.assign("/login");
+  });
+  clear(slot, el("span", { class: "muted who", text: `Signed in as ${user}` }), out);
 }
 
 // el("p", {class: "x", text: "hi", onclick: fn}, child, ...)

@@ -1,0 +1,66 @@
+// Saved queries for the Log Analytics workspace (pirtis-logs). Paste one at a time.
+// They read the containers' one-line JSON events: {"event": "turn"} from the playground
+// (call turns only: gate and replay turns are never logged) and {"event": "gate"} from
+// the gate job. No line holds what anyone said, a name or a phone number.
+
+// ---- What callers asked for, last 7 days
+ContainerAppConsoleLogs_CL
+| where TimeGenerated > ago(7d) and Log_s startswith '{"event": "turn"'
+| extend t = parse_json(Log_s)
+| where tostring(t.intent) != ""
+| summarize turns = count() by intent = tostring(t.intent)
+| order by turns desc
+
+// ---- Transfers and fallbacks per day, as a share of turns
+ContainerAppConsoleLogs_CL
+| where TimeGenerated > ago(30d) and Log_s startswith '{"event": "turn"'
+| extend t = parse_json(Log_s)
+| summarize turns = count(),
+            transfer_rate = round(avg(iff(tostring(t.transfer_reason) != "", 1.0, 0.0)), 3),
+            fallback_rate = round(avg(iff(tobool(t.fallback), 1.0, 0.0)), 3)
+  by day = bin(TimeGenerated, 1d)
+| order by day asc
+
+// ---- Turns answered without the model (waits, check-ins, hand-offs), per day
+ContainerAppConsoleLogs_CL
+| where TimeGenerated > ago(30d) and Log_s startswith '{"event": "turn"'
+| extend t = parse_json(Log_s)
+| summarize turns = count(), zero_call_share = round(avg(iff(toint(t.llm_calls) == 0, 1.0, 0.0)), 3)
+  by day = bin(TimeGenerated, 1d)
+
+// ---- Tokens per model turn, per day
+ContainerAppConsoleLogs_CL
+| where TimeGenerated > ago(30d) and Log_s startswith '{"event": "turn"'
+| extend t = parse_json(Log_s)
+| where toint(t.llm_calls) > 0
+| extend tokens = toint(t.input_tokens) + toint(t.output_tokens)
+| summarize model_turns = count(), avg_tokens = round(avg(tokens)), p95_tokens = percentile(tokens, 95)
+  by day = bin(TimeGenerated, 1d)
+
+// ---- Latency of model turns, p50 and p95 per hour (the slow-turns alert's measure)
+ContainerAppConsoleLogs_CL
+| where TimeGenerated > ago(7d) and Log_s startswith '{"event": "turn"'
+| extend t = parse_json(Log_s)
+| where toint(t.llm_calls) > 0
+| summarize p50 = percentile(toint(t.latency_ms), 50), p95 = percentile(toint(t.latency_ms), 95), turns = count()
+  by hour = bin(TimeGenerated, 1h)
+| order by hour asc
+
+// ---- Agent errors: fallbacks and failed API calls (the agent-errors alert's rows)
+ContainerAppConsoleLogs_CL
+| where TimeGenerated > ago(7d) and Log_s startswith '{"event": "turn"'
+| extend t = parse_json(Log_s)
+| where tobool(t.fallback) == true or Log_s matches regex @'"status": [45][0-9][0-9]'
+| project TimeGenerated, agent_version = tostring(t.agent_version), decision = tostring(t.decision),
+          turn_id = tostring(t.turn_id), api_calls = t.api_calls
+
+// ---- Gate history: one row per run of the gate job
+ContainerAppConsoleLogs_CL
+| where Log_s startswith '{"event": "gate"'
+| extend g = parse_json(Log_s)
+| project TimeGenerated, passed = tobool(g.passed), agent_version = tostring(g.agent_version),
+          suites = tostring(g.suites), cases = toint(g.cases), pass_k = todouble(g.pass_k),
+          det_pass_k = todouble(g.det_pass_k), judge_pass_k = todouble(g.judge_pass_k),
+          extract_pass_k = todouble(g.extract_pass_k), failed = tostring(g.failed),
+          llm_errors = toint(g.llm_errors), error = tostring(g.error), cost_usd = todouble(g.est_cost_usd)
+| order by TimeGenerated desc
