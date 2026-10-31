@@ -1,0 +1,8 @@
+.DS_Store
+**/.env
+**/runs/
+**/var/
+deploy/terraform/.terraform*
+*.tfstate*
+deploy/.image-digest
+INITIAL_INSTRUCTIONS.md
