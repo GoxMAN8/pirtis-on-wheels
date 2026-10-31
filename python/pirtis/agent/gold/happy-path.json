@@ -1,0 +1,35 @@
+{
+  "fixture": "happy-path",
+  "suite": "given",
+  "state": {
+    "gist": "",
+    "intent": "book",
+    "full_name": "Jonas Jonaitis",
+    "people": 4,
+    "start": "2026-10-06",
+    "end": "2026-10-07",
+    "shift_days": null,
+    "change_target_start": null,
+    "tow_quote": "it does two thousand",
+    "tow_kg": 2000,
+    "power": null,
+    "unit_quote": "the Mažoji? we'd like it again",
+    "unit": "unit_mazoji",
+    "unit_is_must": false,
+    "heater_pref": null,
+    "heater_reason": null,
+    "answer": null,
+    "consent_quote": "yeah, go on, book it",
+    "accepted_offer": true,
+    "go_ahead": false
+  },
+  "ignore": [
+    "gist",
+    "tow_quote",
+    "answer",
+    "go_ahead",
+    "unit_quote",
+    "consent_quote"
+  ],
+  "one_of": []
+}

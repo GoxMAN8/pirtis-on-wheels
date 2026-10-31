@@ -739,3 +739,122 @@ At the frozen gate:
   - gold call states per fixture
   - **the extractor eval**: the live model extracts each fixture 3 times, compared
     field by field with the gold state, reporting extractor pass^3. About 2 cents.
+
+---
+
+## Phase 7 — understanding v2 and the extractor eval
+
+**Date:** 2026-10-31
+**Goal:** measure the model's understanding on its own, apart from the policy and the
+judge, and raise it until it is exact on every fixture.
+
+### What was built
+- **The gold set (D-55):** `python/pirtis/agent/gold/*.json`, the call state the model
+  should produce for each of the 20 fixtures it sees (the 4 gated fixtures never reach
+  it). Each file has:
+  - `ignore` for free text (`gist`, quotes, `answer`)
+  - `one_of` where two answers are equally right ("push it a week" is `shift_days: 7`
+    *or* explicit new dates; a cancel may be `accepted_offer` *or* `go_ahead`)
+  - `heater_reason` compared by presence, since presence makes a heater preference a
+    hard filter
+
+  The same files now drive the zero-token replays: all 20 gold states pass their
+  fixtures through the real harness.
+- **`pirtis/ops/extract_eval.py` + `make eval-extract`:**
+  - runs the live extraction k times per fixture and compares field by field (names
+    the way the policy uses them)
+  - prints per-fixture results **with the wrong values**, extractor pass^k, per-field
+    accuracy, calls, tokens and cost
+  - writes JSON for the admin console later
+  - its own tests: every gold file is valid and matches itself; wrong fields,
+    diacritics, `one_of` and presence all work; a perfect scripted model scores 100%
+- **Prompt rules:**
+  - only the caller's words count, never our suggestions or system notes
+  - on a yes, copy the offer's sauna, dates and people
+  - numbers only if the caller said one ("the small one" is not 4 people)
+  - a sauna only if named or described, and a "must" only if they can't take another
+  - names exactly, with diacritics
+  - sharper field descriptions for `people`, `power`, `unit_is_must` and `heater_pref`
+- **Validation:**
+  - sanity bounds: people 1–50, a shift of at most 60 days, tow 100–20,000 kg
+  - a free answer capped at two sentences
+- **Quote checks in code (D-54):** the model must give the caller's words, and code
+  verifies them:
+  - **`unit_quote`:** the unit counts only if the quote is from a caller line and
+    names or describes a sauna (a catalogue name, or small, big, electric, wood,
+    seater, …)
+  - **`consent_quote`:** both consent flags count only if the quote is in the caller's
+    **latest** turn. `accepted_offer` also needs our last finished line to have asked
+    to book, move, cancel or "do that" (`we_offered`).
+- **Booking notes** in the prompt are rendered as id, unit, dates and status only;
+  site and car details are gone.
+- **`version.py` (D-56):** `AGENT_VERSION`, a short hash of the agent's own source.
+  It's currently `b37713964b41`.
+- **`test_understand.py`:** 26 new tests covering:
+  - the schema's strictness and order
+  - the request: one call, temperature 0, static system part first
+  - the prompt holding no phone numbers or other customers
+  - "(cut off)" marking and the calendar anchors
+  - every validator and every quote check
+
+### The measurements (`reports/phase-07/eval-*.txt`)
+| Step | Extractor pass^k | What was wrong |
+|---|---|---|
+| Baseline, Phase 6 prompt, 1 run | **10/20** | `unit_is_must` 65%: set whenever a unit was named. `unit` taken from our cut-off line or from group size. `people` guessed from "the small one". `power` copied from an old booking |
+| + sharper rules, 3 runs | 12/20 | must, people and heater fixed; **but consent flags were now set with no offer made** (05, 04, 08, 11), and unit and power were still inferred |
+| + quote checks in code, 3 runs | **20/20, every field 100%** | — |
+
+The middle step is the lesson worth keeping: **more prompt rules made one field
+worse.** Checking evidence in code fixed it for good. A false `go_ahead` was harmless
+for bookings, because the read-back check (D-10) blocks it. But it could have
+cancelled or moved a booking without a read-back, so it had to be closed.
+
+### Commands and results
+| Command | Result |
+|---|---|
+| new tests before the validators | the two needing new code failed; the rest already held |
+| `make check` | lint, strict mypy (22 files incl. `pirtis/ops`), **335 tests passed** |
+| `make eval-extract` (final) | **extractor pass^3 20/20**; 60 calls, ≈ $0.023 |
+| `make gate` (after the rules) | 72/72 |
+| **`make gate` (final)** | **given 14/14, extra 10/10, 72/72 runs**; model turns p50 1.76 s, p95 2.14 s (one at 4.2 s); ≈ 2.0k prompt tokens |
+
+**Reports:** `reports/phase-07/`:
+- `eval-1-baseline.txt`, `eval-2-rules.txt`, `eval-3-final.txt` and `.json`
+- `gate-full-1.txt`, `gate-full-2.txt`
+- `pytest.txt` (335 tests)
+
+### Decisions
+- **D-54 (new):** quote checks in code for unit and consent.
+- **D-55 (new):** the gold set.
+- **D-56 (new):** `agent_version`.
+- **Implemented:** D-36.
+- **Gold correction:** slot-stolen now accepts `heater_pref: wood`, because the caller
+  literally said "the small wood one". Without a stated reason it only sorts, so it
+  cannot change a decision.
+
+### Deviations from the plan
+- **No `name_quote` field.** Name normalisation already restores the caller's own
+  spelling from their lines, so a quote would add tokens without new evidence.
+- **Two extra quote fields** (`unit_quote`, `consent_quote`) beyond the plan, added
+  because the measurement showed they were needed.
+- **The gold set covers our 10 extra fixtures too**, not only the given ones.
+
+### Spend
+≈ $0.13 this phase (four evals and two full gates with the judge); ≈ $0.24 in total
+of the $6.
+
+### Open issues and risks
+- **Latency rose about 0.2 s at the median**, from the larger prompt and the quote
+  fields. That's acceptable for a phone turn, and it's tracked in SPEC §7b.
+- **The judge still varies,** though every gate since Phase 6 has passed 72/72.
+  Phase 13 measures it.
+
+### What the next phase needs from you
+- Nothing beyond the go-ahead. Phase 8 covers wiring, telemetry and the voice audit
+  prep:
+  - a `note` action with the decision, intent and `agent_version` on every turn
+  - **telemetry**: one `TurnRecord` per turn with no transcript text, OpenTelemetry
+    names, phone hashed
+  - logging that takes over the stray stderr warning
+
+  Zero-token tests, then a one-run gate.

@@ -1,0 +1,34 @@
+{
+  "fixture": "turnaround",
+  "suite": "given",
+  "state": {
+    "gist": "",
+    "intent": "book",
+    "full_name": "Jonas Jonaitis",
+    "people": 6,
+    "start": "2026-10-03",
+    "end": "2026-10-04",
+    "shift_days": null,
+    "change_target_start": null,
+    "tow_quote": "the Passat, two thousand",
+    "tow_kg": 2000,
+    "power": true,
+    "unit_quote": "the middle one, the electric six seater",
+    "unit": "unit_vidutine",
+    "unit_is_must": true,
+    "heater_pref": "electric",
+    "heater_reason": "the wood smoke sets off my asthma",
+    "answer": null,
+    "consent_quote": null,
+    "accepted_offer": false,
+    "go_ahead": false
+  },
+  "ignore": [
+    "gist",
+    "tow_quote",
+    "answer",
+    "unit_quote",
+    "consent_quote"
+  ],
+  "one_of": []
+}

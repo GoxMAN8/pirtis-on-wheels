@@ -56,7 +56,9 @@ def state(**kw: Any) -> CallState:
         "unit_is_must": False,
         "heater_pref": None,
         "heater_reason": None,
+        "unit_quote": None,
         "answer": None,
+        "consent_quote": None,
         "accepted_offer": False,
         "go_ahead": False,
     }

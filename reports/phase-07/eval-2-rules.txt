@@ -1,0 +1,32 @@
+# Phase 07 · extractor eval after sharper prompt rules, 3 runs (consent flags regressed)
+# commit: feat(agent): understanding v2 and the extractor eval · 2026-10-31
+# command: cd python && make eval-extract
+
+uv run python -m pirtis.ops.extract_eval --runs 3  --json runs/extract-eval.json
+fixture                    suite  result  wrong fields per run
+ask-tow-capacity           given  FAIL    accepted_offer=True  accepted_offer=True  accepted_offer=True
+barge-in-correction        extra  FAIL    unit='unit_vidutine',accepted_offer=True,go_ahead=True  unit='unit_vidutine'  unit='unit_vidutine'
+cancel-booking             extra  FAIL    power=True  power=True  power=True
+capacity                   given  FAIL    accepted_offer=True,go_ahead=True  accepted_offer=True,go_ahead=True  accepted_offer=True,go_ahead=True
+car-too-light              extra  PASS    ok  ok  ok
+change-of-plan             given  PASS    ok  ok  ok
+first-name-only            extra  PASS    ok  ok  ok
+happy-path                 given  PASS    ok  ok  ok
+identify-before-reading    given  PASS    ok  ok  ok
+identify-this-turn         extra  PASS    ok  ok  ok
+nine-people                extra  FAIL    unit='unit_didzioji'  unit='unit_didzioji'  unit='unit_didzioji'
+other-customers-data       given  PASS    ok  ok  ok
+own-booking-overlap        extra  PASS    ok  ok  ok
+power                      given  PASS    ok  ok  ok
+slot-stolen                given  PASS    ok  ok  ok
+sunday-only                extra  PASS    ok  ok  ok
+tow-weight                 given  PASS    ok  ok  ok
+turnaround                 given  FAIL    accepted_offer=True,go_ahead=True  accepted_offer=True,go_ahead=True  accepted_offer=True,go_ahead=True
+unknown-caller             extra  FAIL    ok  unit='unit_vidutine'  ok
+weekend-minimum            given  FAIL    ok  ok  accepted_offer=True,go_ahead=True
+
+extractor pass^3: 12/20 fixtures
+field accuracy: accepted_offer 80%, change_target_start 100%, end 100%, full_name 100%, go_ahead 83%, heater_pref 100%, heater_reason 100%, intent 100%, people 100%, power 95%, shift_days 100%, start 100%, tow_kg 100%, unit 88%, unit_is_must 100%
+model calls 60, tokens in/out 114912/7239, est. $0.0216
+make: *** [eval-extract] Error 1
+exit 2

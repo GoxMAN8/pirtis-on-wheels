@@ -1,0 +1,45 @@
+{
+  "fixture": "slot-stolen",
+  "suite": "given",
+  "state": {
+    "gist": "",
+    "intent": "book",
+    "full_name": "Eglė Butkutė",
+    "people": 4,
+    "start": "2026-10-10",
+    "end": "2026-10-11",
+    "shift_days": null,
+    "change_target_start": null,
+    "tow_quote": "the Hilux, it tows three tonnes",
+    "tow_kg": 3000,
+    "power": null,
+    "unit_quote": "the small wood one, the Mažoji",
+    "unit": "unit_mazoji",
+    "unit_is_must": false,
+    "heater_pref": null,
+    "heater_reason": null,
+    "answer": null,
+    "consent_quote": "yes. yes, book it",
+    "accepted_offer": true,
+    "go_ahead": false
+  },
+  "ignore": [
+    "gist",
+    "tow_quote",
+    "answer",
+    "go_ahead",
+    "heater_pref",
+    "unit_quote",
+    "consent_quote"
+  ],
+  "one_of": [
+    [
+      {
+        "heater_pref": null
+      },
+      {
+        "heater_pref": "wood"
+      }
+    ]
+  ]
+}

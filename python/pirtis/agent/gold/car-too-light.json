@@ -1,0 +1,34 @@
+{
+  "fixture": "car-too-light",
+  "suite": "extra",
+  "state": {
+    "gist": "",
+    "intent": "book",
+    "full_name": "Eglė Butkutė",
+    "people": 4,
+    "start": "2026-10-10",
+    "end": "2026-10-11",
+    "shift_days": null,
+    "change_target_start": null,
+    "tow_quote": "seven hundred kilos, braked",
+    "tow_kg": 700,
+    "power": null,
+    "unit_quote": "the small one",
+    "unit": "unit_mazoji",
+    "unit_is_must": false,
+    "heater_pref": null,
+    "heater_reason": null,
+    "answer": null,
+    "consent_quote": null,
+    "accepted_offer": false,
+    "go_ahead": false
+  },
+  "ignore": [
+    "gist",
+    "tow_quote",
+    "answer",
+    "unit_quote",
+    "consent_quote"
+  ],
+  "one_of": []
+}

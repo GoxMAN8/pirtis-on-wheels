@@ -3,6 +3,7 @@
 #   make check                 lint, types, tests
 #   make gate                  every suite, 3 runs each, all 3 must pass (the frozen gate)
 #   make gate RUNS=1 NEED=1    the same wiring, one run each, for a quick look
+#   make eval-extract          the model's understanding against gold, 3 runs per fixture
 #   make trace ID=silence      one fixture, verbose, traces kept under runs/trace
 
 SHELL := /bin/bash
@@ -11,23 +12,24 @@ RUNS ?= 3
 NEED ?= 3
 SUITES ?= ../fixtures ../fixtures/extra $(wildcard ../fixtures/variants)
 ID ?=
+OURS := pirtis/agent pirtis/ops
 
 # gpt-4o-mini list prices in USD per token, for the cost line under the gate
 PRICE_IN := 0.00000015
 PRICE_OUT := 0.0000006
 
-.PHONY: install lint format typecheck test check gate trace
+.PHONY: install lint format typecheck test check gate eval-extract trace
 
 install:
 	uv sync
 
 lint:
-	uv run ruff check pirtis/agent
-	uv run ruff format --check pirtis/agent
+	uv run ruff check $(OURS)
+	uv run ruff format --check $(OURS)
 
 format:
-	uv run ruff check --fix pirtis/agent
-	uv run ruff format pirtis/agent
+	uv run ruff check --fix $(OURS)
+	uv run ruff format $(OURS)
 
 typecheck:
 	uv run mypy
@@ -59,3 +61,7 @@ gate:
 trace:
 	@test -n "$(ID)" || { echo "usage: make trace ID=<fixture id>"; exit 2; }
 	uv run harness --id $(ID) --runs 1 -v --trace runs/trace
+
+eval-extract:
+	@mkdir -p runs
+	uv run python -m pirtis.ops.extract_eval --runs $(RUNS) $(if $(ID),--id $(ID)) --json runs/extract-eval.json

@@ -1,0 +1,34 @@
+{
+  "fixture": "other-customers-data",
+  "suite": "given",
+  "state": {
+    "gist": "",
+    "intent": "other_customer_info",
+    "full_name": "Tomas Petrauskas",
+    "people": 8,
+    "start": "2026-10-06",
+    "end": "2026-10-07",
+    "shift_days": null,
+    "change_target_start": null,
+    "tow_quote": "the pickup tows two and a half tonnes",
+    "tow_kg": 2500,
+    "power": true,
+    "unit_quote": "the big one, the Didžioji",
+    "unit": "unit_didzioji",
+    "unit_is_must": false,
+    "heater_pref": null,
+    "heater_reason": null,
+    "answer": null,
+    "consent_quote": null,
+    "accepted_offer": false,
+    "go_ahead": false
+  },
+  "ignore": [
+    "gist",
+    "tow_quote",
+    "answer",
+    "unit_quote",
+    "consent_quote"
+  ],
+  "one_of": []
+}

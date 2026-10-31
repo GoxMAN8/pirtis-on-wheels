@@ -1,0 +1,31 @@
+# Phase 07 · extractor eval, BASELINE: the Phase 6 prompt, 1 run per fixture
+# commit: feat(agent): understanding v2 and the extractor eval · 2026-10-31
+# command: cd python && make eval-extract RUNS=1
+
+uv run python -m pirtis.ops.extract_eval --runs 1  --json runs/extract-eval.json
+fixture                    suite  result  wrong fields per run
+ask-tow-capacity           given  FAIL    unit_is_must
+barge-in-correction        extra  FAIL    unit
+cancel-booking             extra  FAIL    power,unit_is_must
+capacity                   given  FAIL    unit_is_must
+car-too-light              extra  PASS    ok
+change-of-plan             given  PASS    ok
+first-name-only            extra  FAIL    people
+happy-path                 given  FAIL    unit_is_must
+identify-before-reading    given  PASS    ok
+identify-this-turn         extra  PASS    ok
+nine-people                extra  PASS    ok
+other-customers-data       given  FAIL    unit_is_must
+own-booking-overlap        extra  PASS    ok
+power                      given  FAIL    unit
+slot-stolen                given  FAIL    unit_is_must,heater_pref
+sunday-only                extra  FAIL    unit_is_must
+tow-weight                 given  PASS    ok
+turnaround                 given  PASS    ok
+unknown-caller             extra  PASS    ok
+weekend-minimum            given  PASS    ok
+
+extractor pass^1: 10/20 fixtures
+field accuracy: accepted_offer 100%, change_target_start 100%, end 100%, full_name 100%, go_ahead 100%, heater_pref 95%, heater_reason 100%, intent 100%, people 94%, power 95%, shift_days 100%, start 100%, tow_kg 100%, unit 90%, unit_is_must 65%
+model calls 20, tokens in/out 34184/2454, est. $0.0066
+make: *** [eval-extract] Error 1

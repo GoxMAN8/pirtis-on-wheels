@@ -72,7 +72,8 @@ library, the kit's own modules and pydantic (D-32, D-49).
 | Module | Contract |
 |---|---|
 | `turn.py` | `gate(t) -> list[Action] \| None`. `None` means "go on to understanding". It covers waiting (still talking, filler only, "hang on"), transfers (asked for a person, or anger plus a barge-in) and silence (check in, then hang up, or end quietly after a goodbye) |
-| `understand.py` | `extract(t, llm, units) -> CallState` (frozen pydantic model, strict schema generated from the class); raises `UnderstandError` if it can't validate |
+| `understand.py` | `extract(t, llm, units) -> CallState` (frozen pydantic model, strict schema generated from the class); raises `UnderstandError` if it can't validate. Three facts need the caller's own words, checked in code: a tow figure (`tow_quote` with a number), a sauna (`unit_quote` naming or describing one, said by the caller) and consent (`consent_quote` from the caller's latest turn; accepting also needs our last line to have offered). Sanity bounds on numbers; free answers capped at two sentences; booking notes rendered as unit and dates only |
+| `version.py` | `AGENT_VERSION`: a short hash of the agent's own source, prompt included |
 | `rules.py` | `violations(req, unit, free_days, own, exclude_id) -> list[str]` mirrors every write rule of the API and returns its reason codes; `without_booking` for moves. Property-tested against the API: 600 random bookings agree exactly, and every move it allows out of 400 is accepted |
 | `policy.py` | `next_step(t, state, api, units) -> Decision` across every intent. The offer engine: `search` (one availability call, all filters), `apply_weekend_min`, `find_window` (offsets 0, +1, −1, …), `choose_offer`. `last_offer(t, units)` parses our previous read-back (unit, dates, people). `create` adds a pre-flight, a re-check and retry on 409, and a check-then-retry on 500. `change` and `cancel` use `update_with_retry` on a version conflict |
 | `speech.py` | `render(decision, voice) -> list[Action]`; the templates; `tone(t)` (a calm, slower voice when the caller's latest turn is angry or distressed); check-in and goodbye lines; the written confirmation text |
@@ -210,6 +211,9 @@ blocks deployment.
     and ends with a line of agent model calls, tokens and estimated cost
   - `make gate RUNS=1 NEED=1` is the same wiring for a quick look
   - `make trace ID=<fixture>` runs one fixture verbosely
+  - `make eval-extract` runs the extractor eval: the live model extracts every fixture
+    3 times, compared field by field with the gold call states in
+    `python/pirtis/agent/gold/`; it reports extractor pass^3 and per-field accuracy
 - **Known judge weaknesses** (seen on 2026-10-31; the judge varies even at temperature
   0, and the same reply passed in one run and failed in the next):
   - **Polarity:** a negatively worded criterion ("The reply does not say whether the
@@ -239,9 +243,22 @@ blocks deployment.
 | 2026-10-31 | ours: rules mirror, offer engine, moves, retries | given + extra, 1 run | **14/14** and 9/10 (29 failed on an ambiguous criterion of ours, then fixed) | 20 | 34,184 / 2,445 |
 | 2026-10-31 | **ours: THE FROZEN GATE** | given + extra, **3 runs, 3 must pass** | **14/14 and 10/10: 72/72 runs, pass^3 = 1.0**; `make gate` exit 0 | 60 (0 on 12 runs) | 102,552 / 7,307 |
 
-At the frozen gate, model turns took p50 1.54 s and p95 1.77 s (max 1.84 s), with
-about 1.7k prompt tokens each. Turns the gate settles take 0 ms. The agent's cost for
-all 72 runs was about $0.02, plus the judge.
+| 2026-10-31 | **ours, understanding v2** (`agent_version` b37713964b41) | given + extra, **3 runs, 3 must pass** | **14/14 and 10/10: 72/72 runs, pass^3 = 1.0** | 60 (0 on 12 runs) | 121,110 / 8,244 |
+
+At the Phase 6 gate, model turns took p50 1.54 s and p95 1.77 s (max 1.84 s), with
+about 1.7k prompt tokens each. After understanding v2 they take p50 1.76 s and p95
+2.14 s (one outlier at 4.2 s), with about 2.0k prompt tokens: the price of the quote
+fields. Turns the gate settles take 0 ms. The agent's cost for 72 runs is about $0.02,
+plus the judge.
+
+**Extractor eval** (the model's understanding alone, against gold call states for the
+20 fixtures it sees):
+
+| Date | Prompt | Runs | Extractor pass^k | Weakest field |
+|---|---|---|---|---|
+| 2026-10-31 | Phase 6 prompt (baseline) | 1 | 10/20 | `unit_is_must` 65% |
+| 2026-10-31 | + sharper rules | 3 | 12/20 | `accepted_offer` 80% (a regression: consent flags set without an offer) |
+| 2026-10-31 | **+ quotes verified in code** | 3 | **20/20** | every field 100% |
 
 The naive agent swings between samples (4/14, then 3/14), which is why the gate needs
 3 of 3 runs. The skeleton's failures are all features of later phases: the silence
@@ -436,6 +453,9 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | D-48 | 2026-10-31 | Spend guards for a small prepaid model credit: targeted runs, full gates at phase ends, cost printed and shown, a credit check before full gates, a slim nightly suite | Exhausted credit returns 429, which would look like agent bugs | — | accepted |
 | D-49 | 2026-10-31 | Pydantic v2 at our boundaries (model output, stored entities, playground requests); the strict schema generated from the same class; dataclasses for internals | One source of truth for schema and validation; untrusted model output is checked at the edge | a hand-written parser | accepted |
 | D-50 | 2026-10-31 | Documentation: three architecture views (containers, data flow with sensitivity labels, trust boundaries and numbered crossings, sequences with failure paths) plus a deployment view, in Mermaid with evidence paths, commit stamps, *Not built* lists and `[CONFIRM]` for unknowns, checked by a shape checker; evaluation graphs in Mermaid; screenshots only for UI. A change to a container, store or crossing updates its diagram in the same commit | Diagrams that diff stay true; reviewers ask where data goes | images and draw.io exports | accepted |
+| D-54 | 2026-10-31 | Facts that change a decision need the caller's own words, checked in code. `unit` needs a `unit_quote` from a caller line that names or describes a sauna. The consent flags need a `consent_quote` from the caller's latest turn. `accepted_offer` also needs our last line to have asked to book, move, cancel or "do that". Booking notes show units and dates only | Measured: the model picked units from our own cut-off line or from group size, set consent flags with no offer made, and copied power from an old booking. Rules in the prompt alone made consent worse (80%); quote checks in code took every field to 100% | more prompt rules only | accepted |
+| D-55 | 2026-10-31 | The gold set: one call state per model-facing fixture (20), with `ignore` for free text and `one_of` where two answers are equally right. The same files drive the zero-token replays and the live extractor eval | One definition of "the right understanding" for both checks; a gold state that fails its fixture is caught at once | separate test data for each | accepted |
+| D-56 | 2026-10-31 | `agent_version` is a short hash of the agent's source, prompt included | Any behaviour change gets a new version without anyone bumping a number | a hand-maintained version string | accepted |
 | D-52 | 2026-10-31 | Every offer reads back unit, dates, number of people and price, so `last_offer` can parse exactly what the caller heard; the offered unit is the last one named in the line | The consent check compares what was heard with what we would book; a read-back without people could not catch "yes, but five of us" | reading back unit and dates only | accepted |
 | D-53 | 2026-10-31 | `CallState` gains its v2 fields in Phase 6 rather than Phase 7 (`shift_days`, `change_target_start`, `unit_is_must`, `heater_pref`, `heater_reason`, `answer`, `go_ahead`, and the full intent set); Phase 7 keeps prompt quality, validation and the extractor eval | The policy can't be built or tested without them | waiting for Phase 7 | accepted |
 | D-51 | 2026-10-31 | Replies state "not" facts explicitly ("I can help with that once I know who's calling", "I can't share anyone's details") and cover both readings of an "or" ("What car will you tow it with, and how much can it tow?") | The judge can flip the polarity of negated criteria and can read "or" as "and"; explicit wording makes the reply unambiguous. Confirmed on 01, 21 and 05: 3/3 each after the change | relying on silence; rerunning until green | accepted |
@@ -453,3 +473,4 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | 2026-10-31 | 4 | Speech and handlers deepened test-first: `words.py` (spoken forms and the digit guard for dates, times, prices, weights, percentages, decimals, "2k", ordinals, codes and phone numbers), `reading.py`, tone from the latest caller turn, per-queue warm-transfer lines with a summary on the transfer, check-in and goodbye lines, a booking confirmed aloud and by text; `sms` and `note` handlers. 71 new tests (142 in total) | The voice rules made certain in code, before the turn gate and policy rely on them | D-06, D-17, D-18, D-24, D-37 |
 | 2026-10-31 | 5 | Full turn gate, test-first: still talking, filler-only or "hang on" → wait; a strict "talk to a person" pattern, or anger ≥ 0.7 with a barge-in → announced, calm transfer with a summary; we spoke last → wait, check in after 6 s of silence, hang up after a second silence, end quietly after a goodbye. Ask-for-name and tow questions reworded after two judge errors. 200 tests; 03, 13 and 26 pass with 0 model calls | Turn-taking without spending a model call | D-04, D-05, D-06, D-51 |
 | 2026-10-31 | 6 | Rules mirror with property tests against the API; offer engine (weekend minimum, both-way date shifts, must-have and heater-reason units, catalogue limits); read-back parser; own-booking clashes; moves and cancels with version retry; 409 re-check-and-retry and 500 check-then-retry; every intent (price, refusal, status, goodbye, hold, a second misunderstanding → person); `CallState` v2. Fixture 29's second criterion reworded: it contradicted the first. **Frozen gate passes: 72/72 runs** | Make a rule violation impossible by construction and handle every turn the fixtures describe | D-07, D-10, D-12–D-16, D-19, D-31, D-34, D-35, D-52, D-53 |
+| 2026-10-31 | 7 | Gold call states for the 20 model-facing fixtures; the extractor eval (`make eval-extract`); sharper prompt rules; sanity bounds and an answer cap; quote checks in code for unit and consent; booking notes without site or car details; `agent_version`. Extractor pass^3 went 10/20 (1 run) → 12/20 → **20/20**; the frozen gate still passes 72/72 | Measure and fix the model's understanding apart from the policy and the judge | D-36, D-54, D-55, D-56 |

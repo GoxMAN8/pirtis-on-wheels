@@ -13,6 +13,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
+from pirtis.agent.reading import latest_caller_turn
 from pirtis.api.types import Unit
 from pirtis.llm.client import Client as LlmClient
 from pirtis.llm.client import Message, Request, ResponseFormat
@@ -61,7 +62,8 @@ class CallState(BaseModel):
         "join spelled-out letters into the word. Null if no name was given."
     )
     people: int | None = Field(
-        description="How many people. If they hedge ('seven, maybe eight'), the higher number."
+        description="How many people, only if the caller said a number. If they hedge "
+        "('seven, maybe eight'), the higher number."
     )
     start: str | None = Field(
         description="First day they asked for, YYYY-MM-DD, read off the calendar. For a change, "
@@ -87,15 +89,21 @@ class CallState(BaseModel):
         "If they hedge, the lower number. Null when tow_quote is null."
     )
     power: bool | None = Field(
-        description="True if the site has mains electricity, false if it has none "
-        "(a generator is not mains), null if not said."
+        description="True if the caller said the site has mains electricity, false if they "
+        "said it has none (a generator is not mains), null if they haven't said it in this call."
+    )
+    unit_quote: str | None = Field(
+        description="The caller's own words that name or describe the sauna they want "
+        "('the small one', 'the electric six seater'), copied exactly. Null if none."
     )
     unit: str | None = Field(description="The sauna the caller asked for by name or description.")
     unit_is_must: bool = Field(
-        description="True if the caller said it has to be that sauna, e.g. for health "
-        "reasons or 'it has to be that one'."
+        description="True only if the caller said they cannot take another sauna: 'it has to "
+        "be that one', or a health reason. Naming or wanting a sauna is false."
     )
-    heater_pref: str | None = Field(description="The heater type the caller wants, if they said.")
+    heater_pref: str | None = Field(
+        description="The heater type the caller asked for, if they said ('the wood one')."
+    )
     heater_reason: str | None = Field(
         description="The caller's reason for that heater, if they gave one, in their words "
         "(e.g. 'the wood smoke sets off my asthma'). Null otherwise."
@@ -103,6 +111,10 @@ class CallState(BaseModel):
     answer: str | None = Field(
         description="Only for smalltalk: one or two short sentences answering the caller, "
         "using only facts given here. Never about bookings or availability. Null otherwise."
+    )
+    consent_quote: str | None = Field(
+        description="The caller's own words in their latest turn that say yes to our offer or "
+        "tell us to go ahead ('yes, book it', 'just move it'), copied exactly. Null if none."
     )
     accepted_offer: bool = Field(
         description="True only if the receptionist's last message offered something "
@@ -126,8 +138,26 @@ class CallState(BaseModel):
 
     @field_validator("people")
     @classmethod
-    def _positive(cls, v: int | None) -> int | None:
-        return v if v is not None and v > 0 else None
+    def _plausible_people(cls, v: int | None) -> int | None:
+        return v if v is not None and 0 < v <= 50 else None
+
+    @field_validator("shift_days")
+    @classmethod
+    def _plausible_shift(cls, v: int | None) -> int | None:
+        return v if v is not None and v != 0 and abs(v) <= 60 else None
+
+    @field_validator("tow_kg")
+    @classmethod
+    def _plausible_tow(cls, v: int | None) -> int | None:
+        return v if v is not None and 100 <= v <= 20000 else None
+
+    @field_validator("answer")
+    @classmethod
+    def _short_answer(cls, v: str | None) -> str | None:
+        """A free answer is spoken as-is, so it is cut to two sentences."""
+        if not v or not v.strip():
+            return None
+        return " ".join(re.split(r"(?<=[.!?])\s+", v.strip())[:2])
 
     @field_validator("unit")
     @classmethod
@@ -142,13 +172,27 @@ class CallState(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _tow_needs_a_quote(cls, data: Any, info: ValidationInfo) -> Any:
-        """A towing capacity counts only if the caller really said a number for it."""
-        lines = (info.context or {}).get("caller_lines")
+    def _facts_need_the_callers_words(cls, data: Any, info: ValidationInfo) -> Any:
+        """Three facts count only with the caller's own words behind them, checked here in
+        code: a towing figure needs a quote with a number; a sauna needs a quote that
+        names or describes one; consent needs a quote from the caller's latest turn, and
+        accepting an offer also needs our last line to have made one."""
+        ctx = info.context or {}
+        lines, latest = ctx.get("caller_lines"), ctx.get("latest_lines")
         if not isinstance(data, dict) or lines is None:
             return data
+        data = dict(data)
         if data.get("tow_kg") is not None and not quote_supported(data.get("tow_quote"), lines):
-            return {**data, "tow_kg": None}
+            data["tow_kg"] = None
+        names = ctx.get("unit_names", [])
+        if data.get("unit") is not None and not (
+            quote_in(data.get("unit_quote"), lines) and names_a_sauna(data.get("unit_quote"), names)
+        ):
+            data["unit"], data["unit_is_must"] = None, False
+        if latest is not None and not quote_in(data.get("consent_quote"), latest):
+            data["accepted_offer"], data["go_ahead"] = False, False
+        if not ctx.get("offered", True):
+            data["accepted_offer"] = False
         return data
 
 
@@ -161,15 +205,42 @@ _NUMBER_WORDS = {
 }  # fmt: skip
 
 
-def quote_supported(quote: object, caller_lines: Sequence[str]) -> bool:
-    """True when most of the quote's words appear in one caller line and the quote
-    carries a number. The model may tidy a quote, so the match is by words, not text."""
+def quote_in(quote: object, caller_lines: Sequence[str]) -> bool:
+    """True when most of the quote's words appear in one of these caller lines. The model
+    may tidy a quote, so the match is by words, not exact text."""
     if not isinstance(quote, str) or not quote.strip():
         return False
     words = _words(quote)
-    if not words or not (any(w.isdigit() for w in words) or words & _NUMBER_WORDS):
+    return bool(words) and any(
+        len(words & _words(line)) >= 0.7 * len(words) for line in caller_lines
+    )
+
+
+def quote_supported(quote: object, caller_lines: Sequence[str]) -> bool:
+    """quote_in, and the quote carries a number."""
+    if not isinstance(quote, str):
         return False
-    return any(len(words & _words(line)) >= 0.7 * len(words) for line in caller_lines)
+    words = _words(quote)
+    has_number = any(w.isdigit() for w in words) or bool(words & _NUMBER_WORDS)
+    return has_number and quote_in(quote, caller_lines)
+
+
+# words that describe a sauna rather than people or dates
+_SAUNA_WORDS = {
+    "small", "smaller", "smallest", "little", "big", "bigger", "biggest", "large", "largest",
+    "middle", "medium", "mid", "electric", "wood", "wooden", "barrel", "seater", "person",
+    "sauna",
+}  # fmt: skip
+
+
+def names_a_sauna(quote: object, unit_names: Sequence[str]) -> bool:
+    """True when the quote names a unit or uses a word that describes one. "Nine of us"
+    describes the group, not a sauna."""
+    if not isinstance(quote, str):
+        return False
+    words = _words(quote)
+    names = {w for n in unit_names for w in _words(n)}
+    return bool(words & (names | _SAUNA_WORDS))
 
 
 def _words(s: str) -> set[str]:
@@ -217,11 +288,22 @@ and you record what the caller has said so far.
 
 Record facts only. Never apply booking rules, never judge availability, and never invent a \
 value: if the caller has not said it, use null.
+Only the caller's own words count. Never take a fact from the receptionist's suggestions or \
+from the system notes about earlier bookings.
 The latest statement wins: if the caller corrects themselves, record the correction.
+When the caller says yes to an offer, copy the sauna, the dates and the number of people \
+from that offer.
 Dates: turn the caller's words into YYYY-MM-DD using the calendar you are given. Record what \
 they asked for, even if it seems impossible; a single day means start and end are the same.
+Numbers: record a number only if the caller said one. "The small one" names a sauna, not a \
+number of people.
 The towing capacity must come from a number the caller said. "It's fine" or "we towed a \
 caravan" is not a number.
+The sauna: record one only if the caller named or described it ("the big one", "the electric \
+six seater"). Never choose one for them. It is a must only if they said they cannot take \
+another, for example "it has to be that one" or a health reason; wanting one is not a must.
+Names: copy the name exactly as said, keeping letters like ė, ž, š, and join spelled-out \
+letters. A first name alone is recorded as said.
 """
 
 
@@ -284,11 +366,30 @@ def _short(output: str) -> str:
         return output[:120]
     if isinstance(data, dict) and "ok" in data:
         return "caller identified" if data.get("ok") else "caller not found"
+    # bookings by unit and dates only: site and car details stay out, so the model
+    # can't mistake an old booking's facts for something the caller said today
+    rows = data if isinstance(data, list) else [data]
+    if rows and all(isinstance(r, dict) and {"unit_id", "start", "end"} <= set(r) for r in rows):
+        return "bookings: " + "; ".join(
+            f"{r.get('id', '')} {r['unit_id']} {r['start']} to {r['end']} {r.get('status', '')}"
+            for r in rows
+        )
     return json.dumps(data, ensure_ascii=False)[:300]
 
 
 def caller_lines(t: Transcript) -> list[str]:
     return [it.content for it in t.items if it.type == "message" and it.role == "user"]
+
+
+_OFFER_QUESTION = re.compile(r"\b(book|cancel|move|do that)\b[^?]*\?", re.IGNORECASE)
+
+
+def we_offered(t: Transcript) -> bool:
+    """True when our last finished line asked the caller to say yes to something."""
+    for it in reversed(t.items):
+        if it.type == "message" and it.role == "assistant":
+            return not it.interrupted and bool(_OFFER_QUESTION.search(it.content))
+    return False
 
 
 def extract(t: Transcript, llm: LlmClient, units: Sequence[Unit]) -> CallState:
@@ -309,9 +410,14 @@ def extract(t: Transcript, llm: LlmClient, units: Sequence[Unit]) -> CallState:
             ),
         )
     )
+    context = {
+        "unit_ids": ids,
+        "unit_names": [u.name for u in units],
+        "caller_lines": caller_lines(t),
+        "latest_lines": [it.content for it in latest_caller_turn(t)],
+        "offered": we_offered(t),
+    }
     try:
-        return CallState.model_validate(
-            json.loads(resp.content), context={"unit_ids": ids, "caller_lines": caller_lines(t)}
-        )
+        return CallState.model_validate(json.loads(resp.content), context=context)
     except ValueError as e:  # bad JSON, or a pydantic ValidationError
         raise UnderstandError(str(e)) from e

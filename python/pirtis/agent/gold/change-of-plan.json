@@ -1,0 +1,52 @@
+{
+  "fixture": "change-of-plan",
+  "suite": "given",
+  "state": {
+    "gist": "",
+    "intent": "change",
+    "full_name": "Tomas Petrauskas",
+    "people": null,
+    "start": null,
+    "end": null,
+    "shift_days": 7,
+    "change_target_start": "2026-10-03",
+    "tow_quote": null,
+    "tow_kg": null,
+    "power": null,
+    "unit_quote": "the small sauna, the Mažoji",
+    "unit": "unit_mazoji",
+    "unit_is_must": false,
+    "heater_pref": null,
+    "heater_reason": null,
+    "answer": null,
+    "consent_quote": "just move it, I'm driving",
+    "accepted_offer": false,
+    "go_ahead": true
+  },
+  "ignore": [
+    "gist",
+    "tow_quote",
+    "answer",
+    "people",
+    "tow_kg",
+    "power",
+    "start",
+    "end",
+    "shift_days",
+    "change_target_start",
+    "accepted_offer",
+    "unit_quote",
+    "consent_quote"
+  ],
+  "one_of": [
+    [
+      {
+        "shift_days": 7
+      },
+      {
+        "start": "2026-10-10",
+        "end": "2026-10-11"
+      }
+    ]
+  ]
+}

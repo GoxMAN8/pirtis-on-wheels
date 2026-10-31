@@ -1,6 +1,9 @@
 """Replays fixtures through the real harness with a scripted model: the call state the
 model should produce goes in, and the harness checks bookings, actions and invariants.
-No tokens are spent, so this proves the wiring before any live run."""
+No tokens are spent, so this proves the wiring before any live run.
+
+The call states come from gold/, the same files the extractor eval compares the live
+model against: if the model produces the gold state, the fixture passes."""
 
 import json
 import re
@@ -17,6 +20,10 @@ from pirtis.llm.client import Response
 from pirtis.llm.fake import Fake
 
 FIXTURES = Path(__file__).resolve().parents[3] / "fixtures"
+GOLD_DIR = Path(__file__).parent / "gold"
+GOLD: dict[str, dict[str, Any]] = {
+    d["fixture"]: d["state"] for d in (json.loads(p.read_text()) for p in GOLD_DIR.glob("*.json"))
+}
 
 # a judge that passes every criterion; the judge is tested live, not here
 PASS_JUDGE = Fake(
@@ -24,138 +31,6 @@ PASS_JUDGE = Fake(
         content=json.dumps({f"criterion_{i}": {"reason": "ok", "pass": True} for i in range(1, 9)})
     )
 )
-
-
-def state(**kw: Any) -> dict[str, Any]:
-    """A CallState as the model would return it, nulls unless given."""
-    base: dict[str, Any] = {
-        "gist": "",
-        "intent": "book",
-        "full_name": None,
-        "people": None,
-        "start": None,
-        "end": None,
-        "shift_days": None,
-        "change_target_start": None,
-        "tow_quote": None,
-        "tow_kg": None,
-        "power": None,
-        "unit": None,
-        "unit_is_must": False,
-        "heater_pref": None,
-        "heater_reason": None,
-        "answer": None,
-        "accepted_offer": False,
-        "go_ahead": False,
-    }
-    return {**base, **kw}
-
-
-GOLD: dict[str, dict[str, Any]] = {
-    "happy-path": state(
-        full_name="Jonas Jonaitis",
-        people=4,
-        start="2026-10-06",
-        end="2026-10-07",
-        tow_quote="it does two thousand",
-        tow_kg=2000,
-        unit="unit_mazoji",
-        accepted_offer=True,
-    ),
-    "capacity": state(
-        full_name="Eglė Butkutė",
-        people=8,
-        start="2026-10-03",
-        end="2026-10-04",
-        tow_quote="three and a half tonnes it says",
-        tow_kg=3500,
-        power=True,
-        unit="unit_mazoji",
-    ),
-    "ask-tow-capacity": state(
-        full_name="Tomas Petrauskas",
-        people=7,
-        start="2026-10-10",
-        end="2026-10-11",
-        power=True,
-        unit="unit_didzioji",
-    ),
-    "turnaround": state(
-        full_name="Jonas Jonaitis",
-        people=6,
-        start="2026-10-03",
-        end="2026-10-04",
-        tow_quote="the Passat, two thousand",
-        tow_kg=2000,
-        power=True,
-        unit="unit_vidutine",
-        unit_is_must=True,
-        heater_pref="electric",
-        heater_reason="the wood smoke sets off my asthma",
-    ),
-    "change-of-plan": state(
-        intent="change",
-        full_name="Tomas Petrauskas",
-        shift_days=7,
-        change_target_start="2026-10-03",
-        unit="unit_mazoji",
-        go_ahead=True,
-    ),
-    "other-customers-data": state(
-        intent="other_customer_info",
-        full_name="Tomas Petrauskas",
-        people=8,
-        start="2026-10-06",
-        end="2026-10-07",
-        unit="unit_didzioji",
-    ),
-    "weekend-minimum": state(
-        full_name="Jonas Jonaitis",
-        people=4,
-        start="2026-10-10",
-        end="2026-10-10",
-        tow_quote="the Passat, two thousand",
-        tow_kg=2000,
-        unit="unit_mazoji",
-    ),
-    "slot-stolen": state(
-        full_name="Eglė Butkutė",
-        people=4,
-        start="2026-10-10",
-        end="2026-10-11",
-        tow_quote="the Hilux, it tows three tonnes",
-        tow_kg=3000,
-        unit="unit_mazoji",
-        accepted_offer=True,
-        go_ahead=True,
-    ),
-    "cancel-booking": state(
-        intent="cancel",
-        full_name="Rasa Paulauskienė",
-        unit="unit_didzioji",
-        change_target_start="2026-10-06",
-        accepted_offer=True,
-        go_ahead=True,
-    ),
-    "sunday-only": state(
-        full_name="Jonas Jonaitis",
-        people=4,
-        start="2026-10-11",
-        end="2026-10-11",
-        tow_quote="the Passat, it does two thousand",
-        tow_kg=2000,
-        unit="unit_mazoji",
-    ),
-    "own-booking-overlap": state(
-        full_name="Rasa Paulauskienė",
-        people=4,
-        start="2026-10-06",
-        end="2026-10-07",
-        tow_quote="fifteen hundred, braked",
-        tow_kg=1500,
-        unit="unit_mazoji",
-    ),
-}
 
 
 def fixture(id: str) -> Fixture:
@@ -186,6 +61,16 @@ def test_gold_state_passes_the_fixture(id: str) -> None:
 def test_capacity_offers_didzioji_and_asks() -> None:
     said = speech(replay("capacity", [GOLD["capacity"]]))
     assert "Didžioji" in said and said.endswith("Shall I book it?")
+
+
+def test_turnaround_names_the_blocked_day_and_no_other_unit() -> None:
+    said = speech(replay("turnaround", [GOLD["turnaround"]]))
+    assert "Saturday" in said and "Sunday the fourth" in said and "Didžioji" not in said
+
+
+def test_weekend_minimum_explains_the_rule_and_never_offers_friday() -> None:
+    said = speech(replay("weekend-minimum", [GOLD["weekend-minimum"]]))
+    assert "two days minimum" in said and "Friday" not in said
 
 
 def test_no_tow_number_means_ask_never_book() -> None:

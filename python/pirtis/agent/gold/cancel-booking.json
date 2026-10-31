@@ -1,0 +1,48 @@
+{
+  "fixture": "cancel-booking",
+  "suite": "extra",
+  "state": {
+    "gist": "",
+    "intent": "cancel",
+    "full_name": "Rasa Paulauskienė",
+    "people": null,
+    "start": null,
+    "end": null,
+    "shift_days": null,
+    "change_target_start": "2026-10-06",
+    "tow_quote": null,
+    "tow_kg": null,
+    "power": null,
+    "unit_quote": "the big sauna",
+    "unit": "unit_didzioji",
+    "unit_is_must": false,
+    "heater_pref": null,
+    "heater_reason": null,
+    "answer": null,
+    "consent_quote": "yes please, cancel it",
+    "accepted_offer": true,
+    "go_ahead": true
+  },
+  "ignore": [
+    "gist",
+    "tow_quote",
+    "answer",
+    "accepted_offer",
+    "go_ahead",
+    "start",
+    "end",
+    "people",
+    "unit_quote",
+    "consent_quote"
+  ],
+  "one_of": [
+    [
+      {
+        "accepted_offer": true
+      },
+      {
+        "go_ahead": true
+      }
+    ]
+  ]
+}
