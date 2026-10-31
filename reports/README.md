@@ -16,5 +16,8 @@ Test lists are re-runnable: check out that commit and run the command.
 | `cases-runs.txt`, `loop-runs.txt` | every run of a set of cases, from their trace files: what was said and each failure's reason |
 | `variants-review.md` | the generated variants and the kit's verdict on each, as the reviewer sees it |
 | `reliability.txt`, `reliability.json` | pass^k for k = 1 to 5 per suite, from five runs of every case |
+| `image.txt` | the container image: size, layers, what it holds (checked inside it), the amd64 run |
+| `container-checks.txt` | the playground run from the image: pages, a real call, a restart, its log streams |
+| `gate-job.txt` | the gate job's one line, the gate run and turn records it saved |
 
 Phase 1 produced documents only, so it has no folder.

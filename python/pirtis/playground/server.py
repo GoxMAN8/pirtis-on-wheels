@@ -24,7 +24,7 @@ from datetime import UTC, date, datetime, timedelta
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, TextIO
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
@@ -655,6 +655,17 @@ def make_server(
     return srv
 
 
+def log_turns(stream: TextIO) -> None:
+    """One JSON line per turn on stream, no content: what the cloud's log queries read.
+    Only there: the line must not also reach the root logger's stderr handler, because
+    the cloud's logs collect both streams and every turn would be counted twice."""
+    out = logging.StreamHandler(stream)
+    out.setFormatter(logging.Formatter("%(message)s"))
+    turn_log = logging.getLogger("pirtis.turn")
+    turn_log.addHandler(out)
+    turn_log.propagate = False
+
+
 def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(prog="playground", description="caller simulator and admin console")
     p.add_argument("--host", default=os.environ.get("PIRTIS_HOST", "127.0.0.1"))
@@ -667,10 +678,7 @@ def main(argv: list[str] | None = None) -> None:
     except RuntimeError as e:
         print(f"{e}\nset LLM_API_KEY, and optionally LLM_BASE_URL", file=sys.stderr)
         sys.exit(2)
-    # one JSON line per turn on stdout, no content: what the cloud's log queries read
-    out = logging.StreamHandler(sys.stdout)
-    out.setFormatter(logging.Formatter("%(message)s"))
-    logging.getLogger("pirtis.turn").addHandler(out)
+    log_turns(sys.stdout)
     logging.basicConfig(level=logging.WARNING, stream=sys.stderr)
 
     rate = int(os.environ.get("PIRTIS_RATE_PER_MIN", "30"))

@@ -1784,3 +1784,136 @@ candidates aren't measured. Their three partial runs were set aside and not coun
   - a `gate-job` command that runs every suite in-process, saves the `GateRun` and
     its turn records, prunes past retention and prints one summary line
   - zero-token tests with the fake model
+
+---
+
+## Phase 14 — the container image and the gate job
+
+**Date:** 2026-10-31
+**Goal:** one image that runs both cloud workloads, and a gate job that runs the frozen
+gate in one process, saves what it found and says so in one line.
+
+**Headline: the gate job ran in the container with the real model and passed the nightly
+suite, 21/21 cases, 63/63 runs; deterministic, judge and extractor all at 1.0.**
+It printed exactly one line on stdout and nothing on stderr, and saved the gate run and
+63 turn records, which the admin console showed. Running the image also found a real defect: every turn was
+logged twice, once on each stream, which would have doubled every cloud query. It was
+fixed in the two entry points, test-first, without touching the agent (D-82).
+
+### How it was built
+- **The gate job, test-first:** ten tests with a scripted model, written before
+  `gate_job.py`. Two of them had to change before any code existed. With a judge that
+  passes everything, an apology still "passes" `capacity`, which expects only speech.
+  The tests use `happy-path` instead, which expects a booking, so a wrong answer fails
+  on a deterministic check.
+- **The image, measured, then cut:** the first build was one stage at 307 MB, and 43 MB
+  of that was uv. It's now two stages at 224 MB, with no package manager at runtime.
+- **The playground in the container,** with the real model: every page, a real call as
+  Jonas (an offer for Mažoji), the records on the mounted folder written by the
+  non-root user. Then a restart on the same folder: the call resumed.
+- **The defect:** the container's log showed each turn on stdout and again on stderr
+  as `INFO:pirtis.turn:{…}`. `logging.basicConfig` adds a root handler on stderr, and
+  the turn logger propagated to it. Container Apps ships both streams to Log
+  Analytics, so every turn would have been counted twice. In the gate job, the fault
+  cases' deliberate API errors would have reached the agent-errors alert through
+  stderr. Two red tests were written first, then both entry points stopped the
+  propagation.
+- **A false alarm of mine, caught:** a first check of the fix still showed a turn line
+  on "stderr". zsh copies output to every redirection, so `2>&1 >/dev/null |` was
+  showing stdout too. Reading the streams into separate files settled it: one line on
+  stdout, none on stderr.
+- **The gate job in the container,** with the real model, on the same folder as the
+  playground: the nightly suite passed. The console served by the playground container
+  showed the run's tile with the extractor line, and the gate turns under their own
+  source. Three of those turns carry API errors, all from the fault cases. They're why
+  gate turns never reach a log stream.
+
+### What was built
+- **`pirtis/ops/gate_job.py`** and the `gate-job` command (D-80):
+  - `select`: `nightly` is the given cases plus the red team (files 50–59); `all` is
+    every suite, like `make gate`; `--id` narrows either
+  - `run_job`: the kit's Runner with the real agent, 3 runs per case; the gate run built
+    from the gate report's own rows; the extractor's pass^k on the same cases' gold
+    states, beside the gate and never part of it
+  - each turn's record stored with source `gate`, under a session id naming its case
+    and run, so three runs of one case don't overwrite each other; none logged
+  - pruning past retention, one JSON line, exit 1 on a failed gate; `llm_errors`
+    separates a model outage (a 429) from a regression
+  - `make gate-job`; ten tests with a scripted model, zero tokens
+- **`GateRun.from_rows(…, extract=…)`** carries the extractor result; the console's
+  Reliability tiles now show it.
+- **`deploy/Dockerfile`** (D-81): two stages, both bases pinned by digest, `uv sync
+  --locked --no-dev`, the repo layout under `/app`, uid 10001, read-only code, `/data`
+  writable, `PIRTIS_PROMOTE_DIR` empty.
+- **`.dockerignore`** at the root: an allow-list (`python/`, `fixtures/`,
+  `tests/human/`), so `.env`, local data, caches and the unreviewed variants never
+  enter a build.
+- **`deploy/README.md`:** build, run and gate-job commands, and every variable the image
+  reads.
+- **`log_turns()`** in the playground server, and the gate job's own guard (D-82).
+- **Tests:** 654 in total, 11 new.
+
+### Commands and results
+| Command | Result |
+|---|---|
+| the gate job tests before the code | red: no module; then the log-stream test red on the root handler |
+| `make check` | ruff and strict mypy clean (51 files), **654 tests passed** |
+| `docker build -f deploy/Dockerfile -t pirtis:phase14 .` | built; 224 MB unpacked (307 MB in one stage) |
+| `docker buildx build --platform linux/amd64 …` | built; runs as x86_64 under emulation, uid 10001, agent 454b3a30e0ee |
+| inside the image | uid 10001; no `.env` anywhere; no uv; code read-only; no variant candidates, no local data; agent `454b3a30e0ee`, the same as the working tree |
+| the playground container, real model | every page 200; a two-turn call ending in an offer; session and turn records on the mounted folder; resumed after a restart |
+| its log streams, after the fix | stdout: one turn line per turn; stderr: none |
+| **`gate-job` in the container, nightly suite, real model** | **21/21 cases, 63/63 runs; deterministic, judge and extractor (18/18) all 1.0**; 54 model calls (0 on 9 runs); p50 1.73 s, p95 2.23 s; `llm_errors` 0; one line on stdout, stderr empty, exit 0; 63 turn records stored |
+
+**Reports:** `reports/phase-14/`
+- `image.txt`: sizes, layers, what the image holds, the amd64 run
+- `container-checks.txt`: the playground in the container, the call, the restart, the
+  logging defect before and after
+- `gate-job.txt`: the job's line, and what it saved
+- `pytest.txt`
+
+### Decisions
+- **D-80:** the gate job (nightly suite by default, the extractor beside the gate,
+  turns stored not logged, one line, exit code, `llm_errors`).
+- **D-81:** the image (two stages, digests, non-root, read-only code, allow-listed
+  context, editable install for the repo layout).
+- **D-82:** one log stream per turn line; the fix lives in the entry points, so the
+  agent and its version are unchanged.
+
+### Deviations from the plan
+- **The job runs the nightly suite by default, not every suite.** The plan's job ran
+  given, extra and variants; D-48 already set the nightly cloud suite to given + red
+  team for cost. `--suites all` is the plan's job, and a deploy still runs the full
+  `make gate` first.
+- **The job doesn't emit the turn records to the log,** only to the store. The fault
+  cases would otherwise fire the error alert every night.
+- **A fix to the playground in a phase planned as packaging.** Running the image is
+  what found it.
+
+### Spend
+≈ $0.07 this phase:
+- the gate job: the agent ≈ $0.022, the judge ≈ $0.02 and the extractor eval ≈ $0.02
+- the two playground turns
+
+≈ $1.2 in total of the $6.
+
+### Open issues and risks
+- **The Azure Files mount and uid 10001:** an SMB mount's owner and mode come from its
+  mount options, not the image. Phase 15 must prove the app can write `/data` in
+  Azure, or set the mount's uid.
+- **The image isn't scanned for vulnerabilities yet.** The bases are pinned and slim; a
+  scan belongs in CI with the remote state (a next step in SPEC §12).
+- **The digests are pinned by hand.** A base image's security fix arrives only when
+  someone bumps both digests.
+
+### What the next phase needs from you
+The go-ahead for **Phase 15: Azure infrastructure and monitoring**:
+- Terraform for the nine resources (D-57), in an EU region
+- the share linked by piping the storage key from one `az` command to the next, never
+  stored
+- the image built in the registry and deployed by digest; secrets set by CLI
+- an email action group and three alerts, each fired once
+- a check from an allowed IP and a refusal from another
+
+It needs your Azure subscription (read and write in one resource group), an email for
+alerts, and your public IP for the allow-list.

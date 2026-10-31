@@ -144,7 +144,7 @@ async function reliability() {
   const [{ runs }, th] = await Promise.all([api("/api/gate-runs"), api("/api/thermal?limit=6")]);
   const done = render(...head("Reliability", [
     "Every saved gate run, case by case. The frozen gate is pass^3 = 1.0: every case passes all three runs, the judge included. ",
-    el("code", { text: "make gate" }), " saves each run here."]));
+    el("code", { text: "make gate" }), " and the nightly gate job save each run here."]));
   if (!runs.length) return done(empty("No gate runs saved yet. Run make gate and each run appears here."));
 
   const tiles = el("div", { class: "versions" }, runs.slice(0, 4).map((r, i) =>
@@ -154,6 +154,7 @@ async function reliability() {
         chip(r.passed ? "Gate holds" : "Gate fails", r.passed ? "cold" : "hot")),
       el("p", { class: "big" }, `${r.passed_cases}/${r.cases}`, el("small", { text: `cases passing all ${r.k} run${r.k === 1 ? "" : "s"}` })),
       el("p", { class: "meta", text: `deterministic ${r.deterministic_passed_cases}/${r.cases} · judge ${r.judge_passed_cases}/${r.cases}` }),
+      r.extract_cases != null ? el("p", { class: "meta", text: `extractor ${r.extract_passed_cases}/${r.extract_cases} cases heard right in all runs` }) : null,
       el("p", { class: "meta mono", text: `${r.runs} runs · ${r.model_calls} model calls · p95 ${fmt.secs(r.p95_ms)} · ≈ ${fmt.usd(r.est_cost_usd)}` }),
       r.failed.length ? el("p", { class: "meta", text: `Failed: ${r.failed.join(", ")}` }) : null,
       el("p", { class: "meta muted", text: fmt.time(r.run_ts) }))));

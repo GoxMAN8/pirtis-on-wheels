@@ -1,0 +1,18 @@
+# deploy/Dockerfile's build context is the repo root. Only what the two workloads run
+# goes in: the Python package, the fixtures and the human-eval scenario cards.
+*
+!python/
+!fixtures/
+!tests/human/
+
+# never in the image: secrets, local environments and data, caches, unreviewed variants
+**/.env
+python/.venv/
+python/var/
+python/runs/
+**/__pycache__/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.pytest_cache/
+**/.DS_Store
+fixtures/variants-candidates/

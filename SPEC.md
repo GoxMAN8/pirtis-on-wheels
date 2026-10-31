@@ -84,9 +84,12 @@ library, the kit's own modules and pydantic (D-32, D-49).
 | `agent.py` | `decide` wires gate → understand → policy → speech and never raises. Every turn ends with a `note` (decision, intent, gate, fallback, `agent_version`, `turn_id`) and emits one `TurnRecord`; model calls are counted by wrapping the client in the kit's `Recorder`, and API calls by slicing `api.log()`. The library adds a `NullHandler`, so nothing prints unless the app configures logging |
 
 Around the agent, never imported by it:
-- `pirtis/ops/`: the data layer (`model.py`, the five records; `store.py`, the
-  `FileStore`), the gate report and the extractor eval; later the gate job and the
-  variant generator
+- `pirtis/ops/`: the data layer (`model.py`, the records; `store.py`, the
+  `FileStore`), the gate report, the extractor eval, the gate job (`gate_job.py`), the
+  variant generator, the human-evaluation cards, judge calibration and the reliability
+  curve
+- `deploy/`: the container image (`Dockerfile`; the build context is the repo root,
+  allow-listed by `.dockerignore`)
 - `pirtis/playground/`: the caller simulator and admin console on one stdlib server.
   `calls.py` runs a call turn by turn (decide and the handlers exactly as the harness
   does) and keeps it on disk; `analytics.py` computes the admin views from content-free
@@ -271,6 +274,12 @@ blocks deployment.
     It also writes `runs/gate/summary.json`.
   - `make gate RUNS=1 NEED=1` is the same wiring for a quick look
   - `make trace ID=<fixture>` runs one fixture verbosely
+  - `make gate-job` (or `uv run gate-job`) is the same gate in one process, as the
+    cloud job runs it (D-80). By default it runs the nightly suite: the given cases and
+    the red team (D-48); `--suites all` runs every suite, like `make gate`. It saves the
+    gate run, with the extractor's pass^k on the same cases beside it, and every turn's
+    record. It then prunes old records, prints one JSON line and exits 1 when the gate
+    fails
   - `make eval-extract` runs the extractor eval: the live model extracts every fixture
     3 times, compared field by field with the gold call states in
     `python/pirtis/agent/gold/`; it reports extractor pass^3 and per-field accuracy
@@ -318,6 +327,7 @@ blocks deployment.
 | 2026-10-31 | ours, a40b5e6fcd67, **reliability curve** | all 46 cases, **5 runs each** | pass^k for k = 1..5: given 1.0 at every k; ours 0.994, 0.988, 0.981, 0.975, 0.969 (one failure in 160 runs: case 62 read "eight, maybe nine" as eight once) | 1 per model turn | — |
 | 2026-10-31 | ours: a hedge takes the higher number in code (454b3a30e0ee) | the 4 hedge-sensitive cases, 5 runs each | **20/20** | 1 per run | — |
 | 2026-10-31 | **ours: final Phase 13 agent (454b3a30e0ee)** | **all 46 cases, 3 runs, 3 must pass** | **46/46 cases, 138/138 runs; deterministic 46/46, judge 46/46**; p50 1.74 s, p95 2.21 s | 123 (0 on 15 runs) | 260,844 / 16,200 |
+| 2026-10-31 | ours, **the nightly gate job in the container** (454b3a30e0ee) | given + red team (21 cases), 3 runs | **21/21 cases, 63/63 runs; deterministic 21/21, judge 21/21, extractor 18/18**; p50 1.73 s, p95 2.23 s | 54 (0 on 9 runs) | 115,632 / 7,245 |
 
 At the Phase 6 gate, model turns took p50 1.54 s and p95 1.77 s (max 1.84 s), with
 about 1.7k prompt tokens each. After understanding v2 they take p50 1.76 s and p95
@@ -400,6 +410,20 @@ Plus alerts. There's no Key Vault, no Blob containers and no Tables.
 - **Access:** an ingress IP allow-list plus a per-minute request cap.
 - **Logs:** Log Analytics with 30-day retention.
 
+**The image** (`deploy/Dockerfile`, D-81) serves both workloads: the playground by
+default, and `gate-job` for the job.
+- **Two stages:** uv builds the locked environment (`uv sync --locked --no-dev`), and
+  the runtime stage carries only Python, that environment and the code.
+- **Pinned:** both base images by digest (uv 0.9.28, Python 3.12.13 slim).
+- **Least privilege:** runs as uid 10001. The code is owned by root and read-only;
+  `/data` and `/tmp` are the only writable places.
+- **What goes in:** the build context is an allow-list (`python/`, `fixtures/`,
+  `tests/human/`). `.env`, local data, caches and unreviewed variants never enter it.
+- **Layout:** the repo's own layout is kept under `/app`, because the code finds the
+  fixtures and the scenario cards relative to itself.
+- **Defaults:** `PIRTIS_DATA_DIR=/data`; `PIRTIS_PROMOTE_DIR` empty, so a promoted case
+  is downloaded rather than written into the image.
+
 Commands, idle cost and teardown are in `deploy/README.md`.
 
 ### 9b. Data model and flows
@@ -474,8 +498,17 @@ flowchart LR
   digits; the salt comes from `PIRTIS_HASH_SALT`)
 
 The playground stores every turn's record (`source = playground`) and prints it as one
-JSON line on stdout, with one access-log line per request (path without its query);
-those lines are what the cloud's log queries read. It holds no transcript text and no
+JSON line on stdout, with one access-log line per request on stderr (path without its
+query); those lines are what the cloud's log queries read. A turn line reaches exactly
+one stream: the turn logger doesn't propagate to the root logger (D-82).
+
+**The gate job** stores its turn records (`source = gate`) and logs none of them,
+because its fault cases make API errors on purpose. It prints one line per run:
+`{"event": "gate", "passed", "agent_version", "suites", "pass_k", "det_pass_k",
+"judge_pass_k", "extract_pass_k", "failed", "llm_errors", "model_calls",
+"est_cost_usd", "p95_ms", "turns_saved", "pruned"}`. The gate-regression alert reads
+it. A failed gate with `llm_errors` above zero points at the model service (a 429 when
+the credit runs out), not at the agent. It holds no transcript text and no
 names. A sample is in
 `reports/phase-08/turn-record-sample.json`. Field names render to OpenTelemetry GenAI
 attributes (`gen_ai.request.model`, `gen_ai.usage.input_tokens`, …) through one
@@ -554,6 +587,10 @@ extractor eval and a gate run.
   not measured yet.
 - The code-level hedge check (D-79) reads numbers of people said as "N … maybe/or M";
   a hedge said another way relies on the model alone.
+- The image runs as uid 10001. Whether it can write to the Azure Files mount depends
+  on the mount's options, not the image; that is checked at deployment.
+- The image isn't scanned for vulnerabilities yet, and its base digests are bumped by
+  hand.
 - The fleet calendar and each simulated call start from the seed; one call's booking is
   not seen by the next call (each call has its own API, as each fixture does).
 
@@ -654,6 +691,9 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | D-77 | 2026-10-31 | Human evaluation as a kit: 15 scenario cards checked against the seed, a five-item rubric rated in the caller simulator (rater initials only, upper-cased), a Human eval view, and `make calibrate`, which asks the kit's judge the same questions per reply and stores agreement and Cohen's κ (also between raters of the same call) as a `Calibration` record | The judge decides half of every gate result; how far to trust it is measured against people, not assumed | judging our own judge with the judge | accepted |
 | D-78 | 2026-10-31 | The caller's name is their own: a name they ask about ("Rasa Paulauskienė's phone number") is someone else's and is not recorded as theirs | Red-team case 52 in the extractor eval: the asked-about name filled the caller's name field 3/3. Harmless that turn (refused before identification, and the API matches name to phone), but a later turn could have sent a caller asking about someone to "new customers" | leaving it as a known limit | accepted |
 | D-79 | 2026-10-31 | A hedged group size counts as the higher number in code too: when the caller's words hedge ("eight of us, maybe nine", "six, maybe seven") and the model took the lower figure, the validator raises it; a pair with a unit after it ("two or three tonnes") is left alone | The k = 5 curve: case 62 was read as eight once in five runs, so the receptionist asked about the car; at that rate the case would fail a 3-of-3 gate about 60% of the time even though it had passed two gates | a prompt rule alone (it already says "the higher number") | accepted |
+| D-80 | 2026-10-31 | The gate job is one process running the kit's Runner with the real agent. By default it runs the nightly suite (the given cases and the red team, D-48); `--suites all` matches `make gate`. It builds the gate run from the gate report's own rows, reports the extractor's pass^k on the same cases beside the gate (never part of it, §7), stores turn records with source `gate` and logs none, prunes on every run, prints one JSON line and exits 1 on failure. `llm_errors` separates a model outage from a regression | The cloud needs the gate without make or a shell, and the alert needs one line to read | `make gate` inside the container (make and the dev tools in the image, text to parse); gate turns on stdout (the fault cases' deliberate API errors would fire the error alert every night) | accepted |
+| D-81 | 2026-10-31 | The image: two stages, both bases pinned by digest, locked dependencies, no build tools at runtime. It keeps the repo layout under `/app` with an editable install, runs as uid 10001 with read-only code and `/data` writable, and builds from an allow-listed context | Reproducible, smaller (224 MB unpacked, 43 MB of it uv before the split) and least privilege; a new secret file can't enter by default | one stage with uv (a package manager at runtime); `--no-editable` (the code finds fixtures and cards relative to its source); a deny-list `.dockerignore` | accepted |
+| D-82 | 2026-10-31 | A turn's telemetry line reaches exactly one log stream: the playground's stdout, and none at all from the gate job. Both entry points stop the turn logger propagating; the agent is unchanged | Found by running the image: every turn appeared on stdout and again as `INFO:pirtis.turn:` on stderr, through the root handler `logging.basicConfig` adds. The cloud's logs collect both streams, so every query would count each turn twice | `propagate = False` inside the agent's `telemetry.py` (a logging fix would change `agent_version` and need a fresh gate, and each entry point still owns its streams) | accepted |
 
 ---
 
@@ -676,3 +716,4 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | 2026-10-31 | 11 | The playground: one stdlib server with a caller simulator (pick a seed customer or an unknown number, speak or type; a fogged-glass booking card condenses as the receptionist learns each fact; thumbs on every reply; a test drawer with anger, barge-in and fixture replay) and an admin console (Reliability with the thermal view, Conversations, Traces, Feedback, Fleet with a what-if). Calls run turn by turn through `decide` and the kit's handlers, saved after every turn, resumed by replaying their writes. Analytics from content-free records only; a privacy scan proves it. `make gate` now saves each run (`record_gate`). Vendored d3 and Plot, self-hosted fonts, validated chart colours. 40 new tests (432 in total). Checked live in the browser: a full booking, an unknown caller, a replay, both themes, phone width, keyboard only; 16 defects found there and fixed | A way to call the agent and to see what it did, without spending the reviewer's time on terminals | D-40, D-41, D-42, D-61 – D-65 |
 | 2026-10-31 | 12 | The improvement loop, built and run. *Save as test case* on any rated line writes `fixtures/extra/NN_<title>.yaml` (from 60) through a form: the call as decide saw it, bookings it had made set up under free ids, the expected action and booking change, judge statements, seed people only, the reviewer's confirmation, read back by the kit's loader. Run for real: a 👍 booking promoted as a regression guard (60, green); exploring found two defects, promoted as 61 and 62 and run red 0/3. Fixed test-first: a `greeting` intent (D-67) and the capacity limit said at once (D-68). The fix's wording made the model read "the wood smoke sets off my asthma" as wood; the extractor eval caught it and the gate failed (26/27, a wood sauna offered to an asthmatic caller), fixed by putting the heater reason before the heater and keeping a must-have through any heater filter (D-69). **Gate 27/27 cases, 81/81 runs, extractor 23/23.** The gold-count test now checks every suite (D-70). 468 tests (36 new) | Close the loop from a caller's bad experience to a test that keeps it fixed, and prove it on real defects | D-66 – D-70 |
 | 2026-10-31 | 13 | Expanded testing. 12 hidden-style cases (30–41) and 7 red-team cases (50–56), each with a gold state; their first live run was 12/19 and found three defects (a booking after a prompt injection, "didn't catch that" for a clear request, a past date not named) and four judge blind spots. Fixed test-first: past dates (D-71), an `off_topic` intent (D-73), consent voided by an injection or a price demand (D-74), the sauna from the caller's quote (D-75), the caller's own name only (D-78), a hedged group size raised in code (D-79). Judge statements the kit's judge can't check reworded or dropped, behaviour still covered (D-72). Metamorphic variants with the kit's API as the oracle: 59 of 64 kept, waiting for review (D-76). The human-evaluation kit: 15 cards, a rating form in the simulator, a Human eval view, judge calibration with Cohen's κ (D-77); the sessions are tomorrow. A k = 5 reliability curve found one flake (case 62), fixed by D-79. **Gate 46/46 cases, 138/138 runs; extractor 41/41**. 643 tests (175 new) | Test what the hidden fixtures and hostile callers will do, measure flakiness the 3-run gate can't see, and prepare the human check on the judge | D-71 – D-79 |
+| 2026-10-31 | 14 | The container image and the gate job. `gate-job` runs the frozen gate in one process with the kit's Runner: the nightly suite (given + red team) by default, every suite on request. It saves the gate run with the extractor's pass^k beside it, stores turn records with source `gate` (never logged), prunes past retention, prints one JSON line and exits 1 on failure; `llm_errors` tells an outage from a regression. `deploy/Dockerfile`: two stages, bases pinned by digest, locked dependencies, uid 10001, read-only code, an allow-listed build context; 224 MB, built for arm64 and amd64. Running it found every turn logged twice, once per stream; fixed in both entry points (D-82). **In the container, with the real model, the nightly job passed 21/21 cases, 63/63 runs, extractor 18/18**, one line on stdout. 654 tests (11 new) | One image for both cloud workloads, and a gate the cloud can run and alert on without a shell | D-80 – D-82 |

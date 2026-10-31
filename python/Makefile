@@ -5,6 +5,7 @@
 #   make gate RUNS=1 NEED=1    the same wiring, one run each, for a quick look
 #   make eval-extract          the model's understanding against gold, 3 runs per fixture
 #   make trace ID=silence      one fixture, verbose, traces kept under runs/trace
+#   make gate-job              the nightly cloud job, run here: given + red team, saved to var/
 
 SHELL := /bin/bash
 
@@ -14,7 +15,7 @@ SUITES ?= ../fixtures ../fixtures/extra $(wildcard ../fixtures/variants)
 ID ?=
 OURS := pirtis/agent pirtis/ops pirtis/playground
 
-.PHONY: install lint format typecheck test check gate eval-extract trace playground variants variants-accept reliability calibrate
+.PHONY: install lint format typecheck test check gate gate-job eval-extract trace playground variants variants-accept reliability calibrate
 
 install:
 	uv sync
@@ -52,6 +53,12 @@ gate:
 	uv run python -m pirtis.ops.gate_report --dir runs/gate --json runs/gate/summary.json; \
 	uv run python -m pirtis.ops.record_gate --dir runs/gate; \
 	exit $$status
+
+# The same gate in one process, as the cloud job runs it (pirtis/ops/gate_job.py): saves the
+# run and its turn records, prunes, prints one JSON line. SUITES_JOB=all for every suite.
+SUITES_JOB ?= nightly
+gate-job:
+	uv run gate-job --suites $(SUITES_JOB)
 
 trace:
 	@test -n "$(ID)" || { echo "usage: make trace ID=<fixture id>"; exit 2; }

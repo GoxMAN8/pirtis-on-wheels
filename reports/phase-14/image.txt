@@ -1,0 +1,38 @@
+# Phase 14 · the container image: build, contents, both architectures
+# commit: feat(deploy): container image and gate job · 2026-10-31
+# commands: docker build -f deploy/Dockerfile -t pirtis:phase14 .
+#           docker buildx build --platform linux/amd64 -f deploy/Dockerfile -t pirtis:phase14-amd64 --load .
+
+== size (unpacked, arm64): first build, one stage with uv -> two stages
+  307 MB -> 224 MB (the uv binary was 43 MB of it; it now stays in the build stage)
+
+== layers (two stages, arm64)
+0B	CMD ["playground"]
+0B	EXPOSE map[8000/tcp:{}]
+0B	ENV PATH=/app/python/.venv/bin:/usr/local/bi…
+0B	USER 10001
+4.1kB	WORKDIR /app/python
+28.7kB	COPY tests/human/ /app/tests/human/ # buildk…
+213kB	COPY fixtures/ /app/fixtures/ # buildkit
+16.4MB	COPY /app/python /app/python # buildkit
+45.1kB	RUN /bin/sh -c useradd --system --uid 10001 …
+0B	CMD ["python3"]
+16.4kB	RUN /bin/sh -c set -eux;  for src in idle3 p…
+44.6MB	RUN /bin/sh -c set -eux;   savedAptMark="$(a…
+
+== what the image holds, checked inside it
+  user: uid=10001(pirtis) gid=999(pirtis) groups=999(pirtis)
+  .env files anywhere: 0
+  uv at runtime: none
+  /app: fixtures python tests 
+  fixtures/extra/seeds -> ../seeds
+  variant candidates: absent
+  local data (python/var): absent
+  write to the code: Permission denied
+  /data: pirtis 755
+  agent_version: 454b3a30e0ee
+  commands: gate-job harness playground 
+  agent_version of the working tree: 454b3a30e0ee
+
+== linux/amd64 (what Azure runs), under emulation
+  arch: x86_64, uid: 10001, agent_version: 454b3a30e0ee

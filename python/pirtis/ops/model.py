@@ -162,11 +162,29 @@ class GateRun(Entity):
     rows: Annotated[list[RunRow], NONE] = []
 
     @classmethod
-    def from_rows(cls, rows: list[RunRow], *, agent_version: str, run_ts: datetime) -> "GateRun":
-        """Passed means the frozen gate held: every case passed all of at least GATE_K runs."""
+    def from_rows(
+        cls,
+        rows: list[RunRow],
+        *,
+        agent_version: str,
+        run_ts: datetime,
+        extract: tuple[int, int] | None = None,
+    ) -> "GateRun":
+        """Passed means the frozen gate held: every case passed all of at least GATE_K runs.
+        extract is the extractor eval's (cases, cases passing all runs), when it ran; it is
+        reported beside the gate, never part of it (§7)."""
         t = summarise(rows)["total"]
         passed = t["cases"] > 0 and t["passed_cases"] == t["cases"] and t["k"] >= GATE_K
-        return cls(run_ts=run_ts, agent_version=agent_version, passed=passed, rows=rows, **t)
+        cases, ok = extract if extract else (None, None)
+        return cls(
+            run_ts=run_ts,
+            agent_version=agent_version,
+            passed=passed,
+            rows=rows,
+            extract_cases=cases,
+            extract_passed_cases=ok,
+            **t,
+        )
 
     def partition(self) -> str:
         return self.agent_version

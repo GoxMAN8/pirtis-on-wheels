@@ -1,7 +1,9 @@
 """The playground server over real HTTP: a scripted model, a store in a temp folder, and
 a privacy scan of everything the admin console reads."""
 
+import io
 import json
+import logging
 import shutil
 import subprocess
 import threading
@@ -18,7 +20,7 @@ from pirtis.llm.fake import Fake
 from pirtis.ops.gate_report import RunRow
 from pirtis.ops.model import GateRun
 from pirtis.ops.store import FileStore
-from pirtis.playground.server import make_server
+from pirtis.playground.server import log_turns, make_server
 from pirtis.playground.test_calls import JONAS, LINES, T1, T2, T3, T4, scripted
 
 SEED_JSON = json.loads(
@@ -273,3 +275,23 @@ def test_every_page_script_parses_as_a_module(tmp_path: Path) -> None:
         copy.write_text(js.read_text())
         done = subprocess.run(["node", "--check", str(copy)], capture_output=True, text=True)
         assert done.returncode == 0, f"{js.name}: {done.stderr}"
+
+
+def test_a_turn_line_goes_to_its_stream_once_and_never_to_the_root_logger() -> None:
+    """The cloud's logs collect stdout and stderr alike: a turn that also reached the root
+    logger's stderr handler would be counted twice by every query."""
+    out, sink = io.StringIO(), io.StringIO()
+    root = logging.StreamHandler(sink)  # what logging.basicConfig attaches
+    logging.getLogger().addHandler(root)
+    turn_log = logging.getLogger("pirtis.turn")
+    before = list(turn_log.handlers)
+    try:
+        log_turns(out)
+        turn_log.info('{"event": "turn"}')
+    finally:
+        logging.getLogger().removeHandler(root)
+        for h in [h for h in turn_log.handlers if h not in before]:
+            turn_log.removeHandler(h)
+        turn_log.propagate = True
+    assert out.getvalue() == '{"event": "turn"}\n'
+    assert sink.getvalue() == ""

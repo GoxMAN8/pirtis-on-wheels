@@ -1,0 +1,41 @@
+# Phase 14 · the gate job in the container, nightly suite, real model (agent 454b3a30e0ee)
+# commit: feat(deploy): container image and gate job · 2026-10-31
+# command: docker run --rm --env-file python/.env -v <scratch>/data:/data pirtis:phase14 gate-job
+#          (the nightly suite: the 14 given cases and the 7 red-team cases, 3 runs each)
+
+== stdout: exactly one line
+{"event": "gate", "passed": true, "agent_version": "454b3a30e0ee", "suites": "nightly", "run": "20261031T110303Z", "cases": 21, "runs": 63, "k": 3, "pass_k": 1.0, "det_pass_k": 1.0, "judge_pass_k": 1.0, "extract_pass_k": 1.0, "failed": [], "llm_errors": 0, "model_calls": 54, "est_cost_usd": 0.0217, "p95_ms": 2233, "turns_saved": 63, "pruned": {"session": 0, "feedback": 0, "rating": 0, "gate_run": 0, "turn": 0, "calibration": 0}}
+== stderr: empty
+== exit code: 0
+
+== the GateRun it saved (gate_run/454b3a30e0ee/20261031T110303Z.json)
+  passed: True
+  cases: 21
+  runs: 63
+  k: 3
+  passed_cases: 21
+  deterministic_passed_cases: 21
+  judge_passed_cases: 21
+  extract_cases: 18
+  extract_passed_cases: 18
+  model_calls: 54
+  zero_call_runs: 9
+  input_tokens: 115632
+  output_tokens: 7245
+  est_cost_usd: 0.0217
+  p50_ms: 1728
+  p95_ms: 2233
+  failed: []
+  rows by suite: {'extra': 21, 'fixtures': 42}
+
+== the turn records it stored (source = gate), none of them logged
+  63 records, 63 distinct keys (three runs of one case don't overwrite)
+  session ids name the case and run, e.g. gate-20261031T105855Z-ask-tow-capacity-r1
+  fallbacks: 0; API calls with status >= 400: 3 (the fault cases' deliberate 409/500s:
+  the reason these records stay out of the log streams the error alert reads)
+
+== seen in the admin console the container serves
+  Reliability: a tile for 454b3a30e0ee, "21/21 cases passing all 3 runs", deterministic 21/21,
+  judge 21/21, "extractor 18/18 cases heard right in all runs" (screens/01-reliability-gate-job-run.jpg)
+  Conversations, source Gate: 63 turns, 14% answered without the model, p50 1.73 s, p95 2.23 s,
+  the agent's model cost $0.0217
