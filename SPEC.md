@@ -222,8 +222,14 @@ blocks deployment.
 | 2026-10-31 | naive starter (second sample) | given, 1 run | 3/14 | 24 | 15,365 / 1,457 |
 | 2026-10-31 | naive starter | extra 20–29, 1 run | 3/10 (cancel-booking: one 400 and four 422s) | 23 | 14,604 / 1,277 |
 
+| 2026-10-31 | **ours: walking skeleton** | given, 1 run | **7/14**, no API errors | 13 (0 on interim speech) | 16,734 / 1,052 |
+| 2026-10-31 | **ours: walking skeleton** | extra 20–29, 1 run | **6/10**, no API errors | 10 | 12,156 / 782 |
+
 The naive agent swings between samples (4/14, then 3/14), which is why the gate needs
-3 of 3 runs.
+3 of 3 runs. The skeleton's failures are all features of later phases: the silence
+check-in and transfer (turn gate), moves and cancels, the 409 retry, the
+weekend-minimum and turnaround date shifts, the must-have unit, and the explicit
+privacy refusal.
 
 Our agent's results, the extractor accuracy, the human ratings and the judge–human
 agreement are added here as phases complete.
@@ -423,3 +429,4 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | 2026-10-31 | 0 | Kit committed as received; `.gitignore`; environment; model access; naive baseline 4/14 | A clean starting point and a score to beat | D-22, D-49 |
 | 2026-10-31 | 1 | `SPEC.md` written: design, rules, voice UX, visual design, frozen gate, data model, monitoring, decision log | Decisions fixed before code | D-01 – D-49 |
 | 2026-10-31 | 2 | pydantic, pinned ruff and mypy; strict mypy on the agent; `Makefile` with `check` and the frozen `gate`; own fixtures 20–29 with a test that checks them against the API; the gate's exit code fixed for make 3.81 | Tooling and the measuring stick before the agent | D-20, D-21, D-49, D-50, D-51 |
+| 2026-10-31 | 3 | Walking skeleton replaces the starter agent: turn gate (interim speech), `CallState` v1 with its strict schema generated from the class, policy v1 (identify, ask one detail, search with all filters, offer, book only on a yes to our own offer), spoken templates; zero-token replay tests; first live run 7/14 and 6/10 with no API errors | Prove every layer end to end before deepening any | D-02, D-08, D-09, D-10, D-17, D-33, D-49 |

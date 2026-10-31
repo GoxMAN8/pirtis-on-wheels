@@ -262,3 +262,122 @@ About **$0.02** so far across Phases 0–2 (agent and judge calls), out of the $
   - a minimal turn gate, a first `CallState` extraction, the booking path for fixtures
     00/04/05, templates and wiring
   - a live run (targeted, a few cents)
+
+---
+
+## Phase 3 — walking skeleton and first live run
+
+**Date:** 2026-10-31
+**Goal:** a thin but real slice through every layer (turn gate → one structured model
+call → policy → spoken templates), proven on fixtures 00, 04 and 05 against the real
+model before any layer is deepened.
+
+### What was built
+The starter agent is replaced. All code is in `python/pirtis/agent/`:
+- **`understand.py`:**
+  - **`CallState`**, a frozen pydantic model with fields in the order the model writes
+    them: `gist`, `intent`, `full_name`, `people`, `start`, `end`, `tow_quote` then
+    `tow_kg`, `power`, `unit`, and `accepted_offer` last. Each field's description
+    carries its extraction rule (hedged people → higher; tow only from a number the
+    caller said; generator ≠ mains).
+  - **`strict_schema()`** generates the strict JSON schema from that same class: every
+    field required, nulls through `anyOf`, no extra keys, titles and defaults stripped,
+    and the `unit` field narrowed to the catalogue's ids or null. One source of truth
+    (D-49).
+  - **Validators:**
+    - an unreadable date → null
+    - people < 1 → null
+    - an unknown unit → null
+    - `tow_kg` is dropped unless `tow_quote` shares ≥ 70% of its words with one caller
+      line and contains a number
+  - **The prompt:**
+    - a static system part: rules plus the catalogue, ranked smallest to biggest
+    - the user part: today, the resolved phrases ("this/next weekend", "the weekend
+      after next"), a 42-day calendar with weekdays, and the call itself (final caller
+      lines, our lines marked "(cut off)" when interrupted, short notes for earlier API
+      calls)
+  - One call at temperature 0.
+- **`policy.py`:**
+  - `next_step` order: identify from the transcript; otherwise identify only with a
+    two-word name, and a failure means a hand-off to `new_customers`
+  - then ask for the next missing detail: dates → people → tow
+  - one `availability` query with every filter we know
+  - choose the requested unit if it fits, else the smallest fitting one; ask about
+    power only if the chosen unit is electric
+  - **write only when `accepted_offer` and our last finished line offered that unit
+    and asked to book it** (`was_offered`, a first version of D-10)
+  - otherwise make an offer, saying why the requested unit can't work
+- **`speech.py`:** spoken numbers (0–9999, "two hundred and forty"), ordinals, dates
+  and ranges ("Tuesday the sixth to Wednesday the seventh of October"), euros, and the
+  templates. Every reply asks at most one question.
+- **`turn.py`:** a caller still talking (not final, or no pause) → `wait`, with no
+  model call.
+- **`agent.py`:** `decide` = gate → `units.list` → extract → policy → speech. It never
+  raises:
+  - unreadable model output → "Sorry, I didn't catch that…"
+  - an API error → a hand-off to `bookings_support`
+  - anything else → the same hand-off, logged
+- **`test_agent.py`:** zero-token replays through the real harness `Runner` with a
+  scripted model, for 00, 04, 05, 02 and an unreadable answer. They check that the
+  fixture passes, there's one model call (zero on 02), no digits are spoken, and the
+  key words are said.
+
+### Commands and results
+| Command | Result |
+|---|---|
+| `make check` | lint clean, strict mypy clean (9 files), **71 tests passed** |
+| live, 00/04/05, 1 run each, verbose | **3/3 pass**; 1 model call each, ~1.3k tokens in / ~85 out, ~1.3 s |
+| `make gate RUNS=1 NEED=1` | given **7/14** (baseline 4/14), extra **6/10** (baseline 3/10); **no API errors**; 23 agent calls, 28,890 / 1,834 tokens, ≈ $0.005 agent |
+
+The live passes were for the right reasons:
+- **00:** the model extracted exactly what was said; we booked with one availability
+  check and one create.
+- **04:** "seven, maybe eight" became 8; we said "Mažoji only takes four, so for eight
+  of you I can offer Didžioji, … Shall I book it?"
+- **05:** the model copied "it's fine, we've towed a caravan with it before" as the
+  quote and left the tow empty, so we asked "How much can your car tow, braked?"
+  instead of booking.
+
+### What still fails, and which phase fixes it
+| Fixture | What we did | Fixed in |
+|---|---|---|
+| 03 silence, 26 silence-after-check-in, 13 rising-frustration | answered normally | Phase 5 (turn gate) |
+| 08 turnaround | offered Didžioji (no "must be Vidutinė" yet) | Phases 6–7 (D-12, heater preference) |
+| 11 weekend-minimum, 25 sunday-only | offered a single weekend day | Phase 6 (D-13) |
+| 09 change-of-plan, 22 cancel-booking | no move or cancel flow | Phase 6 (D-15) |
+| 12 slot-stolen | handed off after the injected 409 | Phase 6 (D-19 retry) |
+| 29 own-booking-overlap | offered the dates without mentioning her booking | Phase 6 (D-14) |
+| 10 other-customers-data | generic "none fit"; judge polarity errors (below) | Phases 6–7 (refusal, D-51) |
+
+### Judge findings
+In `other-customers-data` both negatively worded criteria ("does not say who holds
+the booking", "gives no phone number") were marked failed. Their reasons confirm our
+reply did neither. That makes three polarity errors on negated criteria so far, all
+in this fixture. D-51's explicit refusal sentence is clearly needed there.
+
+### Deviations from the plan
+- `was_offered` is a deliberately small first version of D-10's `last_offer`: the unit
+  name, "book" and a question mark in our last finished line. The full parse (dates
+  and people too) and the `violations()` pre-flight come in Phase 6.
+- When an API error reaches `decide`, the kit's default logging prints one warning
+  line to stderr in harness output. It's harmless; the telemetry logging in Phase 8
+  takes it over.
+
+### Spend
+≈ $0.01 this phase (targeted runs, one full single run, judge calls); ≈ $0.04 in
+total of the $6.
+
+### Open issues and risks
+- The skeleton's `intent` is only `book` or `other`. Cancel, change, privacy refusal,
+  goodbye, hold and price all come in Phase 7, with their handling in Phase 6.
+- The gate's pass path (exit 0 when all pass) still hasn't been observed; no suite
+  passes in full yet.
+
+### What the next phase needs from you
+- Nothing beyond the go-ahead. Phase 4 deepens `speech.py` and `actions.py` with
+  tests:
+  - number and ordinal edge cases, ranges across months, tone from prosody
+  - warm-transfer and goodbye lines
+  - the `say` handler's digit guard; the new `sms` and `note` actions
+
+  No model calls.
