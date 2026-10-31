@@ -1,0 +1,54 @@
+# Phase 00 · tests (kit only)
+# commit dff6aff · 2026-10-31
+# command: cd python && uv run pytest -vv
+
+============================= test session starts ==============================
+platform darwin -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0
+testpaths: pirtis
+collecting ... collected 43 items
+
+pirtis/api/test_memory.py::test_identify[+37061234567-Tomas Petrauskas-True] PASSED [  2%]
+pirtis/api/test_memory.py::test_identify[+37061234567-Tomas. Petrauskas.-True] PASSED [  4%]
+pirtis/api/test_memory.py::test_identify[+370 612 34567-petrauskas tomas-True] PASSED [  6%]
+pirtis/api/test_memory.py::test_identify[+37061234567-Tomas-False] PASSED [  9%]
+pirtis/api/test_memory.py::test_identify[+37061234567-Tomas Tomas-False] PASSED [ 11%]
+pirtis/api/test_memory.py::test_identify[+37061234567-Jonas Jonaitis-False] PASSED [ 13%]
+pirtis/api/test_memory.py::test_identify[+37000000000-Tomas Petrauskas-False] PASSED [ 16%]
+pirtis/api/test_memory.py::test_identify[+37061234567--False] PASSED     [ 18%]
+pirtis/api/test_memory.py::test_rules[ok weekday-request_0-0-] PASSED    [ 20%]
+pirtis/api/test_memory.py::test_rules[ok weekend two days-request_1-0-] PASSED [ 23%]
+pirtis/api/test_memory.py::test_rules[capacity-request_2-422-CAPACITY_EXCEEDED] PASSED [ 25%]
+pirtis/api/test_memory.py::test_rules[tow weight-request_3-422-TOW_WEIGHT_EXCEEDED] PASSED [ 27%]
+pirtis/api/test_memory.py::test_rules[power-request_4-422-POWER_REQUIRED] PASSED [ 30%]
+pirtis/api/test_memory.py::test_rules[weekend one day-request_5-422-MIN_DAYS_WEEKEND] PASSED [ 32%]
+pirtis/api/test_memory.py::test_rules[weekday one day ok-request_6-0-] PASSED [ 34%]
+pirtis/api/test_memory.py::test_rules[turnaround after-request_7-422-TURNAROUND_CONFLICT] PASSED [ 37%]
+pirtis/api/test_memory.py::test_rules[turnaround before-request_8-422-TURNAROUND_CONFLICT] PASSED [ 39%]
+pirtis/api/test_memory.py::test_rules[clear day ok-request_9-0-] PASSED  [ 41%]
+pirtis/api/test_memory.py::test_rules[unit taken-request_10-409-UNAVAILABLE] PASSED [ 44%]
+pirtis/api/test_memory.py::test_rules[unit blocked-request_11-409-UNAVAILABLE] PASSED [ 46%]
+pirtis/api/test_memory.py::test_rules[overlaps own-request_12-422-OVERLAPS_EXISTING] PASSED [ 48%]
+pirtis/api/test_memory.py::test_rules[unknown customer-request_13-400-CUSTOMER_UNKNOWN] PASSED [ 51%]
+pirtis/api/test_memory.py::test_rules[unknown unit-request_14-400-UNIT_UNKNOWN] PASSED [ 53%]
+pirtis/api/test_memory.py::test_rules[bad dates-request_15-400-BAD_DATES] PASSED [ 55%]
+pirtis/api/test_memory.py::test_rules[bad date format-request_16-400-BAD_DATES] PASSED [ 58%]
+pirtis/api/test_memory.py::test_availability_turnaround_and_filters PASSED [ 60%]
+pirtis/api/test_memory.py::test_update_and_version PASSED                [ 62%]
+pirtis/api/test_memory.py::test_faults_and_log PASSED                    [ 65%]
+pirtis/api/test_memory.py::test_list_bookings_filters PASSED             [ 67%]
+pirtis/harness/test_judge.py::test_verdict_schema PASSED                 [ 69%]
+pirtis/harness/test_run.py::test_all_fixtures_load PASSED                [ 72%]
+pirtis/harness/test_run.py::test_happy_path_booking PASSED               [ 74%]
+pirtis/harness/test_run.py::test_interim_wants_wait PASSED               [ 76%]
+pirtis/harness/test_run.py::test_rule_violation_is_caught PASSED         [ 79%]
+pirtis/harness/test_run.py::test_unexpected_booking_is_caught PASSED     [ 81%]
+pirtis/harness/test_run.py::test_identity_invariant PASSED               [ 83%]
+pirtis/harness/test_run.py::test_judge_failure_is_reported PASSED        [ 86%]
+pirtis/harness/test_run.py::test_unknown_action_needs_handler PASSED     [ 88%]
+pirtis/llm/test_client.py::test_openai_wire_shape PASSED                 [ 90%]
+pirtis/llm/test_loop.py::test_run_agent_tool_then_text PASSED            [ 93%]
+pirtis/llm/test_loop.py::test_run_agent_terminal PASSED                  [ 95%]
+pirtis/llm/test_loop.py::test_run_agent_tool_errors_go_back PASSED       [ 97%]
+pirtis/llm/test_loop.py::test_run_agent_max_calls PASSED                 [100%]
+
+============================== 43 passed in 1.11s ==============================

@@ -1,0 +1,25 @@
+# Phase 03 · first live run of our agent: fixtures 00, 04, 05, one run each, verbose
+# commit 29ba5f9 · 2026-10-31
+# command: cd python && uv run harness --id happy-path,capacity,ask-tow-capacity --runs 1 -v --trace runs/p3
+# generated from the run's trace files (result.json and the recorded model call)
+
+== happy-path: PASS · model calls 1 · tokens 1369/82 · wall 1333 ms
+extracted: {"gist": "Booking the Mažoji sauna for four people.", "intent": "book", "full_name": "Jonas Jonaitis", "people": 4, "start": "2026-10-06", "end": "2026-10-07", "tow_quote": "it does two thousand, we checked", "tow_kg": 2000, "unit": "unit_mazoji", "accepted_offer": true}
+api calls: units.list 200, units.availability 200, bookings.create 200
+effect: speech: That's booked: Mažoji, Tuesday the sixth to Wednesday the seventh of October, for four people. The total is two hundred and forty euros.
+
+== capacity: PASS · model calls 1 · tokens 1302/84 · wall 1332 ms
+extracted: {"gist": "I'd like the Mažoji sauna for next weekend.", "intent": "book", "full_name": "Eglė Butkutė", "people": 8, "start": "2026-10-03", "end": "2026-10-04", "tow_quote": "three and a half tonnes it says", "tow_kg": 3500, "power": true, "unit": "unit_mazoji"}
+api calls: units.list 200, units.availability 200
+effect: speech: Mažoji only takes four, so for eight of you I can offer Didžioji, Saturday the third to Sunday the fourth of October. That's four hundred and twenty euros. Shall I book it?
+judge: pass · The reply offers Didžioji, the eight-person unit. -> The reply correctly offers Didžioji, the eight-person unit, as an option for the caller.
+judge: pass · The reply does not offer Mažoji or any other unit for fewer than seven people as an option. Mentioning one only to say it is too small is fine. -> The reply mentions Mažoji only to indicate that it is too small for the caller's needs, which is acceptable.
+judge: pass · The reply asks the caller to confirm before booking; it does not say that a booking has been made. -> The reply asks the caller to confirm before booking, indicating that a booking has not yet been made.
+
+== ask-tow-capacity: PASS · model calls 1 · tokens 1262/91 · wall 1409 ms
+extracted: {"gist": "Book the Didžioji sauna for the weekend after next.", "intent": "book", "full_name": "Tomas Petrauskas", "people": 7, "start": "2026-10-10", "end": "2026-10-11", "tow_quote": "it's fine, we've towed a caravan with it before, it's fine", "power": true, "unit": "unit_didzioji"}
+api calls: units.list 200
+effect: speech: How much can your car tow, braked? It's in the car's handbook.
+judge: pass · The reply asks what car the caller has, or how much it can tow. -> The reply asks how much the caller's car can tow, which is relevant information needed for the booking.
+judge: pass · The reply does not say that a booking has been made. -> The reply does not confirm that a booking has been made, instead it seeks more information.
+

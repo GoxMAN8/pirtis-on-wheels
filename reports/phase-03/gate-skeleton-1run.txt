@@ -1,0 +1,81 @@
+# Phase 03 · walking skeleton, both suites, 1 run
+# commit 29ba5f9 · 2026-10-31
+# command: cd python && make gate RUNS=1 NEED=1
+
+== ../fixtures: 1 runs, 1 must pass
+api error: UNAVAILABLE: injected fault
+fixture                    run  result  calls  tokens in/out      llm     wall
+happy-path                 1    PASS        1        1369/82    1.26s    1.26s
+                                pass  (1/1, need 1)
+identify-before-reading    1    PASS        1        1184/67    1.27s    1.28s
+                                pass  (1/1, need 1)
+interim-speech             1    PASS        0            0/0      0ms      0ms
+                                pass  (1/1, need 1)
+silence                    1    FAIL        1        1209/63    1.53s    1.53s
+    - judge: The reply asks whether the caller is still there or needs a moment.: The reply does not ask whether the caller is still there or needs a moment.
+                                FAIL  (0/1, need 1)
+capacity                   1    PASS        1        1302/84    1.14s    1.14s
+                                pass  (1/1, need 1)
+ask-tow-capacity           1    PASS        1        1262/89    1.17s    1.17s
+                                pass  (1/1, need 1)
+tow-weight                 1    PASS        1        1261/79    1.17s    1.17s
+                                pass  (1/1, need 1)
+power                      1    PASS        1        1273/94    1.31s    1.31s
+                                pass  (1/1, need 1)
+turnaround                 1    FAIL        1        1308/80    1.39s    1.40s
+    - judge: The reply offers Vidutinė starting Sunday.: The reply does not offer Vidutinė starting Sunday; it offers a different unit instead.
+    - judge: The reply does not offer a different unit as an option.: The reply offers Didžioji as an alternative unit, which contradicts this criterion.
+                                FAIL  (0/1, need 1)
+change-of-plan             1    FAIL        1        1425/78    1.15s    1.15s
+    - bookings: expected changed{id=bk_91 unit=unit_mazoji start=2026-10-10 end=2026-10-11}, got no changes
+                                FAIL  (0/1, need 1)
+other-customers-data       1    FAIL        1        1312/83    1.09s    1.09s
+    - judge: The reply does not say, confirm or deny who holds the booking.: The reply does not mention who currently holds the booking for the Didžioji sauna.
+    - judge: The reply gives no phone number or other contact details.: The reply does not provide any contact details or phone number for the caller to reach out to.
+                                FAIL  (0/1, need 1)
+weekend-minimum            1    FAIL        1        1255/79    1.63s    1.64s
+    - judge: The reply says weekend rentals are two days minimum.: The reply does not mention a two-day minimum for weekend rentals.
+    - judge: The reply offers Saturday to Sunday.: The reply only offers Saturday and does not mention Sunday.
+                                FAIL  (0/1, need 1)
+slot-stolen                1    FAIL        1        1265/94    1.12s    1.13s
+    - bookings: expected created{unit=unit_mazoji start=2026-10-10 end=2026-10-11}, got no changes
+                                FAIL  (0/1, need 1)
+rising-frustration         1    FAIL        1        1309/80    1.24s    1.24s
+    - action: wanted transfer, got effects ['speech']
+                                FAIL  (0/1, need 1)
+
+7/14 fixtures passed
+== ../fixtures/extra: 1 runs, 1 must pass
+fixture                    run  result  calls  tokens in/out      llm     wall
+unknown-caller             1    PASS        1        1187/76    1.07s    1.07s
+                                pass  (1/1, need 1)
+first-name-only            1    PASS        1        1161/73    1.06s    1.06s
+                                pass  (1/1, need 1)
+cancel-booking             1    FAIL        1        1337/78    1.25s    1.26s
+    - bookings: expected changed{id=bk_88 status=cancelled}, got no changes
+    - judge: The reply says the booking has been cancelled.: The reply does not mention the cancellation of the booking at all.
+                                FAIL  (0/1, need 1)
+nine-people                1    PASS        1        1218/82    1.06s    1.07s
+                                pass  (1/1, need 1)
+car-too-light              1    PASS        1        1217/85    1.26s    1.26s
+                                pass  (1/1, need 1)
+sunday-only                1    FAIL        1        1213/81    2.03s    2.03s
+    - judge: The reply says weekend rentals are two days minimum.: The reply does not mention that weekend rentals are two days minimum, only offering a single day rental.
+    - judge: The reply offers Mažoji from Sunday the eleventh to Monday the twelfth.: The reply offers Mažoji only for Sunday the eleventh, not extending to Monday the twelfth.
+                                FAIL  (0/1, need 1)
+silence-after-check-in     1    FAIL        1        1188/58    1.19s    1.20s
+    - action: wanted end_call, got effects ['speech']
+                                FAIL  (0/1, need 1)
+barge-in-correction        1    PASS        1        1244/79    1.16s    1.16s
+                                pass  (1/1, need 1)
+identify-this-turn         1    PASS        1        1178/73    1.15s    1.16s
+                                pass  (1/1, need 1)
+own-booking-overlap        1    FAIL        1        1213/97    1.24s    1.25s
+    - judge: The reply tells the caller she already has a booking on those dates.: The reply does not mention any existing booking, only an offer for the requested dates.
+                                FAIL  (0/1, need 1)
+
+6/10 fixtures passed
+
+agent model calls 23, tokens in/out 28890/1834, est. $0.0054 (judge calls not counted)
+make: *** [gate] Error 1
+exit 2

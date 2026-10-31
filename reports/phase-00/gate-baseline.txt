@@ -1,0 +1,54 @@
+# Phase 00 · naive starter agent, given suite, 1 run
+# commit dff6aff · 2026-10-31
+# command: cd python && uv run harness --trace runs/baseline
+
+fixture                    run  result  calls  tokens in/out      llm     wall
+happy-path                 1    PASS        3       2315/142    4.11s    4.11s
+                                pass  (1/1, need 1)
+identify-before-reading    1    PASS        1         387/25    1.18s    1.18s
+                                pass  (1/1, need 1)
+interim-speech             1    FAIL        1         480/16    770ms    770ms
+    - action: wanted wait, got effects ['speech']
+    - action: wanted wait, but there was speech: "Take your time! Would you like me to describe the available sauna options?"
+                                FAIL  (0/1, need 1)
+silence                    1    FAIL        1         452/32    1.17s    1.18s
+    - judge: The reply asks whether the caller is still there or needs a moment.: The reply does not ask whether the caller is still there or needs a moment.
+                                FAIL  (0/1, need 1)
+capacity                   1    FAIL        1         551/53    890ms    890ms
+    - judge: The reply asks the caller to confirm before booking; it does not say that a booking has been made.: The reply does not ask for confirmation before booking, which is necessary to meet this criterion.
+                                FAIL  (0/1, need 1)
+ask-tow-capacity           1    FAIL        3       2037/133    3.17s    3.17s
+    - bookings: unexpected created bk_101(cus_12 unit_didzioji 2026-10-10..2026-10-11 x7 booked v1)
+    - judge: The reply asks what car the caller has, or how much it can tow.: The reply does not ask about the caller's car or towing capacity, which is necessary for confirming the booking.
+    - judge: The reply does not say that a booking has been made.: The reply explicitly confirms that a booking has been made, which contradicts the criterion.
+                                FAIL  (0/1, need 1)
+tow-weight                 1    FAIL        2       1435/242    2.83s    2.83s
+    - judge: The reply does not offer Didžioji as an option. Mentioning it only to say it is too heavy is fine.: The reply includes Didžioji as an option, which is not allowed according to the criteria.
+                                FAIL  (0/1, need 1)
+power                      1    PASS        1         519/99    1.28s    1.28s
+                                pass  (1/1, need 1)
+turnaround                 1    FAIL        2       1303/105    1.77s    1.77s
+    - judge: The reply offers Vidutinė starting Sunday.: The reply does not mention the availability of 'Vidutinė' starting Sunday, only that it is booked for the weekend.
+    - judge: The reply does not offer a different unit as an option.: The reply offers alternative options, which contradicts the criterion that states no different unit is offered.
+                                FAIL  (0/1, need 1)
+change-of-plan             1    FAIL        2       1829/136    2.02s    2.03s
+    - bookings: expected changed{id=bk_91 unit=unit_mazoji start=2026-10-10 end=2026-10-11}, got created bk_101(cus_12 unit_mazoji 2026-10-10..2026-10-11 x4 booked v1)
+    - bookings: unexpected created bk_101(cus_12 unit_mazoji 2026-10-10..2026-10-11 x4 booked v1)
+                                FAIL  (0/1, need 1)
+other-customers-data       1    PASS        1         595/33    740ms    740ms
+                                pass  (1/1, need 1)
+weekend-minimum            1    FAIL        3       1969/130    4.81s    4.81s
+    - bookings: unexpected created bk_101(cus_07 unit_mazoji 2026-10-01..2026-10-01 x4 booked v1)
+    - judge: The reply says weekend rentals are two days minimum.: The reply confirms a booking for Saturday only, which contradicts the statement about a two-day minimum for weekend rentals.
+    - judge: The reply offers Saturday to Sunday.: The reply only mentions Saturday and does not offer Sunday as an option.
+    - judge: The reply asks the caller to confirm before booking; it does not say that a booking has been made.: The reply states that the booking has been successfully made, rather than asking for confirmation before booking.
+                                FAIL  (0/1, need 1)
+slot-stolen                1    FAIL        3       1900/183    3.22s    3.23s
+    - bookings: expected created{unit=unit_mazoji start=2026-10-10 end=2026-10-11}, got no changes
+                                FAIL  (0/1, need 1)
+rising-frustration         1    FAIL        1         550/24    920ms    930ms
+    - action: wanted transfer, got effects ['speech']
+                                FAIL  (0/1, need 1)
+
+4/14 fixtures passed
+exit 1

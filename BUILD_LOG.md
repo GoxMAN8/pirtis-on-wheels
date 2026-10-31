@@ -2,7 +2,8 @@
 
 One entry per phase, newest last. Each entry records what was built, what was decided,
 what was run and what came out, and what is still open. Design decisions themselves
-live in `SPEC.md` (decision log); this file is the phase-by-phase record.
+live in `SPEC.md` (decision log); this file is the phase-by-phase record. The raw test
+and gate output behind every number is in `reports/phase-NN/`.
 
 ---
 
@@ -49,6 +50,9 @@ to beat.
 Tool check: uv 0.9.28, Python 3.12.13, Azure CLI 2.88 (logged in), Terraform 1.5.7,
 Docker 28.3. OpenTofu is not installed; it's optional, for the OpenTofu compatibility
 check later.
+
+**Reports:** `reports/phase-00/pytest.txt` (43 tests by name),
+`reports/phase-00/gate-baseline.txt`.
 
 ### Baseline (naive agent)
 | Fixture | Result | Why it failed |
@@ -220,6 +224,9 @@ really fail, and our own fixtures for the cases the given 14 don't cover.
 | `make gate RUNS=1 NEED=1` (naive agent) | given **3/14**, extra **3/10**; 47 agent model calls, 29,969 / 2,734 tokens, **≈ $0.006 agent** (+ judge) |
 | gate with a failing suite | `make` exits non-zero (failure path proven) |
 
+**Reports:** `reports/phase-02/pytest.txt` (64 tests by name),
+`reports/phase-02/gate-naive-1run.txt`.
+
 **Bug found and fixed: the gate could never fail.** macOS ships GNU Make 3.81, which
 silently ignores `.SHELLFLAGS`, so `pipefail` never took effect and `tee` hid the
 harness's exit code. The first one-run gate reported `exit 0` with 18 failures. Now the
@@ -328,6 +335,10 @@ The starter agent is replaced. All code is in `python/pirtis/agent/`:
 | `make check` | lint clean, strict mypy clean (9 files), **71 tests passed** |
 | live, 00/04/05, 1 run each, verbose | **3/3 pass**; 1 model call each, ~1.3k tokens in / ~85 out, ~1.3 s |
 | `make gate RUNS=1 NEED=1` | given **7/14** (baseline 4/14), extra **6/10** (baseline 3/10); **no API errors**; 23 agent calls, 28,890 / 1,834 tokens, ≈ $0.005 agent |
+
+**Reports:** `reports/phase-03/pytest.txt` (71 tests by name),
+`reports/phase-03/live-00-04-05.txt` (what the model extracted, the API calls, what
+was said, the judge's verdicts), `reports/phase-03/gate-skeleton-1run.txt`.
 
 The live passes were for the right reasons:
 - **00:** the model extracted exactly what was said; we booked with one availability
