@@ -84,7 +84,9 @@ library, the kit's own modules and pydantic (D-32, D-49).
 | `agent.py` | `decide` wires gate → understand → policy → speech and never raises. Every turn ends with a `note` (decision, intent, gate, fallback, `agent_version`, `turn_id`) and emits one `TurnRecord`; model calls are counted by wrapping the client in the kit's `Recorder`, and API calls by slicing `api.log()`. The library adds a `NullHandler`, so nothing prints unless the app configures logging |
 
 Around the agent, never imported by it:
-- `pirtis/ops/`: data layer, gate job, variant generator
+- `pirtis/ops/`: the data layer (`model.py`, the five records; `store.py`, the
+  `FileStore`), the gate report and the extractor eval; later the gate job and the
+  variant generator
 - `pirtis/playground/`: caller simulator and admin console
 
 ---
@@ -335,22 +337,39 @@ Commands, idle cost and teardown are in `deploy/README.md`.
 ### 9b. Data model and flows
 
 We persist only data we own; the rental data stays in the kit's in-memory API (D-58).
-All entities are versioned pydantic models (`schema_version = 1`).
+All entities are versioned pydantic models (`schema_version = 1`, unknown fields
+refused, timestamps must carry a time zone), in `python/pirtis/ops/model.py`.
 
-**Storage:** each record is its own JSON file at
-`<data>/<entity>/<partition>/<key>.json`. Locally `<data>` is `python/var/`; in Azure
-it's an Azure Files share mounted at `/data`, so the same code runs in both.
-- Files are written atomically and there's no shared index file, so the playground and
-  the gate job can write at the same time.
-- Retention is pruning by date, done by the gate job.
+**Storage** (`python/pirtis/ops/store.py`, one `FileStore`): each record is its own JSON
+file at `<data>/<entity>/<partition>/<key>.json`. Locally `<data>` is `python/var/`; in
+Azure it's an Azure Files share mounted at `/data` (`PIRTIS_DATA_DIR`), so the same
+code runs in both.
+- Writes go to a temp file beside the target and are renamed into place, so a reader
+  sees the old record or the new one, never half of one. There's no shared index file,
+  so the playground and the gate job can write at the same time.
+- Names are percent-encoded, dots included: a key can't climb out of its folder, and
+  `:` (refused by Azure Files) never reaches the share (D-59).
+- Each kind's retention is set on its class; `prune()` applies them all, and the gate
+  job runs it.
 
 | Entity | Partition / key | Fields | Also in the file | PII | Retention |
 |---|---|---|---|---|---|
-| Session | day / `session_id` | `agent_version`, `caller_phone_hash`, `started`, `turns`, `status` | transcript + bookings snapshot | personal | 30 days |
-| Feedback | `agent_version` / `turn_id` | `verdict`, `note`, `promoted_fixture` | transcript snapshot | personal | 30 days |
-| HumanRating | `scenario_id` / `session_id`+`rater` | rubric scores, `goal_achieved`, `note` | — | pseudonymous | 1 year |
-| GateRun | `agent_version` / `run_ts` | pass^k (deterministic, judge, extractor), calls, tokens, p95 | per-run results | none | 1 year |
-| TurnRecord | day / `turn_id` | telemetry fields, `source` (playground or gate) | — | pseudonymous | 90 days |
+| Session | UTC day / `session_id` | `agent_version`, `caller_phone_hash`, `started`, `turns`, `status` | transcript + bookings snapshot | personal | 30 days |
+| Feedback | `agent_version` / `turn_id` | `verdict`, `note`, `promoted_fixture`, `created` | transcript snapshot | personal | 30 days |
+| HumanRating | `scenario_id` / `session_id~rater` | `goal_achieved`, four 1–5 scores (`natural`, `numbers_clear`, `one_question`, `turn_taking`), `note`, `created` | — | pseudonymous | 1 year |
+| GateRun | `agent_version` / run time as `YYYYMMDDTHHMMSSZ` | the gate report's totals: `passed`, cases, runs, k, pass^k (all, deterministic, judge), model calls, tokens, cost, p50/p95, failed; extractor pass^k when the job ran it | every run (suite, fixture, run, verdicts, calls, tokens, time) | none | 1 year |
+| Turn (the stored `TurnRecord`) | UTC day / `session_id~turn_id` | the telemetry fields, `source` (playground or gate), `session_id` | — | pseudonymous | 90 days |
+
+- **A gate run passes** only if every case passed all of at least three runs (D-21);
+  `GateRun.from_rows` computes it from the gate report's own rows rather than taking it
+  as input.
+- **A turn's key includes its session:** the agent's `turn_id` is the same on every
+  gate run of one fixture, so keyed on it alone the three runs would overwrite each
+  other.
+- **A privacy class on every field** (D-60): *personal* (what someone said or wrote
+  about a call), *pseudonymous* (links to a person only through another record: ids,
+  the phone hash, a rater's initials) or *none*. A test pins the personal fields to
+  exactly Session's transcript and bookings and Feedback's transcript and note.
 
 ```mermaid
 flowchart LR
@@ -502,6 +521,8 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | D-52 | 2026-10-31 | Every offer reads back unit, dates, number of people and price, so `last_offer` can parse exactly what the caller heard; the offered unit is the last one named in the line | The consent check compares what was heard with what we would book; a read-back without people could not catch "yes, but five of us" | reading back unit and dates only | accepted |
 | D-53 | 2026-10-31 | `CallState` gains its v2 fields in Phase 6 rather than Phase 7 (`shift_days`, `change_target_start`, `unit_is_must`, `heater_pref`, `heater_reason`, `answer`, `go_ahead`, and the full intent set); Phase 7 keeps prompt quality, validation and the extractor eval | The policy can't be built or tested without them | waiting for Phase 7 | accepted |
 | D-51 | 2026-10-31 | Replies state "not" facts explicitly ("I can help with that once I know who's calling", "I can't share anyone's details") and cover both readings of an "or" ("What car will you tow it with, and how much can it tow?") | The judge can flip the polarity of negated criteria and can read "or" as "and"; explicit wording makes the reply unambiguous. Confirmed on 01, 21 and 05: 3/3 each after the change | relying on silence; rerunning until green | accepted |
+| D-59 | 2026-10-31 | Store names: every partition and key is percent-encoded, dots included; a gate run is keyed by its UTC time as `YYYYMMDDTHHMMSSZ`; a stored turn is keyed `session_id~turn_id`; retention is a constant on each record class | Azure Files refuses `:` in names; a key like `../x` must not leave its folder; the agent's turn id repeats across gate runs of one fixture; one place for each retention | sanitising to `_` (two keys could collide); keying turns on `turn_id` (gate runs overwrite each other); retention passed in by the caller | accepted |
+| D-60 | 2026-10-31 | Every stored field carries a privacy class (`personal`, `pseudonymous`, `none`) in its pydantic metadata, and a test pins which fields are personal | The data-flow view, retention and the "no names in analytics" check need to know where personal data sits, field by field, and a new field can't arrive unclassified | one class per entity | accepted |
 
 ---
 
@@ -520,3 +541,4 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | 2026-10-31 | 8 | `decide` restructured around an `Outcome`; a `note` ends every turn; `telemetry.py` builds and emits one content-free `TurnRecord` per turn, with an OpenTelemetry rendering; a `NullHandler` silences library logging. One-run gate: all 24 cases pass, with one note in every result | Observability without personal data, and traceable runs | D-26, D-37 |
 | 2026-10-31 | 9 | Gate report with pass^k split into deterministic and judge (D-21's reporting), now the tail of `make gate`. Extractor eval and the full gate re-run: 20/20 and **24/24 cases passing all 3 runs (72 runs), deterministic 24/24, judge 24/24**. Voice-UX audit: every rule in §5 mapped to named tests; three gaps closed (price in every read-back, a rebuilt reply after a barge-in, no reply ever naming another customer) | Prove each voice rule, and report the gate the way D-21 promised | D-21, D-24 |
 | 2026-10-31 | plan | Azure kept to a minimum. Instead of Blob + Table + Key Vault + lifecycle policies, one Azure Files share is mounted into the app and the job at `/data`, and the data layer is one `FileStore` (a JSON file per record) that runs the same locally. Secrets become Container App secrets set by CLI | Your request for the smallest infrastructure; less to build, secure and explain | D-27 → D-57, D-38 → D-58 |
+| 2026-10-31 | 10 | Data layer, test-first: five versioned records (Session, Feedback, HumanRating, GateRun, Turn) with a privacy class on every field, and one `FileStore` (a JSON file per record, atomic writes, queries by partition and date, pruning by each record's retention). A gate run is built from the gate report's rows and passes only at pass^3; a turn is built from the agent's own telemetry line. 25 new tests (392 in total); the Phase 9 gate traces stored and read back unchanged | Somewhere to keep calls, feedback, ratings and gate history for the UIs and the improvement loop, the same locally and on the mounted share | D-58, D-59, D-60 |

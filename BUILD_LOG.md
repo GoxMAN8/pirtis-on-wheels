@@ -1087,3 +1087,124 @@ scan a directory. Nothing can be half-written or interleaved.
 - The plan's Phases 10, 14, 15 and 16 are updated to match.
 
 No code changed and no model calls were made.
+
+---
+
+## Phase 10 — the data layer: five records, one folder of files
+
+**Date:** 2026-10-31
+**Goal:** somewhere to keep what the playground and the gate job produce (calls,
+feedback, human ratings, gate history, turn telemetry), the same locally and on the
+Azure file share, with every field's privacy class known.
+
+**Headline: 392 tests pass (25 new), with zero model calls.** The Phase 9 gate traces
+(24/24 cases, 72 runs) were stored as one gate-run record and read back unchanged.
+
+### How it was built
+Test-first. `pirtis/ops/test_store.py` was written before any code and failed at
+collection (`No module named 'pirtis.ops.model'`). Then `model.py` and `store.py`: 24 of
+25 tests passed on the first run. The one failure was the test's own mistake: it blanked
+both parts of a turn's key, which still leaves the `~` separator. It now checks an empty
+session id. One formatting pass followed (ruff ignores `# fmt: skip` on list items, so
+the markers were dropped).
+
+### What was built
+- **`pirtis/ops/model.py`: five records.** Each is a frozen pydantic model that refuses
+  unknown fields and naive timestamps, carries `schema_version = 1`, and knows its own
+  partition, key, time and retention:
+
+  | Record | Partition / key | Retention |
+  |---|---|---|
+  | `Session` | UTC day / `session_id` | 30 days |
+  | `Feedback` | `agent_version` / `turn_id` | 30 days |
+  | `HumanRating` | `scenario_id` / `session_id~rater` | 1 year |
+  | `GateRun` | `agent_version` / `YYYYMMDDTHHMMSSZ` | 1 year |
+  | `Turn` | UTC day / `session_id~turn_id` | 90 days |
+
+  - **A privacy class on every field** (`personal`, `pseudonymous`, `none`) in its
+    pydantic metadata. A test pins the personal fields to exactly Session's transcript
+    and bookings and Feedback's transcript and note.
+  - **`GateRun.from_rows`** builds a gate run from the gate report's own rows (all 72
+    kept in the file) and computes `passed`: every case passed all of at least 3 runs.
+    A k = 1 run or an empty run never passes.
+  - **`Turn.from_record`** takes the JSON line the agent logs on `pirtis.turn`. If the
+    agent adds a telemetry field this model doesn't know, it fails, and a test runs a
+    real `decide` turn to catch that.
+- **`pirtis/ops/store.py`: one `FileStore`.**
+  - `put` writes to a temp file beside the target, fsyncs it and renames it into place;
+    if anything fails, the temp file is removed and the old record stays.
+  - `get`; `query(kind, partition=None, since=None)`, oldest first;
+    `prune(now)`, which applies each kind's retention and returns counts.
+  - `store_from_env()` reads `PIRTIS_DATA_DIR` (default `python/var/`).
+  - Names are percent-encoded, dots included, so `../../etc/passwd` stays one file
+    inside its folder and no `:` reaches Azure Files.
+- **Tests (25):** five records, each with a privacy class on every field; where
+  personal data sits; a round trip of each record; queries by partition and date;
+  pruning at each retention boundary (29/31 days, 89/91 days); a failed rename that
+  leaves the old record and no temp file; stray temp files never read; two threads
+  writing 200 records with none lost; the gate's three runs of one turn kept as three
+  records; no `:` in any name; a key that can't escape; the folder from the
+  environment; a turn built from a real `decide` turn; the gate verdict at pass^3;
+  unknown fields and naive times refused.
+
+### Commands and results
+| Command | Result |
+|---|---|
+| `uv run pytest pirtis/ops/test_store.py` (before the code) | collection error: no module `pirtis.ops.model`, as intended |
+| `make check` | ruff clean, strict mypy (29 files) clean, **392 tests passed**, 0 failed |
+| `uv run python ../reports/phase-10/store_demo.py <scratch>` | the Phase 9 traces as one `GateRun`: passed, 24 cases, 72 runs, k = 3, deterministic 24/24, judge 24/24, 60 model calls, p50 1555 ms, p95 1786 ms, ≈ $0.0231, 12.8 kB, read back identical. A fresh `decide` turn stored as a `Turn`. Over-age copies (turn 91 days, gate run 366 days) pruned, one each |
+
+`agent_version` is `8a552e2b0636` before and after: no agent code changed.
+
+**Reports:** `reports/phase-10/`: `pytest.txt` (392 tests by name), `store-demo.txt`
+and the `store_demo.py` that produced it.
+
+### Decisions
+- **D-59:** store names percent-encoded, dots included; a gate run keyed by its UTC
+  time without colons; a turn keyed `session_id~turn_id`; retention a constant on each
+  record class.
+- **D-60:** a privacy class on every stored field, with a test pinning the personal
+  ones.
+
+### Deviations from the plan
+- **The gate's turns would have overwritten each other.** The plan keyed a stored turn
+  on `turn_id`, but the agent's turn id is the same on all three runs of a fixture. The
+  key now includes the session (D-59), and a test covers it.
+- **`prune(now)` instead of `prune(kind, older_than)`:** retention lives on each record
+  class, so one call prunes everything, and no caller can pass the wrong number.
+- **GateRun fields use the gate report's names** (`deterministic_passed_cases`,
+  `judge_passed_cases`, `model_calls`, `input_tokens`, …) rather than the plan's
+  shorthand (`det_pass_k`, `calls`, `tokens`). That gives one vocabulary from the
+  harness traces to the admin console. The extractor fields are optional until the
+  gate job fills them (Phase 14).
+- **The rubric** is `goal_achieved` plus four 1–5 scores: the five items of Phase 13.
+- **Emptied partition folders are kept:** removing one could race a writer that has
+  just created it, and an empty folder costs nothing.
+- **Found while testing:** the Phase 8 sample turn record has placeholders for its time
+  and latency, so the new model refuses it. The demo uses a fresh record instead. The
+  sample stays as it was: it documents the record's shape.
+
+### Spend
+$0 this phase; ≈ $0.31 in total of the $6.
+
+### Open issues and risks
+- **Case-insensitive names:** Azure Files and macOS treat `GS` and `gs` as one file.
+  The keys today are hex ids, dates and versions; rater initials are the one exception,
+  and Phase 13 will upper-case them.
+- **Last write wins on one key:** two requests updating the same session at the same
+  moment would keep only the later one. The playground runs one replica and one call
+  per session, so this doesn't arise; a lock would be the fix if it ever did.
+- **Atomic rename over SMB** is tested here on a local disk only. Phase 15 checks it on
+  the share: restart the app and the session resumes.
+- **Directory scans** are fine at this size (a few hundred files a day); an index would
+  be needed only at tens of thousands.
+
+### What the next phase needs from you
+The go-ahead for **Phase 11: the two UIs** (caller simulator and admin console, one
+stdlib server).
+- It vendors d3 and Observable Plot (ISC) and three OFL fonts into
+  `pirtis/playground/static/`, downloaded from their npm and font registries. Say if
+  you'd rather I didn't fetch them.
+- Checks in the built-in browser: both themes, keyboard only, reduced motion and phone
+  width.
+- A few live playground turns, about $0.01.

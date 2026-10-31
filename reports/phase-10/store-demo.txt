@@ -1,0 +1,29 @@
+# Phase 10 · store demo (real records, zero model calls)
+# commit: feat(ops): data layer · 2026-10-31
+# command: cd python && uv run python ../reports/phase-10/store_demo.py <scratch folder>
+
+1. The Phase 9 gate traces (runs/gate) as one GateRun record
+   passed=True  cases=24  runs=72  k=3  deterministic=24/24  judge=24/24
+   model_calls=60  zero_call_runs=12  p50=1555ms  p95=1786ms  est_cost=$0.0231
+   per-run rows kept: 72  file: gate_run/8a552e2b0636/20261031T030000Z.json
+   (12815 bytes)  read back: identical
+
+2. A fresh telemetry line from decide() on happy-path (gold state, zero tokens)
+   gate='none' intent='book' decision='Booked' llm_calls=1 latency_ms=2
+   file: turn/2026-10-31/gate-20261031T030000Z-happy-path-1~2537afef9286ce4c.json
+
+3. Retention: an over-age copy of the turn (91 d) and the gate run (366 d), then prune
+   before  {'session': 0, 'feedback': 0, 'rating': 0, 'gate_run': 2, 'turn': 2}
+   removed {'session': 0, 'feedback': 0, 'rating': 0, 'gate_run': 1, 'turn': 1}
+   after   {'session': 0, 'feedback': 0, 'rating': 0, 'gate_run': 1, 'turn': 1}
+
+4. The folder
+   gate_run/
+     8a552e2b0636/
+       20261031T030000Z.json
+   turn/
+     2026-08-01/
+     2026-10-31/
+       gate-20261031T030000Z-happy-path-1~2537afef9286ce4c.json
+
+Retention by kind: session 30 d, feedback 30 d, rating 365 d, gate_run 365 d, turn 90 d

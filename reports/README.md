@@ -9,5 +9,6 @@ Test lists are re-runnable: check out that commit and run the command.
 | `pytest.txt` | every test by name with its result (`uv run pytest -vv`) |
 | `gate-*.txt` | the harness table for a gate run: per fixture, result, model calls, tokens, time, and every failure reason |
 | `live-*.txt` | a targeted live run, summarised from its trace files: what the model extracted, the API calls, what was said, the judge's verdicts |
+| `*-demo.txt` | a zero-token run of new code on real data; the script that produced it sits beside it |
 
 Phase 1 produced documents only, so it has no folder.
