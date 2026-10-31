@@ -2193,6 +2193,7 @@ app (the link, signing in, how to use it).
 | the architecture checker | **PASS, 0 errors, 0 warnings** |
 | every Mermaid block (11), rendered with Mermaid 11 | all rendered |
 | `terraform validate`, `terraform fmt -check` | valid, formatted |
+| `make image deploy` from the clean commit 0bd7e59 | the gate held for bd98c5cf8006 (46/46 saved); the app and the job run `sha256:b8a689a1…` by digest; live health reports agent **bd98c5cf8006**; a stranger meets the sign-in; revision healthy; a plan shows **no changes** |
 
 **Reports:** `reports/phase-16/`
 - `gate-454b3a30e0ee-failed.txt`, `flake01-before.txt`, `flake01-after.txt`
@@ -2219,7 +2220,7 @@ app (the link, signing in, how to use it).
 ≈ $0.25 this phase: the extractor eval, two full gates with the judge, 40 runs of fixture 01, and the screenshots' call. ≈ $1.6 in total of the $6.
 
 ### Open issues and risks
-- **The human evaluation** is still to run.
+- **The human evaluation** is still to run. The live app now runs the final agent, so testers rate what was gated.
 - **The kit's judge varies a little even at temperature 0.** A statement it can read
   either way will fail a correct reply now and then. D-51 and D-87 make our replies say
   such facts outright; the curve is how to find the next one.

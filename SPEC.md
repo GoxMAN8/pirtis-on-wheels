@@ -396,7 +396,8 @@ A private deployment on Azure, from one container image with two workloads:
 - **the gate:** a nightly Container Apps Job (03:00 UTC), also startable by hand
 
 **Live:** in Germany West Central, resource group `pirtis-rg`, since 2026-10-31. The
-address, signing in and a tour are in `docs/using-the-app.md`.
+address, signing in and a tour are in `docs/using-the-app.md`. It runs the final agent,
+`bd98c5cf8006`, built from commit `0bd7e59`.
 
 Written in Terraform (OpenTofu-compatible) under `deploy/`, kept deliberately minimal
 (D-57). There are nine resources:
