@@ -497,3 +497,110 @@ import (the functions didn't exist). Then the code was written until all passed.
   - the strict "talk to a person" regex, and anger plus a barge-in → warm transfer
   - Fixtures 03, 13 and 26 should then pass. No model calls, except one targeted live
     check (well under a cent).
+
+---
+
+## Phase 5 — the full turn gate
+
+**Date:** 2026-10-31
+**Goal:** settle every turn where the receptionist must not simply answer (the caller
+isn't done, wants a person, or has gone quiet) in code, with no model call.
+
+### How it was built
+Test-first. `test_turn.py` (57 tests) was written first and failed at import; then
+`turn.py` was written until all passed.
+
+### What the gate does, in order
+1. **The caller isn't done → `wait`:**
+   - still talking (not final, or no pause) → 1.5 s
+   - a filler-only line ("uh", "um", "hmm", "so") → 1.5 s. "…so, uh" after real words
+     still gets an answer, which is fixture 01 and D-04.
+   - a short hold ("hang on, let me ask my husband", "one sec", "bear with me") → 8 s.
+     "Hang on, could we push it a week?" is a question, not a hold.
+2. **The caller wants a person → announced transfer** to `front_desk`:
+   - a strict pattern: "talk/speak/put me through… to a person/someone/manager", "a
+     real/actual person", "somebody I can talk to". It does **not** match "the eight
+     person one", "the site manager says", or "someone said you had…".
+   - or **anger ≥ 0.7 together with a barge-in** (the caller cut into our last line).
+     This transfer starts "I'm sorry about this…" instead of "Of course…". Anger
+     without a barge-in only calms the voice.
+   - The transfer carries a summary: the customer id if identified, the reason, and
+     the caller's last words.
+3. **We spoke last:**
+   - cut off with nothing said yet, or less than 6 s ago → `wait`
+   - after a goodbye → hang up quietly
+   - after a check-in that also went unanswered → "I'll let you go for now. Call us
+     back any time, goodbye!" + hang up
+   - otherwise → "Are you still there? No rush if you need a moment."
+
+Supporting changes:
+- `speech.hang_up_line()`
+- `Handoff.apologise`
+- `reading.latest_caller_turn` is now used for the pattern and anger checks, so a
+  caller who pauses and continues is read as one turn
+
+### Two wording fixes from live judge errors (D-51)
+| Fixture | Judge error | Our line before → after | Result after |
+|---|---|---|---|
+| 01 identify-before-reading | polarity: "does not say whether the booking is still on" marked failed, with the reason "does not address whether the booking is still on". The same reply had passed in Phase 3 | "Can I get your full name, please?" → "I can help with that once I know who's calling. Can I get your full name, please?" | **3/3** (and 21, which shares the line: **3/3**) |
+| 05 ask-tow-capacity | "or" read as "and": "asks what car **or** how much it can tow" failed because we "did not ask what car" | "How much can your car tow, braked? It's in the car's handbook." → "What car will you tow it with, and how much can it tow, braked?" | **3/3** |
+
+So the judge is not deterministic even at temperature 0, and we fix ambiguity in our
+own wording rather than rerunning (D-21).
+
+### Commands and results
+| Command | Result |
+|---|---|
+| new tests before implementing | failed at import, as intended |
+| `make check` | lint, strict mypy (14 files), **200 tests passed**, 0 failed |
+| live: 02, 03, 13, 26 | **all pass with 0 model calls**; 13's transfer is announced in the calm voice and carries "Caller cus_12. caller asked for a person. Last said: …" |
+| live: 01, 21, 05 × 3 runs each (after the wording fixes) | **3/3 each** |
+| `make gate RUNS=1 NEED=1` (before the tow fix) | given **8/14** (was 7), extra **7/10** (was 6); 20 agent model calls, 25,184 / 1,645 tokens, ≈ $0.005 agent |
+
+**Reports:**
+- `reports/phase-05/pytest.txt`: 200 tests by name
+- `reports/phase-05/live-gate.txt`: every live run in full, including the judge's
+  verdicts
+- `reports/phase-05/gate-1run.txt`
+
+### Files
+- New: `test_turn.py`, `reports/phase-05/`.
+- Changed: `turn.py`, `speech.py` (hang-up line, apologetic hand-off, two reworded
+  questions), `policy.py` (`Handoff.apologise`), `test_speech.py` (the new lines
+  under the voice rules), `SPEC.md`, `BUILD_LOG.md`.
+
+### Decisions
+- **D-51 extended:** cover both readings of an "or" in what we ask. Evidence: 3/3 on
+  01, 21 and 05 after the change. No other new decisions; this phase implements D-04,
+  D-05 and D-06.
+
+### Deviations from the plan
+- **Two wording changes to `speech.py`** (a Phase 4 file) were made here, because the
+  live check exposed them. Each is logged with its evidence.
+- **A one-run gate** was added beyond the planned targeted check, to track progress
+  (≈ 1 cent).
+
+### Spend
+≈ $0.02 this phase; ≈ $0.06 in total of the $6.
+
+### Open issues and risks
+- **Judge variance is real**, and the gate counts every judge verdict 3 of 3. Each
+  fixture with a negated or "or" criterion is a risk. We mitigate in wording, and
+  Phase 13 measures it.
+- **"I'm a real person"-style lines** would be read as a request for a person. That's
+  rare and safe (it ends in a person), and is noted as a known limit.
+- **Still failing, all owned by Phase 6:** 08 turnaround, 09 change-of-plan, 10
+  other-customers-data, 11 weekend-minimum, 12 slot-stolen, 22 cancel, 25
+  sunday-only, 29 own-booking-overlap.
+
+### What the next phase needs from you
+- Nothing beyond the go-ahead. Phase 6 is the largest so far:
+  - the rules mirror `violations()` with a property test against the API
+  - the offer engine (weekend minimum, date-window search both ways, own-booking
+    clashes, must-have units)
+  - the full `last_offer` read-back check
+  - moves and cancels with version handling
+  - 409/500 retries
+  - the privacy refusal
+
+  Mostly zero-token tests, then one targeted live check.

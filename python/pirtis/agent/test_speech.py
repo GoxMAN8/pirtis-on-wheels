@@ -7,7 +7,16 @@ from pathlib import Path
 import pytest
 
 from pirtis.agent.policy import Ask, Booked, Decision, Handoff, NoFit, Offer
-from pirtis.agent.speech import CALM, NEUTRAL, check_in_line, goodbye_line, render, sms_text, tone
+from pirtis.agent.speech import (
+    CALM,
+    NEUTRAL,
+    check_in_line,
+    goodbye_line,
+    hang_up_line,
+    render,
+    sms_text,
+    tone,
+)
 from pirtis.agent.words import (
     digits_to_words,
     spoken_date,
@@ -182,6 +191,7 @@ SAMPLES: list[Decision] = [
     Handoff("new_customers", "no customer matches"),
     Handoff("front_desk", "caller asked for a person"),
     Handoff("bookings_support", "api error"),
+    Handoff("front_desk", "caller upset and cut us off", apologise=True),
     NoFit("nothing fits"),
 ]
 
@@ -193,7 +203,7 @@ def _spoken(actions: list[dict[str, object]]) -> list[str]:
 @pytest.mark.parametrize("d", SAMPLES, ids=lambda d: type(d).__name__)
 def test_every_line_follows_the_voice_rules(d: Decision) -> None:
     lines = _spoken(render(d)) or [""]
-    for line in lines + [check_in_line(), goodbye_line()]:
+    for line in lines + [check_in_line(), goodbye_line(), hang_up_line()]:
         assert not re.search(r"\d", line), line
         assert line.count("?") <= 1, line
         before_question = line.split("?")[0] if "?" in line else line

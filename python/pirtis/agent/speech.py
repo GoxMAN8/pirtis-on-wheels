@@ -30,10 +30,12 @@ def tone(t: Transcript) -> Voice:
 
 
 QUESTIONS = {
-    "name": "Can I get your full name, please?",
+    # says out loud that we're deferring, so "does not say whether…" can't be misread
+    "name": "I can help with that once I know who's calling. Can I get your full name, please?",
     "dates": "Which dates were you thinking of?",
     "people": "How many of you will there be?",
-    "tow": "How much can your car tow, braked? It's in the car's handbook.",
+    # names both the car and the figure, so either reading of the question is covered
+    "tow": "What car will you tow it with, and how much can it tow, braked?",
     "power": "Is there mains power where the sauna is going?",
 }
 
@@ -45,6 +47,7 @@ HANDOFF_LINES = {
     "a colleague who can sort it out.",
 }
 HANDOFF_DEFAULT = "I'll put you through to a colleague now."
+HANDOFF_SORRY = "I'm sorry about this. I'll put you through to a colleague now."
 
 NO_FIT = "I'm sorry, none of our saunas fit that. Would other dates work for you?"
 
@@ -64,6 +67,11 @@ def goodbye_line() -> str:
     return "Thanks for calling Pirtis on Wheels. Goodbye!"
 
 
+def hang_up_line() -> str:
+    """After a check-in went unanswered too."""
+    return "I'll let you go for now. Call us back any time, goodbye!"
+
+
 def render(d: Decision, voice: Voice = NEUTRAL) -> list[Action]:
     """The actions for one decision, spoken in the given voice."""
     match d:
@@ -73,8 +81,8 @@ def render(d: Decision, voice: Voice = NEUTRAL) -> list[Action]:
             return [_say(offer_line(d), voice)]
         case Booked(booking=b, unit=u):
             return [_say(booked_line(b, u), voice), sms(sms_text(b, u))]
-        case Handoff(queue=queue, reason=reason, summary=summary):
-            line = HANDOFF_LINES.get(queue, HANDOFF_DEFAULT)
+        case Handoff(queue=queue, reason=reason, summary=summary, apologise=apologise):
+            line = HANDOFF_SORRY if apologise else HANDOFF_LINES.get(queue, HANDOFF_DEFAULT)
             return [_say(line, voice), handoff(queue, reason, summary)]
         case NoFit():
             return [_say(NO_FIT, voice)]

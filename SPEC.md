@@ -71,7 +71,7 @@ library, the kit's own modules and pydantic (D-32, D-49).
 
 | Module | Contract |
 |---|---|
-| `turn.py` | `gate(t) -> list[Action] \| None`. `None` means "go on to understanding". |
+| `turn.py` | `gate(t) -> list[Action] \| None`. `None` means "go on to understanding". It covers waiting (still talking, filler only, "hang on"), transfers (asked for a person, or anger plus a barge-in) and silence (check in, then hang up, or end quietly after a goodbye) |
 | `understand.py` | `extract(t, llm, units) -> CallState` (frozen pydantic model, strict schema generated from the class); raises `UnderstandError` if it can't validate |
 | `rules.py` | `violations(req, unit, free_days, own_bookings) -> list[str]` mirrors every write rule of the API |
 | `policy.py` | `next_step(t, state, api, units) -> Decision`; the offer engine (`apply_weekend_min`, `find_window`, `choose_offer`); `last_offer(t, units)` parses our previous read-back |
@@ -172,7 +172,7 @@ was traced against the real in-memory API.
 | 02 interim-speech | turn gate | `wait`, 0 model calls |
 | 03 silence | turn gate | "Are you still there? No rush if you need a moment.", 0 model calls |
 | 04 capacity | hedged people → 8; hard limits | Mažoji too small → offers Didžioji, asks to confirm |
-| 05 ask-tow-capacity | tow only from a quoted number | asks how much the car can tow, braked; no booking despite "just book it" |
+| 05 ask-tow-capacity | tow only from a quoted number | "What car will you tow it with, and how much can it tow, braked?"; no booking despite "just book it" |
 | 06 tow-weight | availability with all filters | only Vidutinė fits 6 people and 1500 kg → offers it |
 | 07 power | generator ≠ mains | only Didžioji fits without power → offers it |
 | 08 turnaround | must-have unit, window shift, weekend minimum | "Vidutinė isn't free on Saturday the third. I can do Sunday the fourth to Monday the fifth…" |
@@ -210,11 +210,17 @@ blocks deployment.
     and ends with a line of agent model calls, tokens and estimated cost
   - `make gate RUNS=1 NEED=1` is the same wiring for a quick look
   - `make trace ID=<fixture>` runs one fixture verbosely
-- **Known judge weakness:** a negatively worded criterion ("The reply gives no phone
-  number…") can have its polarity flipped. On 2026-10-31 a reply with no contact
-  details was marked as failing it, with a reason that agreed with the reply. So our
-  replies state such facts explicitly (D-51), and every judge failure is read before
-  anything is changed.
+- **Known judge weaknesses** (seen on 2026-10-31; the judge varies even at temperature
+  0, and the same reply passed in one run and failed in the next):
+  - **Polarity:** a negatively worded criterion ("The reply does not say whether the
+    booking is still on", "…gives no phone number…") is marked failed, with a reason
+    that agrees with the reply.
+  - **"Or" read as "and":** "asks what car the caller has, **or** how much it can tow"
+    failed a reply that asked how much it can tow, because it "does not ask what car
+    it is".
+
+  So our replies state such facts explicitly and cover both readings (D-51). Every
+  judge failure is read before anything is changed.
 
 ### 7b. Evaluation results
 
@@ -226,6 +232,10 @@ blocks deployment.
 
 | 2026-10-31 | **ours: walking skeleton** | given, 1 run | **7/14**, no API errors | 13 (0 on interim speech) | 16,734 / 1,052 |
 | 2026-10-31 | **ours: walking skeleton** | extra 20–29, 1 run | **6/10**, no API errors | 10 | 12,156 / 782 |
+
+| 2026-10-31 | ours: full turn gate | given, 1 run | **8/14** (03 and 13 now pass with 0 model calls) | 11 | 14,216 / 920 |
+| 2026-10-31 | ours: full turn gate | extra 20–29, 1 run | **7/10** (26 now passes with 0 model calls) | 9 | 10,968 / 725 |
+| 2026-10-31 | ours, after D-51 wording | 01, 21 and 05, **3 runs each** | **3/3 each** | 1 per run | — |
 
 The naive agent swings between samples (4/14, then 3/14), which is why the gate needs
 3 of 3 runs. The skeleton's failures are all features of later phases: the silence
@@ -420,7 +430,7 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | D-48 | 2026-10-31 | Spend guards for a small prepaid model credit: targeted runs, full gates at phase ends, cost printed and shown, a credit check before full gates, a slim nightly suite | Exhausted credit returns 429, which would look like agent bugs | — | accepted |
 | D-49 | 2026-10-31 | Pydantic v2 at our boundaries (model output, stored entities, playground requests); the strict schema generated from the same class; dataclasses for internals | One source of truth for schema and validation; untrusted model output is checked at the edge | a hand-written parser | accepted |
 | D-50 | 2026-10-31 | Documentation: three architecture views (containers, data flow with sensitivity labels, trust boundaries and numbered crossings, sequences with failure paths) plus a deployment view, in Mermaid with evidence paths, commit stamps, *Not built* lists and `[CONFIRM]` for unknowns, checked by a shape checker; evaluation graphs in Mermaid; screenshots only for UI. A change to a container, store or crossing updates its diagram in the same commit | Diagrams that diff stay true; reviewers ask where data goes | images and draw.io exports | accepted |
-| D-51 | 2026-10-31 | Replies state privacy and other "not" facts explicitly (e.g. "I can't share anyone's details") | The judge can flip the polarity of negatively worded criteria; an explicit sentence makes the reply unambiguous | relying on silence | accepted |
+| D-51 | 2026-10-31 | Replies state "not" facts explicitly ("I can help with that once I know who's calling", "I can't share anyone's details") and cover both readings of an "or" ("What car will you tow it with, and how much can it tow?") | The judge can flip the polarity of negated criteria and can read "or" as "and"; explicit wording makes the reply unambiguous. Confirmed on 01, 21 and 05: 3/3 each after the change | relying on silence; rerunning until green | accepted |
 
 ---
 
@@ -433,3 +443,4 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | 2026-10-31 | 2 | pydantic, pinned ruff and mypy; strict mypy on the agent; `Makefile` with `check` and the frozen `gate`; own fixtures 20–29 with a test that checks them against the API; the gate's exit code fixed for make 3.81 | Tooling and the measuring stick before the agent | D-20, D-21, D-49, D-50, D-51 |
 | 2026-10-31 | 3 | Walking skeleton replaces the starter agent: turn gate (interim speech), `CallState` v1 with its strict schema generated from the class, policy v1 (identify, ask one detail, search with all filters, offer, book only on a yes to our own offer), spoken templates; zero-token replay tests; first live run 7/14 and 6/10 with no API errors | Prove every layer end to end before deepening any | D-02, D-08, D-09, D-10, D-17, D-33, D-49 |
 | 2026-10-31 | 4 | Speech and handlers deepened test-first: `words.py` (spoken forms and the digit guard for dates, times, prices, weights, percentages, decimals, "2k", ordinals, codes and phone numbers), `reading.py`, tone from the latest caller turn, per-queue warm-transfer lines with a summary on the transfer, check-in and goodbye lines, a booking confirmed aloud and by text; `sms` and `note` handlers. 71 new tests (142 in total) | The voice rules made certain in code, before the turn gate and policy rely on them | D-06, D-17, D-18, D-24, D-37 |
+| 2026-10-31 | 5 | Full turn gate, test-first: still talking, filler-only or "hang on" → wait; a strict "talk to a person" pattern, or anger ≥ 0.7 with a barge-in → announced, calm transfer with a summary; we spoke last → wait, check in after 6 s of silence, hang up after a second silence, end quietly after a goodbye. Ask-for-name and tow questions reworded after two judge errors. 200 tests; 03, 13 and 26 pass with 0 model calls | Turn-taking without spending a model call | D-04, D-05, D-06, D-51 |

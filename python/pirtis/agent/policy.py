@@ -51,6 +51,7 @@ class Handoff:
     queue: str
     reason: str
     summary: str = ""
+    apologise: bool = False  # the caller is upset with us, not just asking
 
 
 @dataclass(frozen=True)

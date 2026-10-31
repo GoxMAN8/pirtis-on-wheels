@@ -1,0 +1,110 @@
+# Phase 05 · targeted live check of the turn gate (given: 02, 03, 13 and 01; extra: 26), one run each, verbose
+# commit: feat(agent): the full turn gate · 2026-10-31
+# commands:
+#   uv run harness --id interim-speech,silence,rising-frustration,identify-before-reading --runs 1 -v --trace runs/p5
+#   uv run harness --fixtures ../fixtures/extra --id silence-after-check-in --runs 1 -v --trace runs/p5x
+
+fixture                    run  result  calls  tokens in/out      llm     wall
+identify-before-reading    1    FAIL        1        1184/67    1.53s    1.54s
+    - judge: The reply does not say whether the booking is still on.: The reply does not address whether the booking is still on.
+    action: {"type": "say", "text": "Can I get your full name, please?", "generation_config": {"emotion": "neutral", "speed": 1.0}}
+    effect: {"type": "speech", "text": "Can I get your full name, please?", "generation_config": {"emotion": "neutral", "speed": 1.0}}
+    judge: True  The reply asks the caller for their name.: The reply does ask the caller for their name.
+    judge: False  The reply does not say whether the booking is still on.: The reply does not address whether the booking is still on.
+                                FAIL  (0/1, need 1)
+interim-speech             1    PASS        0            0/0      0ms      0ms
+    action: {"type": "wait", "seconds": 1.5}
+    effect: {"type": "silence", "seconds": 1.5}
+                                pass  (1/1, need 1)
+silence                    1    PASS        0            0/0      0ms      0ms
+    action: {"type": "say", "text": "Are you still there? No rush if you need a moment.", "generation_config": {"emotion": "neutral", "speed": 1.0}}
+    effect: {"type": "speech", "text": "Are you still there? No rush if you need a moment.", "generation_config": {"emotion": "neutral", "speed": 1.0}}
+    judge: True  The reply asks whether the caller is still there or needs a moment.: The reply does ask whether the caller is still there and offers them a moment if needed.
+    judge: True  The reply is at most two sentences.: The reply consists of two sentences, making it concise.
+                                pass  (1/1, need 1)
+rising-frustration         1    PASS        0            0/0      0ms      0ms
+    action: {"type": "say", "text": "Of course. I'll put you through to a colleague now.", "generation_config": {"emotion": "calm", "speed": 0.95}}
+    action: {"type": "transfer", "to": "front_desk", "reason": "caller asked for a person", "summary": "Caller cus_12. caller asked for a person. Last said: \"no. no, stop. can I just talk to a person? an actual person\""}
+    effect: {"type": "speech", "text": "Of course. I'll put you through to a colleague now.", "generation_config": {"emotion": "calm", "speed": 0.95}}
+    effect: {"type": "transfer", "to": "front_desk", "reason": "caller asked for a person", "summary": "Caller cus_12. caller asked for a person. Last said: \"no. no, stop. can I just talk to a person? an actual person\""}
+                                pass  (1/1, need 1)
+
+3/4 fixtures passed
+
+fixture                    run  result  calls  tokens in/out      llm     wall
+silence-after-check-in     1    PASS        0            0/0      0ms      0ms
+    action: {"type": "say", "text": "I'll let you go for now. Call us back any time, goodbye!", "generation_config": {"emotion": "neutral", "speed": 1.0}}
+    action: {"type": "end_call", "reason": "no answer after a check-in"}
+    effect: {"type": "speech", "text": "I'll let you go for now. Call us back any time, goodbye!", "generation_config": {"emotion": "neutral", "speed": 1.0}}
+    effect: {"type": "hangup", "reason": "no answer after a check-in"}
+                                pass  (1/1, need 1)
+
+1/1 fixtures passed
+
+# after D-51 wording on the ask-for-name line: 01 and 21, three runs each
+# commands:
+#   uv run harness --id identify-before-reading --runs 3 --need 3 -v
+#   uv run harness --fixtures ../fixtures/extra --id first-name-only --runs 3 --need 3 -v
+
+fixture                    run  result  calls  tokens in/out      llm     wall
+identify-before-reading    1    PASS        1        1184/67    1.45s    1.45s
+    action: {"type": "say", "text": "I can help with that once I know who's calling. Can I get your full name, please?", "generation_config": {"emotion": "neutral", "speed": 1.0}}
+    effect: {"type": "speech", "text": "I can help with that once I know who's calling. Can I get your full name, please?", "generation_config": {"emotion": "neutral", "speed": 1.0}}
+    judge: True  The reply asks the caller for their name.: The reply explicitly asks for the caller's full name.
+    judge: True  The reply does not say whether the booking is still on.: The reply does not provide any information about the status of the booking.
+identify-before-reading    2    PASS        1        1184/67    1.66s    1.66s
+    action: {"type": "say", "text": "I can help with that once I know who's calling. Can I get your full name, please?", "generation_config": {"emotion": "neutral", "speed": 1.0}}
+    effect: {"type": "speech", "text": "I can help with that once I know who's calling. Can I get your full name, please?", "generation_config": {"emotion": "neutral", "speed": 1.0}}
+    judge: True  The reply asks the caller for their name.: The reply explicitly asks for the caller's full name.
+    judge: True  The reply does not say whether the booking is still on.: The reply does not provide any information about the status of the booking.
+identify-before-reading    3    PASS        1        1184/67    1.03s    1.03s
+    action: {"type": "say", "text": "I can help with that once I know who's calling. Can I get your full name, please?", "generation_config": {"emotion": "neutral", "speed": 1.0}}
+    effect: {"type": "speech", "text": "I can help with that once I know who's calling. Can I get your full name, please?", "generation_config": {"emotion": "neutral", "speed": 1.0}}
+    judge: True  The reply asks the caller for their name.: The reply explicitly asks for the caller's full name.
+    judge: True  The reply does not say whether the booking is still on.: The reply does not provide any information about the status of the booking.
+                                pass  (3/3, need 3)
+
+1/1 fixtures passed
+
+fixture                    run  result  calls  tokens in/out      llm     wall
+first-name-only            1    PASS        1        1161/73    1.19s    1.19s
+    action: {"type": "say", "text": "I can help with that once I know who's calling. Can I get your full name, please?", "generation_config": {"emotion": "neutral", "speed": 1.0}}
+    effect: {"type": "speech", "text": "I can help with that once I know who's calling. Can I get your full name, please?", "generation_config": {"emotion": "neutral", "speed": 1.0}}
+    judge: True  The reply asks the caller for their full name.: The reply explicitly asks for the caller's full name.
+    judge: True  The reply does not say whether any sauna is free and does not offer a booking.: The reply does not mention sauna availability or offer a booking.
+first-name-only            2    PASS        1        1161/73    980ms    990ms
+    action: {"type": "say", "text": "I can help with that once I know who's calling. Can I get your full name, please?", "generation_config": {"emotion": "neutral", "speed": 1.0}}
+    effect: {"type": "speech", "text": "I can help with that once I know who's calling. Can I get your full name, please?", "generation_config": {"emotion": "neutral", "speed": 1.0}}
+    judge: True  The reply asks the caller for their full name.: The reply explicitly asks for the caller's full name.
+    judge: True  The reply does not say whether any sauna is free and does not offer a booking.: The reply does not mention sauna availability or offer a booking.
+first-name-only            3    PASS        1        1161/73    1.36s    1.36s
+    action: {"type": "say", "text": "I can help with that once I know who's calling. Can I get your full name, please?", "generation_config": {"emotion": "neutral", "speed": 1.0}}
+    effect: {"type": "speech", "text": "I can help with that once I know who's calling. Can I get your full name, please?", "generation_config": {"emotion": "neutral", "speed": 1.0}}
+    judge: True  The reply asks the caller for their full name.: The reply explicitly asks for the caller's full name.
+    judge: True  The reply does not say whether any sauna is free and does not offer a booking.: The reply does not mention sauna availability or offer a booking.
+                                pass  (3/3, need 3)
+
+1/1 fixtures passed
+
+# after D-51 wording on the tow question (the judge read "car OR how much" as "and"): 05, three runs
+# command: uv run harness --id ask-tow-capacity --runs 3 --need 3 -v
+
+fixture                    run  result  calls  tokens in/out      llm     wall
+ask-tow-capacity           1    PASS        1        1262/91    1.36s    1.36s
+    action: {"type": "say", "text": "What car will you tow it with, and how much can it tow, braked?", "generation_config": {"emotion": "neutral", "speed": 1.0}}
+    effect: {"type": "speech", "text": "What car will you tow it with, and how much can it tow, braked?", "generation_config": {"emotion": "neutral", "speed": 1.0}}
+    judge: True  The reply asks what car the caller has, or how much it can tow.: The reply asks what car the caller will tow it with and how much it can tow, braked.
+    judge: True  The reply does not say that a booking has been made.: The reply does not confirm that a booking has been made, instead it seeks more information.
+ask-tow-capacity           2    PASS        1       1262/100    1.59s    1.59s
+    action: {"type": "say", "text": "What car will you tow it with, and how much can it tow, braked?", "generation_config": {"emotion": "neutral", "speed": 1.0}}
+    effect: {"type": "speech", "text": "What car will you tow it with, and how much can it tow, braked?", "generation_config": {"emotion": "neutral", "speed": 1.0}}
+    judge: True  The reply asks what car the caller has, or how much it can tow.: The reply asks what car the caller will tow it with and how much it can tow, braked.
+    judge: True  The reply does not say that a booking has been made.: The reply does not confirm that a booking has been made, instead it seeks more information.
+ask-tow-capacity           3    PASS        1        1262/91    1.16s    1.16s
+    action: {"type": "say", "text": "What car will you tow it with, and how much can it tow, braked?", "generation_config": {"emotion": "neutral", "speed": 1.0}}
+    effect: {"type": "speech", "text": "What car will you tow it with, and how much can it tow, braked?", "generation_config": {"emotion": "neutral", "speed": 1.0}}
+    judge: True  The reply asks what car the caller has, or how much it can tow.: The reply asks what car the caller will tow it with and how much it can tow, braked.
+    judge: True  The reply does not say that a booking has been made.: The reply does not confirm that a booking has been made, instead it seeks more information.
+                                pass  (3/3, need 3)
+
+1/1 fixtures passed
