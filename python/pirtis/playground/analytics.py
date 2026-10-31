@@ -7,7 +7,7 @@ None of it can name a customer, because none of its inputs holds one.
 
 import math
 from collections import Counter
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import date, datetime, timedelta
 from itertools import groupby
 from typing import Any
@@ -30,7 +30,8 @@ from pirtis.api.types import (
     Site,
     Unit,
 )
-from pirtis.ops.gate_report import PRICE_IN, PRICE_OUT
+from pirtis.ops import cases
+from pirtis.ops.gate_report import PRICE_IN, PRICE_OUT, RunRow
 from pirtis.ops.human import RUBRIC, Card
 from pirtis.ops.model import Calibration, GateRun, HumanRating, Turn
 
@@ -38,7 +39,7 @@ UNKNOWN_CALLER = "no customer matches"  # how the policy words a hand-off of a s
 INTENTS = ["book", "change", "cancel", "check_booking", "price", "human", "goodbye"]
 PSI_WARN, PSI_ALERT = 0.10, 0.25  # the usual bands (D-43)
 PSI_MIN_TURNS = 30  # below this, either window is too small for PSI to mean anything
-SUITE_ORDER = {"fixtures": 0, "extra": 1, "variants": 2}  # the kit's cases first
+type Groups = Mapping[tuple[str, str], str]  # (suite, fixture) -> group (ops/cases.py)
 
 
 def funnel(turns: list[Turn]) -> dict[str, Any]:
@@ -240,15 +241,54 @@ def what_if(
     return {"units": rows}
 
 
-def gate_runs_view(runs: list[GateRun]) -> list[dict[str, Any]]:
-    """Gate run summaries, newest first, without the per-run rows."""
+def _group(groups: Groups, suite: str, fixture: str) -> str:
+    """A case's group from the index; a case no longer on disk falls back to its folder."""
+    return groups.get((suite, fixture)) or cases.group_of(suite, None)
+
+
+def by_family(rows: list[RunRow], groups: Groups) -> list[dict[str, Any]]:
+    """A gate run's result split by where its cases come from, so the kit's own cases are
+    never mixed with ours: per family, cases passing all runs, deterministic and judge."""
+    by_case: dict[tuple[str, str], list[RunRow]] = {}
+    for x in rows:
+        by_case.setdefault((x.suite, x.fixture), []).append(x)
+    out = []
+    for family, label in cases.FAMILIES.items():
+        mine = [v for k, v in by_case.items() if cases.BY_KEY[_group(groups, *k)].family == family]
+        if mine:
+            out.append(
+                {
+                    "family": family,
+                    "label": label,
+                    "cases": len(mine),
+                    "passed_cases": sum(all(x.passed for x in v) for v in mine),
+                    "deterministic_passed_cases": sum(
+                        all(x.deterministic_ok for x in v) for v in mine
+                    ),
+                    "judge_passed_cases": sum(all(x.judge_ok for x in v) for v in mine),
+                }
+            )
+    return out
+
+
+def gate_runs_view(runs: list[GateRun], groups: Groups | None = None) -> list[dict[str, Any]]:
+    """Gate run summaries, newest first, without the per-run rows but split by family."""
     ordered = sorted(runs, key=lambda r: r.run_ts, reverse=True)
-    return [{**r.model_dump(mode="json", exclude={"rows"}), "key": r.key()} for r in ordered]
+    return [
+        {
+            **r.model_dump(mode="json", exclude={"rows"}),
+            "key": r.key(),
+            "by_family": by_family(r.rows, groups or {}),
+        }
+        for r in ordered
+    ]
 
 
-def thermal(runs: list[GateRun]) -> dict[str, Any]:
+def thermal(runs: list[GateRun], groups: Groups | None = None) -> dict[str, Any]:
     """Rows are fixtures, columns are runs grouped by version, oldest first; each cell is
-    pass, fail, judge (only the judge failed it) or none (not in that run)."""
+    pass, fail, judge (only the judge failed it) or none (not in that run). Rows come in
+    groups, the kit's own cases first (ops/cases.py)."""
+    groups = groups or {}
     columns: list[dict[str, Any]] = []
     cells: dict[tuple[str, str], dict[int, str]] = {}
     for r in sorted(runs, key=lambda r: r.run_ts):
@@ -260,15 +300,22 @@ def thermal(runs: list[GateRun]) -> dict[str, Any]:
             for x in rows:
                 state = "pass" if x.passed else "judge" if x.deterministic_ok else "fail"
                 cells.setdefault((x.suite, x.fixture), {})[col] = state
+
+    def order(k: tuple[str, str]) -> tuple[int, str, str]:
+        return (cases.ORDER[_group(groups, *k)], k[1], k[0])
+
     return {
         "columns": columns,
+        "groups": cases.groups_view(),
+        "families": cases.FAMILIES,
         "rows": [
             {
                 "suite": suite,
                 "fixture": fixture,
+                "group": _group(groups, suite, fixture),
                 "cells": [cells[(suite, fixture)].get(i, "none") for i in range(len(columns))],
             }
-            for suite, fixture in sorted(cells, key=lambda k: (SUITE_ORDER.get(k[0], 9), k))
+            for suite, fixture in sorted(cells, key=order)
         ],
     }
 

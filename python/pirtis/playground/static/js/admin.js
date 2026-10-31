@@ -13,7 +13,8 @@ initTheme($("theme"));
 initAccount($("account"));
 api("/api/health").then((h) => { $("version").textContent = `agent ${h.agent_version}`; }).catch(() => {});
 
-const SUITES = { fixtures: "Given by the kit", extra: "Ours", variants: "Variants" };
+// where a case comes from (ops/cases.py): the kit's own, written by us, or generated
+const rel = { family: "" };
 const STATE_WORDS = {
   pass: "passed",
   fail: "failed a deterministic check",
@@ -155,16 +156,29 @@ async function reliability() {
         chip(r.passed ? "Gate holds" : "Gate fails", r.passed ? "cold" : "hot")),
       el("p", { class: "big" }, `${r.passed_cases}/${r.cases}`, el("small", { text: `cases passing all ${r.k} run${r.k === 1 ? "" : "s"}` })),
       el("p", { class: "meta", text: `deterministic ${r.deterministic_passed_cases}/${r.cases} · judge ${r.judge_passed_cases}/${r.cases}` }),
+      (r.by_family || []).length ? el("dl", { class: "families" }, r.by_family.flatMap((f) => [
+        el("dt", { text: f.label }),
+        el("dd", { class: f.passed_cases === f.cases ? "" : "hot" },
+          el("strong", { text: `${f.passed_cases}/${f.cases}` }),
+          ` · det ${f.deterministic_passed_cases} · judge ${f.judge_passed_cases}`),
+      ])) : null,
       r.extract_cases != null ? el("p", { class: "meta", text: `extractor ${r.extract_passed_cases}/${r.extract_cases} cases heard right in all runs` }) : null,
       el("p", { class: "meta mono", text: `${r.runs} runs · ${r.model_calls} model calls · p95 ${fmt.secs(r.p95_ms)} · ≈ ${fmt.usd(r.est_cost_usd)}` }),
       r.failed.length ? el("p", { class: "meta", text: `Failed: ${r.failed.join(", ")}` }) : null,
       el("p", { class: "meta muted", text: fmt.time(r.run_ts) }))));
 
+  const groups = Object.fromEntries(th.groups.map((g) => [g.key, g]));
+  const present = Object.keys(th.families).filter((f) => th.rows.some((r) => groups[r.group].family === f));
+  if (rel.family && !present.includes(rel.family)) rel.family = "";
+  const shown = { ...th, rows: th.rows.filter((r) => !rel.family || groups[r.group].family === rel.family) };
+  const filter = seg([["", "All cases"], ...present.map((f) => [f, th.families[f]])], rel.family,
+    (v) => { rel.family = v; route(); }, "Which cases");
+
   const detail = el("div", { class: "detail", hidden: true, "aria-live": "polite" });
-  const grid = thermalGrid(th, detail);
+  const grid = thermalGrid(shown, groups, detail);
   const thermalTable = el("div", { hidden: true }, table(
-    th.rows.map((r) => ({ fixture: r.fixture, suite: SUITES[r.suite] || r.suite, ...Object.fromEntries(r.cells.map((c, i) => [`c${i}`, c])) })),
-    [{ key: "fixture", label: "Case" }, { key: "suite", label: "Suite" },
+    shown.rows.map((r) => ({ fixture: r.fixture, group: groups[r.group].label, family: th.families[groups[r.group].family], ...Object.fromEntries(r.cells.map((c, i) => [`c${i}`, c])) })),
+    [{ key: "fixture", label: "Case" }, { key: "family", label: "From" }, { key: "group", label: "Group" },
       ...th.columns.map((c, i) => ({ key: `c${i}`, label: `${c.agent_version.slice(0, 8)} r${c.run}` }))]));
   const toggle = el("button", { class: "btn quiet", type: "button", "aria-pressed": "false", text: "Show as table" });
   toggle.addEventListener("click", () => {
@@ -178,12 +192,13 @@ async function reliability() {
   done(
     tiles,
     el("h2", { class: "section-title" }, "Thermal view", toggle),
-    el("p", { class: "lead", text: "Rows are cases; columns are runs, grouped by agent version, oldest on the left. Hot spots are failures." }),
+    el("p", { class: "lead", text: "Rows are cases, the kit's own first, then ours by kind; columns are runs, grouped by agent version, oldest on the left. Hot spots are failures." }),
+    el("div", { class: "filters" }, filter),
     legend([["pass", "Passed"], ["judge", "Failed on the judge only"], ["fail", "Failed a deterministic check"], ["none", "Not in that run"]]),
     grid, thermalTable, detail);
 }
 
-function thermalGrid(th, detail) {
+function thermalGrid(th, kinds, detail) {
   // columns grouped by run (version and time); an 8px spacer column between groups
   const groups = [];
   th.columns.forEach((c, i) => {
@@ -209,12 +224,23 @@ function thermalGrid(th, detail) {
       text: g.agent_version.length > 12 ? g.agent_version.slice(0, 12) : g.agent_version,
     }));
   }
-  let suite = null;
+  let group = null;
+  let family = null;
+  const count = (key) => th.rows.filter((x) => x.group === key).length;
   for (const r of th.rows) {
-    if (r.suite !== suite) {
-      suite = r.suite;
+    const g = kinds[r.group];
+    if (g.family !== family) {
+      family = g.family;
       row += 1;
-      gridEl.append(el("span", { class: "suite", style: `grid-row: ${row}`, text: SUITES[suite] || suite }));
+      const n = th.rows.filter((x) => kinds[x.group].family === family).length;
+      gridEl.append(el("span", { class: `family ${family}`, style: `grid-row: ${row}`, text: `${th.families[family]} · ${n} case${n === 1 ? "" : "s"}` }));
+    }
+    if (r.group !== group) {
+      group = r.group;
+      if (g.label !== th.families[g.family]) {  // the kit's own need no second heading
+        row += 1;
+        gridEl.append(el("span", { class: "suite", style: `grid-row: ${row}`, text: `${g.label} (${count(group)})` }));
+      }
     }
     row += 1;
     gridEl.append(el("span", { class: "rhead", style: `grid-row: ${row}; grid-column: 1`, text: r.fixture }));

@@ -428,10 +428,11 @@ function renderLastTurn(view) {
 $("anger").addEventListener("input", (e) => { $("anger-value").textContent = Number(e.target.value).toFixed(1); });
 
 async function loadFixtures() {
-  const { fixtures } = await api("/api/fixtures");
-  const groups = { given: el("optgroup", { label: "Given by the kit" }), ours: el("optgroup", { label: "Ours" }) };
-  for (const f of fixtures) groups[f.suite].append(el("option", { value: f.id, text: f.id }));
-  clear($("fixture"), groups.given, groups.ours);
+  const { fixtures, groups } = await api("/api/fixtures");
+  // the kit's own cases first, then ours by kind (ops/cases.py)
+  const boxes = Object.fromEntries(groups.map((g) => [g.key, el("optgroup", { label: g.family === "given" ? g.label : `Ours · ${g.label}` })]));
+  for (const f of fixtures) boxes[f.group].append(el("option", { value: f.id, text: f.id }));
+  clear($("fixture"), ...groups.map((g) => boxes[g.key]).filter((b) => b.children.length));
 }
 
 $("replay").addEventListener("click", async () => {

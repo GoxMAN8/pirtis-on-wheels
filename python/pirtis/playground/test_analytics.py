@@ -16,6 +16,7 @@ from pirtis.playground.analytics import (
     conversations,
     fleet,
     funnel,
+    gate_runs_view,
     latency,
     psi,
     thermal,
@@ -183,3 +184,38 @@ def test_the_kits_own_cases_come_first() -> None:
             [("extra", "a-ours"), ("fixtures", "z-given")]]  # fmt: skip
     m = thermal([GateRun.from_rows(rows, agent_version="v1", run_ts=NOW)])
     assert [r["suite"] for r in m["rows"]] == ["fixtures", "extra"]
+
+
+def test_thermal_rows_come_grouped_by_where_the_case_comes_from() -> None:
+    rows = [RunRow(suite, f, 1, True, True, True, 1, 1, 1, 1) for suite, f in
+            [("extra", "zz-red"), ("extra", "aa-edge"), ("fixtures", "mm-given"),
+             ("variants", "aa-variant")]]  # fmt: skip
+    groups = {("extra", "zz-red"): "red_team", ("extra", "aa-edge"): "edge",
+              ("fixtures", "mm-given"): "given",
+              ("variants", "aa-variant"): "variants"}  # fmt: skip
+    m = thermal([GateRun.from_rows(rows, agent_version="v1", run_ts=NOW)], groups)
+    assert [(r["group"], r["fixture"]) for r in m["rows"]] == [
+        ("given", "mm-given"), ("edge", "aa-edge"), ("red_team", "zz-red"),
+        ("variants", "aa-variant"),
+    ]  # fmt: skip
+    assert m["families"]["given"] == "Given by the kit"
+    assert {g["key"] for g in m["groups"]} >= {"given", "edge", "red_team", "variants"}
+
+
+def test_a_gate_run_is_split_into_the_kits_cases_and_ours() -> None:
+    rows = [
+        *[RunRow("fixtures", "given-ok", r, True, True, True, 1, 1, 1, 1) for r in (1, 2, 3)],
+        *[RunRow("extra", "ours-ok", r, True, True, True, 1, 1, 1, 1) for r in (1, 2, 3)],
+        RunRow("extra", "ours-judge", 1, True, True, True, 1, 1, 1, 1),
+        RunRow("extra", "ours-judge", 2, False, True, False, 1, 1, 1, 1),  # the judge only
+    ]
+    groups = {("fixtures", "given-ok"): "given", ("extra", "ours-ok"): "edge",
+              ("extra", "ours-judge"): "red_team"}  # fmt: skip
+    [view] = gate_runs_view([GateRun.from_rows(rows, agent_version="v1", run_ts=NOW)], groups)
+    assert view["by_family"] == [
+        {"family": "given", "label": "Given by the kit", "cases": 1, "passed_cases": 1,
+         "deterministic_passed_cases": 1, "judge_passed_cases": 1},
+        {"family": "ours", "label": "Written by us", "cases": 2, "passed_cases": 1,
+         "deterministic_passed_cases": 2, "judge_passed_cases": 1},
+    ]  # fmt: skip
+    assert "rows" not in view
