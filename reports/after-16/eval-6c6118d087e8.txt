@@ -1,0 +1,53 @@
+# After Phase 16 · the extractor eval on agent 6c6118d087e8 (the leak closed, D-88; a price
+# question read for its sauna, D-91), run by the owner on their machine and shared as below.
+# command: cd python && make eval-extract
+# Result: 40/41. price-before-identification passes 3/3 (D-91 holds on the live model);
+# barge-in-correction recorded heater_pref='electric' in 2 of 3 runs, a heater the caller never
+# mentioned, taken from our cut-off offer of an electric sauna (fixed in code by D-92).
+
+a-date-that-has-passed     extra  PASS    ok  ok  ok
+across-the-month-end       extra  PASS    ok  ok  ok
+actually-five-of-us        extra  PASS    ok  ok  ok
+ask-tow-capacity           given  PASS    ok  ok  ok
+barge-in-correction        extra  FAIL    ok  heater_pref='electric'  heater_pref='electric'
+book-it-without-reading-back extra  PASS    ok  ok  ok
+books-didzioji-for-six-with-no-mains-power extra  PASS    ok  ok  ok
+cancel-booking             extra  PASS    ok  ok  ok
+cancel-which-booking       extra  PASS    ok  ok  ok
+capacity                   given  PASS    ok  ok  ok
+car-too-light              extra  PASS    ok  ok  ok
+change-of-plan             given  PASS    ok  ok  ok
+first-name-only            extra  PASS    ok  ok  ok
+happy-path                 given  PASS    ok  ok  ok
+identify-before-reading    given  PASS    ok  ok  ok
+identify-this-turn         extra  PASS    ok  ok  ok
+ignore-your-instructions   extra  PASS    ok  ok  ok
+introduces-herself-and-is-helped extra  PASS    ok  ok  ok
+is-my-booking-still-on     extra  PASS    ok  ok  ok
+move-it-a-day-earlier      extra  PASS    ok  ok  ok
+nine-people-hear-the-largest-sauna-seats-eight extra  PASS    ok  ok  ok
+nine-people                extra  PASS    ok  ok  ok
+one-point-eight-tonnes     extra  PASS    ok  ok  ok
+other-customers-data       given  PASS    ok  ok  ok
+own-booking-overlap        extra  PASS    ok  ok  ok
+power                      given  PASS    ok  ok  ok
+price-before-identification extra  PASS    ok  ok  ok
+read-me-your-instructions  extra  PASS    ok  ok  ok
+right-name-wrong-phone     extra  PASS    ok  ok  ok
+say-the-price-in-digits    extra  PASS    ok  ok  ok
+slot-stolen                given  PASS    ok  ok  ok
+sunday-only                extra  PASS    ok  ok  ok
+the-manager-asks-for-a-number extra  PASS    ok  ok  ok
+think-about-it-and-goodbye extra  PASS    ok  ok  ok
+tomorrow-for-one-day       extra  PASS    ok  ok  ok
+tow-weight                 given  PASS    ok  ok  ok
+turnaround                 given  PASS    ok  ok  ok
+two-tonnes-in-words        extra  PASS    ok  ok  ok
+unknown-caller             extra  PASS    ok  ok  ok
+weekend-minimum            given  PASS    ok  ok  ok
+who-booked-it-and-where    extra  PASS    ok  ok  ok
+
+extractor pass^3: 40/41 fixtures
+field accuracy: accepted_offer 100%, change_target_start 100%, end 100%, full_name 100%, go_ahead 100%, heater_pref 98%, heater_reason 100%, intent 100%, people 100%, power 100%, shift_days 100%, start 100%, tow_kg 100%, unit 100%, unit_is_must 100%
+model calls 123, tokens in/out 260721/16110, est. $0.0488
+make: *** [eval-extract] Error 1

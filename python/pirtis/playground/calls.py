@@ -18,6 +18,7 @@ import logging
 import re
 import secrets
 import threading
+import unicodedata
 from dataclasses import asdict, dataclass, field, replace
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -136,6 +137,9 @@ class Calls:
         self, call: LiveCall, text: str, anger: float = 0.0, barge_in: bool = False
     ) -> dict[str, Any]:
         """The caller says text, then the receptionist answers."""
+        # one spelling of every letter: "ė" typed or heard as "e" plus a combining dot
+        # would otherwise never match the customer's name on record
+        text = unicodedata.normalize("NFC", text)
         with call.lock:
             _must_be_open(call)
             t = call.t
@@ -170,7 +174,10 @@ class Calls:
         """The caller says nothing for a while, then the receptionist decides what to do."""
         with call.lock:
             _must_be_open(call)
-            call.t.now = round(call.t.now + seconds, 2)
+            # counted from when the receptionist stopped talking, as a phone line counts it
+            ours = _last_line(call.t)
+            since = max(call.t.now, ours.end if ours is not None else 0.0)
+            call.t.now = round(since + seconds, 2)
             return self._respond(call)
 
     def hang_up(self, call: LiveCall) -> None:

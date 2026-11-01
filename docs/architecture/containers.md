@@ -70,7 +70,7 @@ flowchart LR
 
 | Container | What it does | Evidence |
 |---|---|---|
-| Caller simulator | Pick a seed customer or an unknown number; type, or hold to talk; the fogged booking card condenses as facts are heard; thumbs on every reply; scenario cards and the rating form | `python/pirtis/playground/static/caller.html`, `python/pirtis/playground/static/js/caller.js` |
+| Caller simulator | Pick a seed customer or an unknown number; type, or tap (or hold) to talk; the fogged booking card condenses as facts are heard; thumbs on every reply; scenario cards and the rating form | `python/pirtis/playground/static/caller.html`, `python/pirtis/playground/static/js/caller.js` |
 | Admin console | Reliability (gate runs, the thermal view), Conversations, Traces, Feedback, Fleet, Human eval; all computed from content-free records except a stored call's trace | `python/pirtis/playground/static/admin.html`, `python/pirtis/playground/static/js/admin.js`, `python/pirtis/playground/analytics.py` |
 | Playground server | The JSON API and the two pages; the sign-in (accounts we create, signed sessions); runs each call turn through `decide()` and the kit's handlers, saves the call after every turn | `python/pirtis/playground/server.py`, `python/pirtis/playground/auth.py`, `python/pirtis/playground/calls.py` |
 | `decide()` | Turn gate (no model call), one strict-JSON understanding call, a deterministic policy that owns every rule and write, code-rendered speech, one telemetry line | `python/pirtis/agent/agent.py`, `python/pirtis/agent/turn.py`, `python/pirtis/agent/understand.py`, `python/pirtis/agent/policy.py`, `python/pirtis/agent/rules.py`, `python/pirtis/agent/speech.py` |

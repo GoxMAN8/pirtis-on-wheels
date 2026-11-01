@@ -40,6 +40,7 @@ from pirtis.harness.fixture import Fixture, load_fixtures
 from pirtis.harness.run import Runner
 from pirtis.llm.client import Client as LlmClient
 from pirtis.llm.client import open_ai_from_env
+from pirtis.ops import cases
 from pirtis.ops.human import load_cards, outcome_of
 from pirtis.ops.model import Calibration, Feedback, GateRun, HumanRating, Turn
 from pirtis.ops.store import FileStore, store_from_env
@@ -242,6 +243,7 @@ class App:
             for f in load_fixtures(folder):
                 found.setdefault(f.id, (suite, f))
         self.fixtures = found
+        self.case_groups = cases.index(FIXTURES)
 
     # caller simulator
 
@@ -369,14 +371,21 @@ class App:
             ratings, list(self.cards.values()), outcomes, calibrations[-1] if calibrations else None
         )
 
+    def _group_of(self, fid: str, suite: str) -> str:
+        if suite == "given":
+            return "given"
+        return self.case_groups.get(("extra", fid), "promoted")  # downloaded, not on disk yet
+
     def fixture_list(self, q: dict[str, str]) -> Any:
         return {
+            "groups": cases.groups_view(),
             "fixtures": [
-                {"id": fid, "suite": suite, "judged": len(f.judge)}
-                for fid, (suite, f) in sorted(
-                    self.fixtures.items(), key=lambda kv: (kv[1][0] != "given", kv[0])
+                {"id": fid, "suite": suite, "group": group, "judged": len(f.judge)}
+                for fid, (suite, f), group in sorted(
+                    ((fid, sf, self._group_of(fid, sf[0])) for fid, sf in self.fixtures.items()),
+                    key=lambda x: (cases.ORDER[x[2]], x[0]),
                 )
-            ]
+            ],
         }
 
     def replay(self, body: ReplayBody) -> Any:
@@ -419,11 +428,11 @@ class App:
         return analytics.conversations(turns, now=now, days=days)
 
     def gate_runs(self, q: dict[str, str]) -> Any:
-        return {"runs": analytics.gate_runs_view(self.store.query(GateRun))}
+        return {"runs": analytics.gate_runs_view(self.store.query(GateRun), self.case_groups)}
 
     def thermal(self, q: dict[str, str]) -> Any:
         runs = self.store.query(GateRun)[-_int(q, "limit", 6, 1, 30) :]
-        return analytics.thermal(runs)
+        return analytics.thermal(runs, self.case_groups)
 
     def fleet(self, q: dict[str, str]) -> Any:
         try:

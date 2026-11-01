@@ -101,16 +101,16 @@ class CallState(BaseModel):
     )
     unit_quote: str | None = Field(
         description="The caller's own words that name or describe the sauna they want "
-        "('the small one', 'the electric six seater'), copied exactly. Null if none."
+        "('the little one', 'the wood-fired four-seater'), copied exactly. Null if none."
     )
     unit: str | None = Field(description="The sauna the caller asked for by name or description.")
     unit_is_must: bool = Field(
-        description="True only if the caller said they cannot take another sauna: 'it has to "
-        "be that one', or a health reason. Naming or wanting a sauna is false."
+        description="True only if the caller said they cannot take another sauna: 'nothing "
+        "else will do', or a health reason. Naming or wanting a sauna is false."
     )
     heater_reason: str | None = Field(
         description="The caller's reason for wanting or avoiding a heater, in their words "
-        "(e.g. 'the wood smoke sets off my asthma'). Null otherwise."
+        "(e.g. 'electric heat gives me a headache'). Null otherwise."
     )
     heater_pref: str | None = Field(
         description="The heater type the caller wants, if they said ('the wood one'). If "
@@ -208,6 +208,31 @@ class CallState(BaseModel):
             and names_a_sauna(quote, names)
         ):
             data["unit"] = unit_from_quote(quote, units)  # the quote is there, the sauna wasn't
+        # a price needs a caller who asked about money (D-95): "which dates are free?" is
+        # a booking question, and a price list doesn't answer it
+        if (
+            data.get("intent") == "price"
+            and latest
+            and not any(
+                _words(line) & _PRICE_WORDS or "how much" in fold(line).lower() for line in latest
+            )
+        ):
+            data["intent"] = "book"
+        # a price question about one sauna, with the sauna left out: read the question
+        # itself the same way (D-91). Only for a price: in a booking, words like "a big
+        # group" describe the people, and must not choose a sauna for them.
+        if data.get("intent") == "price" and data.get("unit") is None and units and latest:
+            for line in latest:
+                found = unit_from_quote(line, units)
+                if found is not None:
+                    data["unit"], data["unit_quote"] = found, line
+                    break
+        # a heater preference only from a caller who talked about heating (D-92): the model
+        # has taken one from our own offer of an electric sauna, unasked
+        if data.get("heater_pref") is not None and not any(
+            _words(line) & _HEATING_WORDS for line in lines
+        ):
+            data["heater_pref"] = None
         if latest is not None and not quote_in(data.get("consent_quote"), latest):
             data["accepted_offer"], data["go_ahead"] = False, False
         # a yes that names its own price, or that talks to the system, isn't a yes to us
@@ -254,6 +279,20 @@ def quote_supported(quote: object, caller_lines: Sequence[str]) -> bool:
     has_number = any(w.isdigit() for w in words) or bool(words & _NUMBER_WORDS)
     return has_number and quote_in(quote, caller_lines)
 
+
+# words a caller uses when asking what something costs ("how much" is checked as a phrase)
+_PRICE_WORDS = {
+    "cost", "costs", "costing", "price", "prices", "priced", "pricing", "euro", "euros",
+    "eur", "expensive", "cheap", "cheaper", "cheapest", "rate", "rates", "charge", "charges",
+    "fee", "fees", "pay", "paying", "budget", "afford", "quote",
+}  # fmt: skip
+
+# words a caller uses when heating matters to them; "power" and "electricity" are about the
+# site, not the heater, so they don't count
+_HEATING_WORDS = {
+    "wood", "wooden", "woodfired", "fired", "firewood", "logs", "fire", "smoke", "smoky",
+    "electric", "stove", "heater", "heaters", "heating", "burner",
+}  # fmt: skip
 
 # words that describe a sauna rather than people or dates
 _SAUNA_WORDS = {
@@ -387,11 +426,12 @@ Numbers: record a number only if the caller said one. "The small one" names a sa
 number of people.
 The towing capacity must come from a number the caller said. "It's fine" or "we towed a \
 caravan" is not a number.
-The sauna: record one only if the caller named or described it ("the big one", "the electric \
-six seater"). Never choose one for them. It is a must only if they said they cannot take \
-another, for example "it has to be that one" or a health reason; wanting one is not a must.
+The sauna: record one only if the caller named or described it ("the largest", "the \
+wood-fired four-seater"). Never choose one for them. It is a must only if they said they \
+cannot take another, for example "nothing else will do" or a health reason; wanting one is \
+not a must.
 Heater: record the kind of heater the caller wants. When they say one kind is a problem \
-for them (its smoke, their asthma), they want the other kind.
+for them (a headache, a cough, the smell), they want the other kind.
 Names: copy the name exactly as said, keeping letters like ė, ž, š, and join spelled-out \
 letters. A first name alone is recorded as said.
 """

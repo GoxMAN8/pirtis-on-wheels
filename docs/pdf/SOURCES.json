@@ -1,0 +1,55 @@
+{
+  "admin-guide.pdf": {
+    "docs/guide-admin.md": "b8db9a8f8ad8ec39"
+  },
+  "against-the-brief.pdf": {
+    "docs/against-the-brief.md": "e6ef10b155291012"
+  },
+  "architecture.pdf": {
+    "docs/architecture/containers.md": "cef45bc3cf317ccf",
+    "docs/architecture/data-flow.md": "ed3151d75918142e",
+    "docs/architecture/sequences.md": "795dc28cfaa48e72",
+    "docs/architecture/logic-flow.md": "a42d0fa6baaf8a6f",
+    "docs/architecture/deployment.md": "55c354a22d4d1b91"
+  },
+  "build-log.pdf": {
+    "BUILD_LOG.md": "046a076e3970ee22"
+  },
+  "data-science.pdf": {
+    "docs/data-science.md": "b2e1acd3e3719fda"
+  },
+  "deploy.pdf": {
+    "deploy/README.md": "1a84cee86c900460"
+  },
+  "evaluation.pdf": {
+    "docs/evaluation.md": "e8eea5360fffb03c"
+  },
+  "fixtures.pdf": {
+    "docs/fixtures.md": "be848c45636c6d2f",
+    "fixtures/variants-candidates/REVIEW.md": "26e9a9278d365dd3"
+  },
+  "human-eval.pdf": {
+    "tests/human/README.md": "a444f21f088691ba"
+  },
+  "python.pdf": {
+    "python/README.md": "c95abd0f2c65d22f"
+  },
+  "readme.pdf": {
+    "README.md": "cf11d8fc9e75a7ee"
+  },
+  "reports.pdf": {
+    "reports/README.md": "732f6b5b34fb3d16"
+  },
+  "spec.pdf": {
+    "SPEC.md": "6afb29896c161b41"
+  },
+  "tester-guide.pdf": {
+    "docs/guide-caller.md": "f8529f86f3a1eb78"
+  },
+  "using-the-app.pdf": {
+    "docs/using-the-app.md": "9caf41f3919d5982"
+  },
+  "walkthrough.pdf": {
+    "docs/walkthrough.md": "182c3a9a8e485bfd"
+  }
+}

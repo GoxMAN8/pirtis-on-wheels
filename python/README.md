@@ -94,6 +94,7 @@ The receptionist is built in `pirtis/agent/`. Around it, never imported by it:
 - `pirtis/ops/`: the data layer, the gate job, evaluation tools
 
 Start with the root [README](../README.md#our-solution-the-python-receptionist).
+How the evaluation and monitoring numbers are computed: [docs/data-science.md](../docs/data-science.md).
 Everyday commands are in the `Makefile`:
 - `make check`
 - `make gate`

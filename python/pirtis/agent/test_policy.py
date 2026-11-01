@@ -472,3 +472,210 @@ def test_our_own_offers_read_back_exactly(fid: str, kw: dict[str, Any]) -> None:
         items=[Item(type="message", role="assistant", start=1, end=2, content=line)],
     )
     assert last_offer(heard_in, api.list_units()) == HeardOffer(d.unit.id, d.start, d.end, d.people)
+
+
+# ---- manual testing, 2026-11-01 (D-93, D-94) ----
+
+TOMAS_CALLS = "price-before-identification"  # Tomas's phone, nobody identified yet
+
+
+def test_a_group_no_sauna_takes_hears_so_before_giving_a_name() -> None:
+    """C2: ten people were asked for a full name first. No customer data is needed to
+    say that no sauna seats ten, so it comes first now."""
+    d, api = run(TOMAS_CALLS, intent="book", people=10)
+    assert isinstance(d, NoFit) and d.reason == "too_many"
+    assert "customers.identify" not in methods(api)
+
+
+@pytest.mark.parametrize(
+    "heard, found",
+    [
+        ("Thomas Petrauskas", True),  # C3: an English recogniser's "Thomas"
+        ("tomas petrauskas", True),  # lower case was always fine
+        ("Thomas Wilde", False),  # respelled, still nobody on this number
+    ],
+)
+def test_a_name_spelled_the_english_way_is_tried_once_more_the_lithuanian_way(
+    heard: str, found: bool
+) -> None:
+    d, api = run(TOMAS_CALLS, intent="book", full_name=heard)
+    assert isinstance(d, Handoff) != found
+    assert methods(api).count("customers.identify") <= 2
+
+
+def test_a_stranger_is_still_put_through() -> None:
+    d, api = run("unknown-caller", intent="book", full_name="Marius Kazlauskas")
+    assert isinstance(d, Handoff) and d.queue == "new_customers"
+    assert methods(api).count("customers.identify") == 1  # nothing to respell
+
+
+@pytest.mark.parametrize(
+    "heard, found",
+    [
+        ("manitis Tomas petrauskas", True),  # "my name is", heard as Lithuanian (D-101)
+        ("it's Thomas Petrauskas", True),  # a stray word and the English spelling
+        ("Tomas Petrauskas speaking", True),
+        ("manitis Tomas Wilde", False),  # no two of the words are this caller
+    ],
+)
+def test_a_stray_word_beside_the_name_doesnt_hide_the_caller(heard: str, found: bool) -> None:
+    d, api = run(TOMAS_CALLS, intent="book", full_name=heard)
+    assert isinstance(d, Handoff) != found
+    assert methods(api).count("customers.identify") <= 6
+
+
+def test_a_stray_word_doesnt_find_a_stranger() -> None:
+    d, api = run("unknown-caller", intent="book", full_name="manitis Jonas Jonaitis")
+    assert isinstance(d, Handoff) and d.queue == "new_customers"  # the number decides
+
+
+def test_name_guesses() -> None:
+    from pirtis.agent.policy import name_guesses
+
+    assert name_guesses("Jonas Jonaitis") == ["Jonas Jonaitis"]
+    assert name_guesses("Thomas Petrauskas") == ["Thomas Petrauskas", "Tomas Petrauskas"]
+    assert name_guesses("manitis Jonas jonaitis") == [
+        "manitis Jonas jonaitis", "Jonas jonaitis", "manitis Jonas"
+    ]  # fmt: skip
+    assert name_guesses("Jonas Jonas") == []  # one name twice is not a full name
+    assert len(name_guesses("a b c d e f g h i j k")) <= 6  # a bounded number of lookups
+
+
+@pytest.mark.parametrize(
+    "name, respelled",
+    [
+        ("Thomas Petrauskas", "Tomas Petrauskas"),
+        ("Egle Butkute", "Eglė Butkutė"),
+        ("Rasa Paulauskiene", "Rasa Paulauskienė"),
+        ("Eglė Butkutė", "Eglė Butkutė"),  # already Lithuanian: untouched
+        ("Jonas Jonaitis", "Jonas Jonaitis"),
+        ("Wilhelm Stephens", "Vilhelm Stefens"),
+    ],
+)
+def test_lithuanian_spelling(name: str, respelled: str) -> None:
+    from pirtis.agent.policy import lithuanian_spelling
+
+    assert lithuanian_spelling(name) == respelled
+
+
+# ---- keeping the thread of the call (D-98, D-99) ----
+
+
+def test_a_refusal_is_not_repeated_word_for_word() -> None:
+    """Manual testing, C2: ten people, then ten again, got the same line forever."""
+    from pirtis.agent.speech import no_fit_line
+
+    first, _ = run(TOMAS_CALLS, intent="book", people=10)
+    assert isinstance(first, NoFit) and not first.closing
+    f = ALL[TOMAS_CALLS]
+    said = no_fit_line(first)
+    items = [*f.transcript.items,
+             Item(type="message", role="assistant", content=said, start=20, end=22),
+             Item(type="message", role="user", content="ten. we are ten.", start=23, end=24,
+                  is_final=True, speech_final=True)]  # fmt: skip
+    again, _ = run(TOMAS_CALLS, items=items, intent="book", people=10)
+    assert isinstance(again, NoFit) and again.closing
+
+
+def test_book_it_to_our_read_back_is_a_yes() -> None:
+    """Manual testing, C8: "book it" got "Shall I book it?" again: the model heard a
+    go-ahead, not an accepted offer. To the offer we just read back, either is a yes."""
+    import json as _json
+
+    gold = _json.loads((FIXTURES.parent / "python/pirtis/agent/gold/happy-path.json").read_text())
+    heard = {k: v for k, v in gold["state"].items() if k in CallState.model_fields}
+    d, _ = run("happy-path", **{**heard, "accepted_offer": False, "go_ahead": True})
+    assert isinstance(d, Booked)
+    d, _ = run("happy-path", **{**heard, "accepted_offer": False, "go_ahead": False})
+    assert not isinstance(d, Booked)  # and without either, nothing is booked
+
+
+@pytest.mark.parametrize(
+    "line, asks",
+    [
+        ("which dates are available?", True),
+        ("what's free in October?", True),
+        ("any free weekends coming up?", True),
+        ("when can I book the big one?", True),
+        ("we'd like the tenth and eleventh", False),
+        ("is the barrel sauna free in November?", True),
+        ("anything open next month?", True),
+        ("book it for free", False),  # a price demand, not a question about dates
+        ("is it free?", False),  # nor is this
+    ],
+)
+def test_what_is_free_is_answered(line: str, asks: bool) -> None:
+    from pirtis.agent.policy import FreeDates
+
+    f = ALL[TOMAS_CALLS]
+    items = [*f.transcript.items[:-1],
+             Item(type="message", role="user", content=line, start=3, end=5,
+                  is_final=True, speech_final=True)]  # fmt: skip
+    d, _ = run(TOMAS_CALLS, items=items, intent="book")
+    assert isinstance(d, FreeDates) == asks
+    if isinstance(d, FreeDates):
+        first, n = {"": ("2026-10-03", 3), "October": ("2026-10-03", 5),
+                    "November": ("2026-11-07", 4)}[d.month]  # fmt: skip
+        assert d.weekends[0][0] == first and len(d.weekends) == n
+
+
+def _ask(line: str, **state: Any) -> Any:
+    f = ALL[TOMAS_CALLS]
+    items = [*f.transcript.items[:-1],
+             Item(type="message", role="user", content=line, start=3, end=5,
+                  is_final=True, speech_final=True)]  # fmt: skip
+    return run(TOMAS_CALLS, items=items, intent="book", **state)[0]
+
+
+def test_what_is_free_for_a_month_or_one_sauna() -> None:
+    """D-100: "what's free in November?" covers that month's weekends; with a sauna
+    named, each weekend is that sauna's, free or booked. A month that has passed this
+    year is next year's, and the model's reading of the dates doesn't hide the answer."""
+    from pirtis.agent.policy import FreeDates
+    from pirtis.agent.speech import free_dates_line
+
+    nov = _ask("what's free in November?", start="2026-11-01", end="2026-11-30")
+    assert isinstance(nov, FreeDates) and nov.month == "November" and nov.unit is None
+    saturdays = ["2026-11-07", "2026-11-14", "2026-11-21", "2026-11-28"]
+    assert [a for a, _, _ in nov.weekends] == saturdays
+    assert free_dates_line(nov) == (
+        "In November, all four saunas are free every weekend. Weekdays are mostly free. "
+        "Which dates would you like?"
+    )
+
+    march = _ask("anything free in March?")
+    assert isinstance(march, FreeDates) and march.weekends[0][0] == "2027-03-06"
+
+    big = _ask("when is the big one free?", unit="unit_didzioji")
+    assert isinstance(big, FreeDates) and big.unit is not None and big.unit.name == "Didžioji"
+    assert len(big.weekends) == 3 and all(n in (0, 1) for _, _, n in big.weekends)
+    line = free_dates_line(big)
+    assert line.startswith("Didžioji is ") and line.endswith("Which dates would you like?")
+    assert not any(ch.isdigit() for ch in line)
+
+    both = _ask("is the big one free in November?", unit="unit_didzioji")
+    assert isinstance(both, FreeDates) and both.month == "November" and both.unit is not None
+    assert len(both.weekends) == 4
+
+
+def test_free_dates_line_for_one_sauna() -> None:
+    from pirtis.agent.policy import FreeDates
+    from pirtis.agent.speech import free_dates_line
+
+    u = load_seed(FIXTURES / "seeds" / "base.json").units[0]
+    weekends = (("2026-11-07", "2026-11-08", 1), ("2026-11-14", "2026-11-15", 0),
+                ("2026-11-21", "2026-11-22", 1))  # fmt: skip
+    line = free_dates_line(FreeDates(weekends, 4, u, "November"))
+    assert line == (
+        f"{u.name} is free Saturday the seventh to Sunday the eighth and Saturday the "
+        "twenty-first to Sunday the twenty-second, and booked Saturday the fourteenth to "
+        "Sunday the fifteenth. Which dates would you like?"
+    )
+    booked = tuple((a, b, 0) for a, b, _ in weekends)
+    assert free_dates_line(FreeDates(booked, 4, u, "November")) == (
+        f"{u.name} is booked every weekend in November; weekdays are mostly free. "
+        "Which dates would you like?"
+    )
+    assert free_dates_line(FreeDates((), 4, None, "November")).startswith(
+        "I can't see any weekends left in November."
+    )

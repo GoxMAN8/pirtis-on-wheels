@@ -2,6 +2,13 @@
 
 How well the receptionist works, measured four ways. Every number links back to the raw
 output in `reports/`, and SPEC §7b lists every run.
+How each metric is defined and computed, and how far to trust it, is in
+[data-science.md](data-science.md).
+
+**These are the results of agent `bd98c5cf8006`.** What changed since, and what has been
+measured on the way (a prompt leak closed, a gate that failed 45/46, an extractor eval at
+40/41, each fixed in code), is in [data-science.md §3](data-science.md#development-set-and-held-out-set)
+and SPEC §7b.
 - **The frozen gate:** every case, 3 runs, all 3 must pass, the kit's judge included.
 - **The extractor eval:** did the model hear each call right?
 - **A reliability curve:** 5 runs of every case, to catch what a 3-run gate misses.

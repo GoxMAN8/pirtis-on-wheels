@@ -37,6 +37,7 @@ from pirtis.harness.fixture import Fixture, load_fixtures
 from pirtis.harness.run import Runner
 from pirtis.llm.client import Client as LlmClient
 from pirtis.llm.client import open_ai_from_env
+from pirtis.ops.cases import RED_TEAM, numbered
 from pirtis.ops.extract_eval import evaluate, load_gold
 from pirtis.ops.gate_report import load
 from pirtis.ops.model import GATE_K, GateRun, Turn
@@ -47,17 +48,8 @@ PYTHON = Path(__file__).resolve().parents[2]
 FIXTURES = PYTHON.parent / "fixtures"
 # named as `make gate` names them (the folder), so the console shows one history
 SUITES = {"fixtures": FIXTURES, "extra": FIXTURES / "extra", "variants": FIXTURES / "variants"}
-RED_TEAM = range(50, 60)  # fixtures/extra/50_… to 59_…: privacy and safety, never cut (D-45)
 
 type Case = tuple[str, Fixture]  # (suite, fixture)
-
-
-def _numbered(dir: Path) -> list[tuple[int | None, Fixture]]:
-    """Each fixture with its file's number; the kit's loader reads the same files in the
-    same order."""
-    files = sorted(dir.glob("*.yaml"))
-    numbers = [int(p.name[:2]) if p.name[:2].isdigit() else None for p in files]
-    return list(zip(numbers, load_fixtures(dir), strict=True))
 
 
 def select(which: str, ids: Sequence[str] = ()) -> list[Case]:
@@ -66,7 +58,7 @@ def select(which: str, ids: Sequence[str] = ()) -> list[Case]:
     if which not in ("nightly", "all"):
         raise ValueError(f"unknown suites {which!r}: nightly or all")
     out: list[Case] = [("fixtures", f) for f in load_fixtures(SUITES["fixtures"])]
-    out += [("extra", f) for n, f in _numbered(SUITES["extra"]) if which == "all" or n in RED_TEAM]
+    out += [("extra", f) for n, f in numbered(SUITES["extra"]) if which == "all" or n in RED_TEAM]
     if which == "all" and SUITES["variants"].is_dir():
         out += [("variants", f) for f in load_fixtures(SUITES["variants"])]
     return [c for c in out if not ids or c[1].id in ids]

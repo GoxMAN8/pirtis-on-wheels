@@ -10,7 +10,9 @@ import json
 import re
 from dataclasses import dataclass
 from datetime import date
+from typing import Literal
 
+from pirtis.agent.reading import latest_caller_turn
 from pirtis.agent.rules import DAY, days, free_days, violations, without_booking
 from pirtis.agent.understand import CallState, caller_lines, fold
 from pirtis.agent.words import spoken_number, spoken_ordinal
@@ -34,6 +36,16 @@ from pirtis.transcript.types import Transcript
 
 # ---- decisions: what speech renders ------------------------------------------------
 
+# The closed sets a decision may name. Literal types, so mypy rejects a misspelt value
+# and speech's tables are checked to cover each one (test_speech).
+Slot = Literal[
+    "name", "name_booking", "dates", "past_dates", "people", "tow", "power",
+    "which_booking", "new_dates", "need",
+]  # fmt: skip
+WhyNot = Literal["", "capacity", "weight", "power", "taken"]
+NoFitReason = Literal["too_many", "too_light", "nothing_fits", "no_dates", "no_booking"]
+Queue = Literal["new_customers", "front_desk", "bookings_support"]
+
 
 @dataclass(frozen=True)
 class Ask:
@@ -42,7 +54,7 @@ class Ask:
     people, tow, power, which_booking or new_dates; or, for a caller who only greeted us,
     what they need."""
 
-    slot: str
+    slot: Slot
 
 
 @dataclass(frozen=True)
@@ -60,7 +72,7 @@ class Offer:
     people: int
     total: int
     instead_of: Unit | None = None
-    why_not: str = ""  # "capacity" | "weight" | "power" | "taken"
+    why_not: WhyNot = ""  # why the sauna asked for isn't the one offered
     weekend_min: bool = False
     blocked_day: str | None = None
 
@@ -158,7 +170,7 @@ class Handoff:
     """Pass the call to a person in the named queue, with what we already know so the
     caller doesn't have to repeat it."""
 
-    queue: str
+    queue: Queue
     reason: str
     summary: str = ""
     apologise: bool = False  # the caller is upset with us, not just asking
@@ -168,14 +180,25 @@ class Handoff:
 class NoFit:
     """Nothing can be offered. limit is the catalogue figure that rules it out."""
 
-    reason: str  # "too_many" | "too_light" | "nothing_fits" | "no_dates" | "no_booking"
+    reason: NoFitReason
     limit: int = 0
+    closing: bool = False  # said once already: close the topic instead of asking again
+
+
+@dataclass(frozen=True)
+class FreeDates:
+    """What is free on the coming weekends, for a caller who asked what's available."""
+
+    weekends: tuple[tuple[str, str, int], ...]  # Saturday, Sunday, saunas free both days
+    units: int
+    unit: Unit | None = None  # the sauna asked about: then each count is 1 (free) or 0
+    month: str = ""  # the month asked about, as said: "November"
 
 
 Decision = (
     Ask | Offer | Booked | OwnClash | Refuse | ConfirmChange | Moved | ConfirmCancel
     | Cancelled | BookingsRead | Price | Goodbye | Hold | Reply | Sorry | Handoff | NoFit
-    | OffTopic
+    | OffTopic | FreeDates
 )  # fmt: skip
 
 
@@ -183,6 +206,22 @@ Decision = (
 
 
 def next_step(t: Transcript, s: CallState, api: ApiClient, units: list[Unit]) -> Decision:
+    """The one next thing to do, given the call so far. A refusal we just gave is not given
+    again word for word: the second time it closes the topic (D-98)."""
+    d = _next_step(t, s, api, units)
+    if isinstance(d, NoFit) and not d.closing and _said_last(t, d):
+        return NoFit(d.reason, d.limit, closing=True)
+    return d
+
+
+def _said_last(t: Transcript, d: "NoFit") -> bool:
+    from pirtis.agent.speech import no_fit_line  # speech renders decisions: imported late
+
+    ours = [it for it in t.items if it.type == "message" and it.role == "assistant"]
+    return bool(ours) and ours[-1].content == no_fit_line(d)
+
+
+def _next_step(t: Transcript, s: CallState, api: ApiClient, units: list[Unit]) -> Decision:
     """The one next thing to do, given the call so far."""
     today = date.fromisoformat(t.today)
     by_id = {u.id: u for u in units}
@@ -208,13 +247,26 @@ def next_step(t: Transcript, s: CallState, api: ApiClient, units: list[Unit]) ->
             return Reply(answer) if answer else Sorry()
 
     customer = identified_customer(t)
+    biggest = max(u.capacity for u in units)
+    if not customer and s.intent == "book" and s.people is not None and s.people > biggest:
+        # no sauna takes them, whoever they are: say so before asking who's calling (D-93)
+        return NoFit("too_many", limit=biggest)
+    if s.intent == "book" and asks_what_is_free(t) and (s.start is None or month_asked(t)):
+        # an answer, not a question back; it reads no customer data (D-99): the coming
+        # weekends, or a month's, for every sauna or the one the caller named
+        today = date.fromisoformat(t.today)
+        month = month_asked(t)
+        wanted = next((u for u in units if u.id == s.unit), None)
+        return free_dates(api, units, today, month=month, unit=wanted)
     if not customer:
         name = normalise_name(s.full_name, caller_lines(t))
         if not is_full_name(name):
             about_a_booking = s.intent in ("check_booking", "change", "cancel")
             return Ask("name_booking" if about_a_booking else "name")
-        found = api.identify_customer(t.caller.phone, name or "")
-        if not found.ok:
+        # each guess checked against the calling number, stopping at the first match
+        tries = (api.identify_customer(t.caller.phone, g) for g in name_guesses(name or ""))
+        found = next((r for r in tries if r.ok), None)
+        if found is None:
             reason = "no customer matches this phone and name"
             return Handoff("new_customers", reason, summary(s, t))
         customer = found.customer_id
@@ -276,7 +328,7 @@ def book(
 
     heard = last_offer(t, units)
     agreed = (
-        s.accepted_offer
+        (s.accepted_offer or s.go_ahead)  # "book it" to our read-back is a yes too (D-98)
         and heard is not None
         and (heard.unit_id, heard.start, heard.end) == (choice.unit.id, choice.start, choice.end)
         and heard.people in (None, s.people)
@@ -438,7 +490,7 @@ def apply_weekend_min(start: date, end: date) -> tuple[date, date]:
     return start, end
 
 
-def hard_limit(u: Unit, r: Request) -> str:
+def hard_limit(u: Unit, r: Request) -> WhyNot:
     """Why this unit can never work for this caller, whatever the dates, or ""."""
     if u.capacity < r.people:
         return "capacity"
@@ -488,7 +540,7 @@ def choose_offer(
         s: date,
         e: date,
         instead_of: Unit | None = None,
-        why_not: str = "",
+        why_not: WhyNot = "",
         weekend_min: bool = False,
         blocked_day: str | None = None,
     ) -> Offer:
@@ -695,6 +747,95 @@ def normalise_name(name: str | None, lines: list[str]) -> str | None:
         theirs = said.get(fold(w).lower())
         words.append(theirs if theirs and theirs != fold(theirs) and w == fold(w) else w)
     return " ".join(words) or None
+
+
+_WHATS_FREE = re.compile(
+    r"\b(available|availability|vacanc\w*"
+    r"|what(?:'s| is| are|s)? (?:free|open)"
+    r"|(?:which|what) (?:dates|days|weekends?)\b[^?.]*\b(?:free|open|available)"
+    r"|when (?:are|is|can)\b[^?.]*\b(?:free|open|available|book)"
+    r"|any (?:free|open) (?:dates|days|weekends?)"
+    r"|anything (?:free|open|available)"
+    r"|\bis\b[^?.]*\b(?:free|open) (?:in|this|next|over|any))\b",
+    re.IGNORECASE,
+)
+
+
+def asks_what_is_free(t: Transcript) -> bool:
+    """The caller's latest turn asks which dates are free."""
+    return any(_WHATS_FREE.search(it.content) for it in latest_caller_turn(t))
+
+
+def month_asked(t: Transcript) -> int:
+    """The month the caller's latest turn names (1-12), or 0."""
+    said = fold(" ".join(it.content for it in latest_caller_turn(t))).lower()
+    return next((i + 1 for i, m in enumerate(_MONTHS) if re.search(rf"\b{m}\b", said)), 0)
+
+
+def free_dates(
+    api: ApiClient,
+    units: list[Unit],
+    today: date,
+    weekends: int = 3,
+    month: int = 0,
+    unit: Unit | None = None,
+) -> FreeDates:
+    """Which coming weekends are free, Saturday and Sunday both: the next few, or every
+    weekend of the month asked (from today on, this year or next); for every sauna, as a
+    count, or for the one sauna asked about."""
+    first = today
+    if month:
+        year = today.year if month >= today.month else today.year + 1
+        first = max(today, date(year, month, 1))
+    sat = first + (5 - first.weekday()) % 7 * DAY  # that day, if it's a Saturday
+    out = []
+    for k in range(5 if month else weekends):
+        s0, s1 = sat + 7 * k * DAY, sat + (7 * k + 1) * DAY
+        if month and s0.month != month:
+            break
+        q = AvailabilityQuery(from_=s0.isoformat(), to=s1.isoformat())
+        n = sum(
+            1
+            for a in api.availability(q)
+            if (unit is None or a.unit_id == unit.id) and {s0, s1} <= free_days(a.free)
+        )
+        out.append((s0.isoformat(), s1.isoformat(), n))
+    name = _MONTHS[month - 1].capitalize() if month else ""
+    return FreeDates(tuple(out), len(units), unit, name)
+
+
+def lithuanian_spelling(name: str) -> str:
+    """A name as an English speech recogniser tends to spell it, written the Lithuanian way:
+    Lithuanian has no "th", "ph" or "w", and its names never end in a plain "e" ("Eglė",
+    "Butkutė", "Paulauskienė"). Only words with no Lithuanian letters are touched, since
+    those kept the caller's own spelling. It is one more guess at the same caller's name,
+    checked like the first against the calling number."""
+
+    def respell(word: str) -> str:
+        if fold(word) != word:  # already has Lithuanian letters
+            return word
+        w = re.sub("th", "t", word)
+        w = re.sub("Th", "T", w)
+        w = re.sub("ph", "f", w).replace("Ph", "F").replace("w", "v").replace("W", "V")
+        return w[:-1] + "ė" if len(w) > 2 and w.endswith("e") else w
+
+    return re.sub(r"[^\W\d_]+", lambda m: respell(m[0]), name)
+
+
+def name_guesses(name: str, most: int = 6) -> list[str]:
+    """The name as heard, then the same name as a speech recogniser may have garbled it:
+    spelled the Lithuanian way (D-94), and without a stray word on either side, two words
+    at a time from the end ("manitis Jonas jonaitis", a Lithuanian recogniser's "my name
+    is", D-101). Every guess is the caller's own words, and the API checks each against
+    the calling number, so a stranger still isn't found."""
+    words = re.findall(r"[^\W\d_]+", name)
+    pairs = [" ".join(words[i : i + 2]) for i in range(len(words) - 2, -1, -1)]
+    out: list[str] = []
+    for g in [name, *pairs] if len(words) > 2 else [name]:
+        for v in (g, lithuanian_spelling(g)):
+            if v not in out and is_full_name(v):
+                out.append(v)
+    return out[:most]
 
 
 def is_full_name(name: str | None) -> bool:

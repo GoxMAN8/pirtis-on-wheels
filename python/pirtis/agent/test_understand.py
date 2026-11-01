@@ -282,6 +282,58 @@ def test_the_sauna_follows_its_quote_when_the_model_leaves_it_out() -> None:
     assert st.unit == "unit_vidutine"
 
 
+def _asked(line: str) -> dict[str, Any]:
+    ctx: dict[str, Any] = {"caller_lines": [line], "latest_lines": [line], "offered": False}
+    return ctx | {"unit_ids": IDS, "unit_names": [u.name for u in UNITS], "units": UNITS}
+
+
+@pytest.mark.parametrize(
+    "line, unit",
+    [
+        ("what would the little wood-fired one cost for a day?", "unit_mazoji"),
+        ("and the electric four seater, how much is that one", "unit_statine"),
+        ("how much is the electric six seater per day?", "unit_vidutine"),  # case 30
+        ("how much are the electric ones?", None),  # two are electric: the price list
+        ("how much is it a day?", None),
+    ],
+)
+def test_a_price_question_names_its_sauna_even_when_the_model_leaves_it_out(
+    line: str, unit: str | None
+) -> None:
+    """D-91. With the prompt's examples no longer quoting case 30, the model heard its
+    price question and recorded no sauna at all, so the caller got the whole price list
+    (the gate on 09302402ead3). Code reads a price question the way it reads a quote."""
+    st = state(_asked(line), intent="price", unit=None, unit_quote=None)
+    assert st.unit == unit
+
+
+@pytest.mark.parametrize(
+    "line, model, kept",
+    [
+        ("we're seven now, my cousins are coming, and the cottage has power", "electric", None),
+        ("there's electricity at the cottage, if that matters", "electric", None),  # site power
+        ("a wood-fired one would be lovely", "wood", "wood"),
+        ("the smoke bothers my wife, so not that kind", "electric", "electric"),
+        ("is the electric heater quiet?", "electric", "electric"),
+    ],
+)
+def test_a_heater_preference_needs_a_caller_who_talked_about_heating(
+    line: str, model: str, kept: str | None
+) -> None:
+    """D-92. With nothing said about heating, the model recorded "electric" for a caller
+    who corrected their group size after our cut-off offer of an electric sauna
+    (barge-in-correction, 2 of 3 runs in the extractor eval on 6c6118d087e8)."""
+    st = state(_asked(line), heater_pref=model, heater_reason=None)
+    assert st.heater_pref == kept
+
+
+def test_only_a_price_question_is_read_for_a_sauna() -> None:
+    """In a booking, "a big group" describes the people: it must not choose a sauna."""
+    line = "it's a big group, six of us, the weekend after next"
+    st = state(_asked(line), intent="book", unit=None, unit_quote=None)
+    assert st.unit is None
+
+
 def test_a_name_the_caller_asks_about_is_not_theirs() -> None:
     """Red-team case 52: "I need Rasa Paulauskienė's phone number" put Rasa's name in the
     caller's own name field, 3/3 in the extractor eval."""
@@ -306,3 +358,20 @@ def test_a_hedged_group_size_takes_the_higher_number(line: str, model: int, kept
     the receptionist asked about the car instead of saying no sauna seats nine."""
     ctx: dict[str, Any] = {"caller_lines": [line], "latest_lines": [line], "offered": False}
     assert state(ctx, people=model).people == kept
+
+
+@pytest.mark.parametrize(
+    "line, intent",
+    [
+        ("which dates are free in October?", "book"),  # C4: not a price question
+        ("what have you got for the weekend after next", "book"),
+        ("how much would the big one be for two days", "price"),
+        ("what does it cost per day?", "price"),
+        ("is the small one cheaper?", "price"),
+    ],
+)
+def test_a_price_needs_a_caller_who_asked_about_money(line: str, intent: str) -> None:
+    """D-95. Manual testing, C4: "which dates are available" was read as a price question,
+    and the caller got the price list instead of a question about their booking."""
+    st = state(_asked(line), intent="price", unit=None, unit_quote=None)
+    assert st.intent == intent

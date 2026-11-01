@@ -1,13 +1,18 @@
-"""Prints the main documents to PDF, with their Mermaid diagrams drawn, into docs/pdf/.
+"""Prints every document to PDF, with its Mermaid diagrams drawn, into docs/pdf/.
 
-    python3 docs/tools/make_pdfs.py
+    python3 docs/tools/make_pdfs.py              # every PDF
+    python3 docs/tools/make_pdfs.py readme.pdf   # just these
 
 Each Markdown file becomes a print-styled page in headless Chrome: Markdown rendered by
 marked, diagrams by Mermaid 11 (the major version GitHub uses), both pinned and loaded
-from a CDN. The page says when every diagram is drawn, and only then is it printed.
-Needs Google Chrome and a network connection; the PDFs are rebuilt after any doc edit.
+from a CDN (MARKED_URL and MERMAID_URL point at local copies instead). The page says when
+every diagram is drawn, and only then is it printed. It also writes
+docs/pdf/SOURCES.json, the hash of every source each PDF was printed from; a test fails
+when a document has changed since its PDF was made (python/pirtis/ops/test_docs.py).
+Needs Google Chrome (CHROME sets its path); rebuild after any doc edit.
 """
 
+import hashlib
 import html
 import json
 import os
@@ -22,26 +27,42 @@ OUT = ROOT / "docs" / "pdf"
 CHROME = os.environ.get(
     "CHROME", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 )
-MARKED = "https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"
-MERMAID = "https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"
+MARKED = os.environ.get("MARKED_URL", "https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js")
+MERMAID = os.environ.get(
+    "MERMAID_URL", "https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"
+)
+MANIFEST = OUT / "SOURCES.json"
 
 # output name -> (title, the files it prints, in order)
 DOCS = {
     "readme.pdf": ("Pirtis on Wheels: the receptionist", ["README.md"]),
+    "against-the-brief.pdf": ("Against the brief", ["docs/against-the-brief.md"]),
+    "walkthrough.pdf": ("Walkthrough: the agent, file by file", ["docs/walkthrough.md"]),
     "using-the-app.pdf": ("Using the app", ["docs/using-the-app.md"]),
+    "tester-guide.pdf": ("Tester guide: the caller simulator", ["docs/guide-caller.md"]),
+    "admin-guide.pdf": ("Admin guide: the admin console", ["docs/guide-admin.md"]),
+    "human-eval.pdf": ("Human evaluation: the protocol", ["tests/human/README.md"]),
     "architecture.pdf": (
         "Architecture",
         [
             "docs/architecture/containers.md",
             "docs/architecture/data-flow.md",
             "docs/architecture/sequences.md",
+            "docs/architecture/logic-flow.md",
             "docs/architecture/deployment.md",
         ],
     ),
     "evaluation.pdf": ("Evaluation", ["docs/evaluation.md"]),
+    "fixtures.pdf": (
+        "Test cases",
+        ["docs/fixtures.md", "fixtures/variants-candidates/REVIEW.md"],
+    ),
+    "data-science.pdf": ("Data science: methods and metrics", ["docs/data-science.md"]),
     "spec.pdf": ("SPEC: design, decisions and change log", ["SPEC.md"]),
     "deploy.pdf": ("Deploy", ["deploy/README.md"]),
     "build-log.pdf": ("Build log", ["BUILD_LOG.md"]),
+    "python.pdf": ("The Python implementation", ["python/README.md"]),
+    "reports.pdf": ("Reports: the raw output behind every number", ["reports/README.md"]),
 }
 
 STYLE = """
@@ -105,13 +126,24 @@ def page(title: str, files: list[str]) -> str:
 <main id="main"></main><script>{SCRIPT % json.dumps(docs)}</script></body></html>"""
 
 
+def digest(files: list[str]) -> dict[str, str]:
+    """The hash of each source file, as the manifest records it."""
+    return {f: hashlib.sha256((ROOT / f).read_bytes()).hexdigest()[:16] for f in files}
+
+
 def main() -> None:
     if not Path(CHROME).exists():
         sys.exit(f"Chrome not found at {CHROME}; set CHROME to its path")
+    wanted = sys.argv[1:] or list(DOCS)
+    unknown = [w for w in wanted if w not in DOCS]
+    if unknown:
+        sys.exit(f"no such PDF: {', '.join(unknown)}; choose from {', '.join(DOCS)}")
     OUT.mkdir(parents=True, exist_ok=True)
+    manifest = json.loads(MANIFEST.read_text()) if MANIFEST.exists() else {}
     tmp = Path(tempfile.mkdtemp(prefix="pdfs-"))
     try:
-        for name, (title, files) in DOCS.items():
+        for name in wanted:
+            title, files = DOCS[name]
             src = tmp / (name + ".html")
             src.write_text(page(title, files), encoding="utf-8")
             # the page prints only once every diagram is drawn: wait for its title
@@ -129,6 +161,8 @@ def main() -> None:
                 capture_output=True, timeout=180, check=True,
             )
             print(f"{OUT.relative_to(ROOT) / name}  <- {', '.join(files)}")
+            manifest[name] = digest(files)
+            MANIFEST.write_text(json.dumps(dict(sorted(manifest.items())), indent=2) + "\n")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

@@ -221,3 +221,53 @@ def test_mild_annoyance_with_a_barge_in_does_not_transfer() -> None:
         _them("sorry, it's eight now", 8.0, 11.5, Anger=0.3),
     )
     assert gate(t) is None
+
+
+# ---- keeping the thread of the call (D-98) ----
+
+
+def call(*lines: tuple[str, str], base: str = "silence") -> Transcript:
+    """A kit transcript continued by these (role, text) lines, the caller's last."""
+    from dataclasses import replace
+
+    t = by_id(base).transcript
+    items, at = list(t.items), max(it.end for it in t.items) + 0.5
+    for role, text in lines:
+        items.append(Item(type="message", role=role, content=text, start=at, end=at + 1.5,
+                          is_final=True, speech_final=True))  # fmt: skip
+        at += 2.0
+    return replace(t, items=items, now=at)
+
+
+def test_a_finished_booking_closes_on_no_thats_all() -> None:
+    from pirtis.agent.speech import ANYTHING_ELSE
+
+    booked = f"That's booked: Mažoji. I'll text you the details. {ANYTHING_ELSE}"
+    actions = gate(call(("assistant", booked), ("user", "no, that's all, thanks"))) or []
+    assert types(actions) == ["say", "end_call"]
+    assert "goodbye" in str(actions[0]["text"]).lower()
+
+
+def test_anything_else_with_something_else_goes_on() -> None:
+    from pirtis.agent.speech import ANYTHING_ELSE
+
+    t = call(("assistant", f"Done. {ANYTHING_ELSE}"), ("user", "yes, can I move my other one?"))
+    assert gate(t) is None
+
+
+def test_after_a_check_in_yes_im_here_brings_back_the_question() -> None:
+    from pirtis.agent.speech import check_in_line
+
+    t = call(("assistant", "How many of you will there be?"), ("assistant", check_in_line()),
+             ("user", "yes, sorry, I'm here"))  # fmt: skip
+    actions = gate(t) or []
+    assert types(actions) == ["say"]
+    assert actions[0]["text"] == "Great. How many of you will there be?"
+
+
+def test_after_a_check_in_an_answer_goes_to_understanding() -> None:
+    from pirtis.agent.speech import check_in_line
+
+    t = call(("assistant", "How many of you will there be?"), ("assistant", check_in_line()),
+             ("user", "four of us"))  # fmt: skip
+    assert gate(t) is None

@@ -1,0 +1,13 @@
+# After Phase 16 · case 30 replayed with the model's answer scripted, zero tokens: the reply when the model
+# names the sauna, and when it leaves the sauna and its quote out (what the gate on 09302402ead3 suggests)
+# command: cd python && uv run python ../reports/after-16/replay_30.py
+
+# on 09302402ead3 (before D-91):
+#   model names the sauna (old prompt): Vidutinė is one hundred and sixty euros a day. Which dates were you thinking of?
+#   model leaves the sauna and its quote out: Our saunas cost from one hundred and twenty euros a day for Mažoji to two hundred and ten euros for Didžioji. Which dates were you thinking of?
+
+# on 6c6118d087e8 (D-91):
+model names the sauna (old prompt):
+   Vidutinė is one hundred and sixty euros a day. Which dates were you thinking of?
+model leaves the sauna and its quote out:
+   Vidutinė is one hundred and sixty euros a day. Which dates were you thinking of?

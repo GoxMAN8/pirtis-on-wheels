@@ -6,6 +6,11 @@
 #   make eval-extract          the model's understanding against gold, 3 runs per fixture
 #   make trace ID=silence      one fixture, verbose, traces kept under runs/trace
 #   make gate-job              the nightly cloud job, run here: given + red team, saved to var/
+#   make heldout               the generated variants, once, scored by transform (never tuned on)
+#   make heldout-rules         the same variants at zero tokens: do the rules hold if heard right?
+#   make review                a second model re-reads recent calls, queues disagreements
+#   make fixtures-doc          rewrite docs/fixtures.md from the test cases
+#   make pdfs                  every document as a PDF (needs Chrome)
 
 SHELL := /bin/bash
 
@@ -15,7 +20,7 @@ SUITES ?= ../fixtures ../fixtures/extra $(wildcard ../fixtures/variants)
 ID ?=
 OURS := pirtis/agent pirtis/ops pirtis/playground
 
-.PHONY: install lint format typecheck test check gate gate-job eval-extract trace playground variants variants-accept reliability calibrate
+.PHONY: install lint format typecheck test check gate gate-job eval-extract trace playground variants variants-accept reliability calibrate heldout heldout-rules review fixtures-doc pdfs
 
 install:
 	uv sync
@@ -86,6 +91,23 @@ variants-accept:
 	mv ../fixtures/variants-candidates/REVIEW.md ../fixtures/variants/REVIEW.md
 	@echo "accepted: $$(ls ../fixtures/variants/*.yaml | wc -l) variants now run in make gate"
 
+# The held-out score (pirtis/ops/heldout.py): the 59 generated variants, 3 runs each, all 3
+# must pass, reported by transform (persona, shift, noise, tow). Run it once per batch,
+# before tuning anything on it; a variant used to fix something is development data after.
+# About $0.07 of model calls plus the judge. HELDOUT=../fixtures/variants once accepted.
+HELDOUT ?= ../fixtures/variants-candidates
+heldout:
+	@rm -rf runs/heldout && mkdir -p runs/heldout
+	@set -o pipefail; name=$$(basename $(HELDOUT)); \
+	uv run harness --fixtures $(HELDOUT) --runs 3 --need 3 --trace runs/heldout/$$name \
+		| tee runs/heldout/$$name.txt; \
+	uv run python -m pirtis.ops.heldout --dir runs/heldout --json runs/heldout/summary.json
+
+# The rules on the held-out variants with the caller heard right, at zero tokens: the kit's
+# checks plus "decides as its source did" (pirtis/ops/variant_replay.py). Also in make check.
+heldout-rules:
+	uv run python -m pirtis.ops.variant_replay
+
 # pass^k for k = 1..5 on every suite (variant candidates included), from 5 runs of each case.
 # A measurement, not the gate: about $0.30 of model calls with the judge.
 reliability:
@@ -95,6 +117,21 @@ reliability:
 		uv run harness --fixtures $$suite --runs 5 --need 1 --trace runs/reliability/$$name > runs/reliability/$$name.txt; \
 	done; \
 	uv run python -m pirtis.ops.reliability --dir runs/reliability --json runs/reliability/curve.json
+
+# The off-path reviewer (pirtis/ops/review.py): another model re-reads the simulator calls of
+# the last DAYS and puts every turn it hears differently into the Feedback queue for a
+# person. REVIEW_MODEL picks the model (default gpt-4o); DRY=1 reports without queueing.
+DAYS ?= 1
+review:
+	uv run python -m pirtis.ops.review --days $(DAYS) $(if $(DRY),--dry-run)
+
+# docs/fixtures.md is written from the test cases; a test fails when it is stale.
+fixtures-doc:
+	uv run python -m pirtis.ops.fixture_doc
+
+# Every document as a PDF into docs/pdf/, with SOURCES.json; a test fails when one is stale.
+pdfs:
+	cd .. && python3 docs/tools/make_pdfs.py
 
 # Judge calibration against the human ratings (tests/human/README.md); spends judge calls.
 calibrate:

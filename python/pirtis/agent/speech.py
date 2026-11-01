@@ -8,6 +8,7 @@ back from the transcript before it books.
 """
 
 from datetime import date
+from typing import assert_never
 
 from pirtis.agent.actions import handoff, sms
 from pirtis.agent.policy import (
@@ -18,18 +19,23 @@ from pirtis.agent.policy import (
     ConfirmCancel,
     ConfirmChange,
     Decision,
+    FreeDates,
     Goodbye,
     Handoff,
     Hold,
     Moved,
     NoFit,
+    NoFitReason,
     Offer,
     OffTopic,
     OwnClash,
     Price,
+    Queue,
     Refuse,
     Reply,
+    Slot,
     Sorry,
+    WhyNot,
 )
 from pirtis.agent.reading import emotion, latest_caller_turn
 from pirtis.agent.words import spoken_date, spoken_euros, spoken_number, spoken_range
@@ -58,7 +64,7 @@ OFF_TOPIC = (
     "What would you like to book?"
 )
 
-QUESTIONS = {
+QUESTIONS: dict[Slot, str] = {
     # says out loud that we're deferring, so "does not say whether…" can't be misread
     "name": "I can help with that once I know who's calling. Can I get your full name, please?",
     # about a booking they already have: says outright that it can't look yet (D-87)
@@ -70,24 +76,25 @@ QUESTIONS = {
     "past_dates": "That date has already passed. Which dates were you thinking of?",
     "people": "How many of you will there be?",
     # names both the car and the figure, so either reading of the question is covered
-    "tow": "What car will you tow it with, and how much can it tow, braked?",
+    # one question (manual testing found the two-part form hard to answer); the second
+    # sentence keeps both readings the kit's case 05 checks for (D-51, D-96)
+    "tow": "What car will you tow it with? I need its braked towing limit.",
     "power": "Is there mains power where the sauna is going?",
     "which_booking": "Which of your bookings do you mean? The dates are enough.",
     "new_dates": "Which dates would you like to move it to?",
     "need": "Thanks, I have your details. What can I do for you today?",
 }
 
-HANDOFF_LINES = {
+HANDOFF_LINES: dict[Queue, str] = {
     "new_customers": "I can't find an account under that name and number, and new "
     "customers are set up by a colleague. I'll put you through now.",
     "front_desk": "Of course. I'll put you through to a colleague now.",
     "bookings_support": "Sorry, something went wrong on my side. I'll put you through to "
     "a colleague who can sort it out.",
 }
-HANDOFF_DEFAULT = "I'll put you through to a colleague now."
 HANDOFF_SORRY = "I'm sorry about this. I'll put you through to a colleague now."
 
-_WHY_NOT = {
+_WHY_NOT: dict[WhyNot, str] = {  # capacity has its own line
     "weight": "{was} is too heavy for your car",
     "power": "{was} needs mains power",
     "taken": "{was} isn't free then",
@@ -97,6 +104,11 @@ _WHY_NOT = {
 def check_in_line() -> str:
     """After a silence: two short sentences, no pressure."""
     return "Are you still there? No rush if you need a moment."
+
+
+# how a finished task ends: the caller can go on, or close the call (the turn gate hears a
+# short "no, that's all" after it and says goodbye, with no model call)
+ANYTHING_ELSE = "Is there anything else I can help with?"
 
 
 def goodbye_line() -> str:
@@ -146,7 +158,7 @@ def render(d: Decision, voice: Voice = NEUTRAL) -> list[Action]:
             return [
                 _say(
                     f"Done: {u.name} is moved to {spoken_range(b.start, b.end)}. I'll text you "
-                    "the new dates.",
+                    f"the new dates. {ANYTHING_ELSE}",
                     voice,
                 ),
                 sms(f"Pirtis on Wheels: {u.name} is now booked {_dates(b)}. Booking {b.id}."),
@@ -159,7 +171,7 @@ def render(d: Decision, voice: Voice = NEUTRAL) -> list[Action]:
             return [
                 _say(
                     f"Done: {u.name} for {spoken_range(b.start, b.end)} is cancelled. I'll text "
-                    "you a confirmation.",
+                    f"you a confirmation. {ANYTHING_ELSE}",
                     voice,
                 ),
                 sms(f"Pirtis on Wheels: {u.name} {_dates(b)} is cancelled. Booking {b.id}."),
@@ -170,6 +182,8 @@ def render(d: Decision, voice: Voice = NEUTRAL) -> list[Action]:
             return [_say(price_line(d), voice)]
         case Goodbye():
             return [_say(goodbye_line(), voice), end_call("caller said goodbye")]
+        case FreeDates():
+            return [_say(free_dates_line(d), voice)]
         case Hold():
             return [wait(HOLD_S)]
         case Reply(text=text):
@@ -179,7 +193,7 @@ def render(d: Decision, voice: Voice = NEUTRAL) -> list[Action]:
         case OffTopic():
             return [_say(OFF_TOPIC, voice)]
         case Handoff(queue=queue, reason=reason, summary=summary, apologise=apologise):
-            line = HANDOFF_SORRY if apologise else HANDOFF_LINES.get(queue, HANDOFF_DEFAULT)
+            line = HANDOFF_SORRY if apologise else HANDOFF_LINES[queue]
             return [_say(line, voice), handoff(queue, reason, summary)]
         case NoFit():
             return [_say(no_fit_line(d), voice)]
@@ -198,7 +212,7 @@ def offer_line(o: Offer) -> str:
             f"{spoken_number(o.people)} of you I can offer {o.unit.name}, {when}."
         )
     elif o.instead_of is not None:
-        reason = _WHY_NOT.get(o.why_not, _WHY_NOT["taken"]).format(was=o.instead_of.name)
+        reason = _WHY_NOT[o.why_not or "taken"].format(was=o.instead_of.name)
         first = f"{reason}, so I can offer {o.unit.name} {people}, {when}."
     elif o.weekend_min:
         first = (
@@ -213,7 +227,7 @@ def booked_line(b: Booking, u: Unit) -> str:
     return (
         f"That's booked: {u.name}, {spoken_range(b.start, b.end)}, for "
         f"{spoken_number(b.people)} people. The total is {spoken_euros(b.total)}, and I'll "
-        "text you the details."
+        f"text you the details. {ANYTHING_ELSE}"
     )
 
 
@@ -243,7 +257,65 @@ def price_line(p: Price) -> str:
     )
 
 
+# a refusal said once already closes the topic instead of asking the same again (D-98)
+_CLOSING_NO_FIT: dict[NoFitReason, str] = {
+    "too_many": "I'm sorry, none of our saunas can take that many people, so I can't book "
+    "this one.",
+    "too_light": "I'm sorry, none of our saunas is light enough for that car, so I can't "
+    "book this one.",
+    "nothing_fits": "I'm sorry, none of our saunas fits all of that.",
+    "no_dates": "I'm sorry, I can't find dates that work for that.",
+    "no_booking": "I'm sorry, I can't find a booking of yours to change.",
+}
+
+
+def free_dates_line(f: FreeDates) -> str:
+    """What's free on the weekends asked about, then the one question. For one sauna: the
+    weekends it's free and the ones it's booked; for all: how many are free on each."""
+    when = f"in {f.month}" if f.month else "on the coming weekends"
+    ask = "Which dates would you like?"
+
+    def rng(a: str, b: str) -> str:  # the month asked about goes without saying
+        return spoken_range(a, b).removesuffix(f" of {f.month}") if f.month else spoken_range(a, b)
+
+    if not f.weekends:
+        return f"I can't see any weekends left {when}. {ask}"
+    if f.unit is not None:
+        free = [rng(a, b) for a, b, n in f.weekends if n]
+        booked = [rng(a, b) for a, b, n in f.weekends if not n]
+        if not free:
+            return f"{f.unit.name} is booked every weekend {when}; weekdays are mostly free. {ask}"
+        if not booked and len(free) > 1:
+            return f"{f.unit.name} is free every weekend {when}. {ask}"
+        line = f"{f.unit.name} is free {_and(free)}"
+        if booked:
+            line += f", and booked {_and(booked)}"
+        return f"{line}. {ask}"
+
+    def free_count(n: int) -> str:
+        if n == 0:
+            return "everything is booked"
+        if n == f.units:
+            return f"all {spoken_number(n)} saunas are free"
+        return "one sauna is free" if n == 1 else f"{spoken_number(n)} saunas are free"
+
+    counts = {n for _, _, n in f.weekends}
+    if len(f.weekends) > 1 and len(counts) == 1:  # the same every weekend: say it once
+        n = counts.pop()
+        same = "everything is booked" if n == 0 else free_count(n)
+        return f"{when[0].upper()}{when[1:]}, {same} every weekend. Weekdays are mostly free. {ask}"
+    weekends = "; ".join(f"{rng(a, b)}, {free_count(n)}" for a, b, n in f.weekends)
+    lead = f"In {f.month}: " if f.month else "Weekends go first. "
+    return f"{lead}{weekends}. Weekdays are mostly free. {ask}"
+
+
+def _and(parts: list[str]) -> str:
+    return parts[0] if len(parts) == 1 else ", ".join(parts[:-1]) + " and " + parts[-1]
+
+
 def no_fit_line(n: NoFit) -> str:
+    if n.closing:
+        return f"{_CLOSING_NO_FIT[n.reason]} {ANYTHING_ELSE}"
     match n.reason:
         case "too_many":
             return (
@@ -261,8 +333,10 @@ def no_fit_line(n: NoFit) -> str:
             return (
                 "I'm sorry, nothing that fits is free around those dates. Would other dates work?"
             )
-        case _:
+        case "nothing_fits":
             return "I'm sorry, none of our saunas fit that. Would other dates work for you?"
+        case _:
+            assert_never(n.reason)
 
 
 def sms_text(b: Booking, u: Unit) -> str:

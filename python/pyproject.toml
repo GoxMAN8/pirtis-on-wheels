@@ -39,6 +39,10 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
+[tool.ruff.lint.per-file-ignores]
+# the test-case page's prose and table rows: one line each reads and diffs better than wrapped
+"pirtis/ops/fixture_doc.py" = ["E501"]
+
 # strict on our code only; the kit's packages are type-checked as dependencies but
 # their findings are not ours to fix
 [tool.mypy]
