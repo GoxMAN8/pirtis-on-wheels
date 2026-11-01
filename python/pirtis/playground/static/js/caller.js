@@ -118,7 +118,7 @@ let cutIn = false;
 // above all, and a tester shouldn't have to blame the receptionist for it. When on,
 // what was heard goes into the text box to fix, and is sent with Say it; a line that
 // was spoken over the receptionist still counts as cutting in.
-const REVIEW_KEY = "pirtis-review-speech";
+const REVIEW_KEY = "pirtis-check-speech"; // renamed when it became on by default: an old "off" is forgotten
 let pendingCutIn = false;
 const mic = { want: false, live: false, holding: false, latched: false, cancelled: false,
   downAt: 0, startedAt: 0, restarts: 0, error: "", ignoreUp: false, timer: 0, lang: "en-GB" };
