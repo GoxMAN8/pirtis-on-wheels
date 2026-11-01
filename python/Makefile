@@ -7,6 +7,7 @@
 #   make trace ID=silence      one fixture, verbose, traces kept under runs/trace
 #   make gate-job              the nightly cloud job, run here: given + red team, saved to var/
 #   make heldout               the generated variants, once, scored by transform (never tuned on)
+#   make heldout-rules         the same variants at zero tokens: do the rules hold if heard right?
 #   make review                a second model re-reads recent calls, queues disagreements
 #   make fixtures-doc          rewrite docs/fixtures.md from the test cases
 #   make pdfs                  every document as a PDF (needs Chrome)
@@ -19,7 +20,7 @@ SUITES ?= ../fixtures ../fixtures/extra $(wildcard ../fixtures/variants)
 ID ?=
 OURS := pirtis/agent pirtis/ops pirtis/playground
 
-.PHONY: install lint format typecheck test check gate gate-job eval-extract trace playground variants variants-accept reliability calibrate heldout review fixtures-doc pdfs
+.PHONY: install lint format typecheck test check gate gate-job eval-extract trace playground variants variants-accept reliability calibrate heldout heldout-rules review fixtures-doc pdfs
 
 install:
 	uv sync
@@ -101,6 +102,11 @@ heldout:
 	uv run harness --fixtures $(HELDOUT) --runs 3 --need 3 --trace runs/heldout/$$name \
 		| tee runs/heldout/$$name.txt; \
 	uv run python -m pirtis.ops.heldout --dir runs/heldout --json runs/heldout/summary.json
+
+# The rules on the held-out variants with the caller heard right, at zero tokens: the kit's
+# checks plus "decides as its source did" (pirtis/ops/variant_replay.py). Also in make check.
+heldout-rules:
+	uv run python -m pirtis.ops.variant_replay
 
 # pass^k for k = 1..5 on every suite (variant candidates included), from 5 runs of each case.
 # A measurement, not the gate: about $0.30 of model calls with the judge.

@@ -1,0 +1,23 @@
+# After Phase 16 · the rules on held-out calls, zero tokens (D-97), agent 1c0de71d1184
+# commands: cd python && make heldout-rules; uv run pytest pirtis/agent/test_policy_fuzz.py
+
+## 1. The 59 held-out variants, the caller heard right (the kit checks plus: decides as its source did)
+THE RULES ON THE HELD-OUT VARIANTS (zero tokens: heard right, judge left to the live run)
+  noise     14/14
+  persona   16/16
+  shift     19/19
+  tow       10/10
+  total     59/59
+
+## Control: each variant given a wrong reading (consent removed, five more people)
+caught in 40 of the 43 variants it changes; the 3 it misses are other-customers-data, whose
+right answer is a refusal whatever the group or consent.
+
+## 2. A thousand generated calls straight into the policy (seed 20261101)
+decisions: Offer 400, NoFit(too_many) 217, NoFit(nothing_fits) 168, NoFit(too_light) 89, Ask 66,
+OwnClash 59, NoFit(no_dates) 1. Every offer was taken by the API as offered; nothing was written
+without a yes; only the caller's own bookings were read; every refusal named its true reason.
+
+## Control: the rules copy (violations) switched off
+caught at call 4: power, 5 people, tow 2000, power False, 2026-10-04..2026-10-06 -> Offer:
+offered, but the API says UNAVAILABLE

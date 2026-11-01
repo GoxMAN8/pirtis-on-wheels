@@ -72,8 +72,10 @@ flowchart LR
 
   Until the gate passes again, the numbers above belong to `bd98c5cf8006`.
 - **Measured honestly:** the 46 cases are the development set, so 46/46 is a development
-  score. The 59 generated variants are kept as a held-out set, scored once by
-  `make heldout` (D-89).
+  score. The 59 generated variants are kept as a held-out set (D-89). Heard right, the
+  agent passes all 59 and decides each as its source did, and a thousand generated calls
+  keep every promise of the brief, both at zero tokens (D-97); `make heldout` adds the
+  model and the judge.
 
 The graphs are in [docs/evaluation.md](docs/evaluation.md); how each number is computed
 is in [docs/data-science.md](docs/data-science.md).

@@ -5,9 +5,10 @@ kit's brief ([python/README.md](../python/README.md)), with a verdict and where 
 evidence is. The design notes and grading material the kit mentions were not part of
 what we received, so this checks the brief as given.
 
-**In short:** every stated requirement is met, most with measured evidence. The one open
-question is the brief's own warning about hidden test cases: the held-out run that
-answers it is built but not yet run.
+**In short:** every stated requirement is met, most with measured evidence. For the
+brief's warning about hidden test cases, the rules are shown to hold on 59 held-out
+variants and a thousand generated calls at zero tokens; the one run still to do is the
+live held-out run, which adds the model's hearing and the judge.
 
 ## What we expect
 
@@ -35,7 +36,7 @@ answers it is built but not yet run.
 | The brief says | Verdict | Evidence |
 |---|---|---|
 | "The model is not deterministic. A test case that passed once may fail next time; `--runs 3 --need 2` tells you more." | **Exceeded** | Our gate asks for 3 of 3, judge included, on all 46 cases; a 5-run reliability curve estimates what a 3-run gate misses ([data-science.md](data-science.md) §3, §4) |
-| "We also have hidden test cases with the same rules but other callers, cars and dates. Make the rules work, not just the test cases." | **Open: the main risk** | For: hidden-style cases written to vary callers, cars and dates; fixes made as general rules, tested on wordings no case uses; a test that fails if the prompt quotes any case (D-88). Against: the 46 cases are also our development set, and one prompt leak showed how that can flatter a score. The 59 generated variants are kept as a held-out set (D-89); **`make heldout` has not been run yet** |
+| "We also have hidden test cases with the same rules but other callers, cars and dates. Make the rules work, not just the test cases." | **Met for the rules; the model's part awaits one run** | The 59 held-out variants (other callers, dates, cars, speech noise), never used in development, all pass through the real agent when the caller is heard right, and each decides as its source did (`make heldout-rules`, zero tokens; a deliberately wrong reading is caught 40 times in 43). A thousand generated calls keep every promise: offers the API accepts, no write without a yes, only the caller's own data, true reasons for a refusal (`agent/test_policy_fuzz.py`). Fixes were made as general rules, and a test fails if the prompt quotes any case (D-88). Still open: whether the model *hears* unseen calls as well, which `make heldout` (about $0.07) answers |
 
 ## Submitting
 
@@ -47,7 +48,8 @@ answers it is built but not yet run.
 
 ## Open risks
 
-1. **Hidden cases:** not measured out of sample until the held-out run.
+1. **Hidden cases:** the rules hold off the development set (zero tokens); the model's
+   hearing of unseen calls is measured only by the live held-out run.
 2. **The judge is a model:** it has flipped on correct replies (about 1 in 43 on one
    case). Replies are worded to survive its known blind spots (D-51, D-72, D-87), but a
    hidden case's statements could still trip it.

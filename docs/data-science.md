@@ -45,6 +45,7 @@ flowchart LR
 | **p50 / p95 latency** | How long is the silence? | nearest-rank percentiles of turns that called the model | `ops/gate_report.py`, `playground/analytics.py` |
 | **Cost per turn** | What does a turn cost? | tokens × gpt-4o-mini prices ($0.15 in, $0.60 out per million) | `ops/gate_report.py` |
 | **Zero-call share** | How often is the model not needed? | turns the turn gate settled ÷ all turns | `playground/analytics.py` |
+| **Held-out rules** | Do the decisions hold on calls it was never tuned on, heard right? | variants passing the kit's checks and deciding as their source did, at zero tokens | `ops/variant_replay.py` |
 | **Held-out pass** | How does it do on calls it was never tuned on? | generated variants passing all 3 of 3 runs, by the transform that made them | `ops/heldout.py` |
 | **Reviewer agreement** | On real calls with no gold answer, how often does a second reader agree? | per field, turns where the agent's reading and an independent model's agree ÷ turns reviewed | `ops/review.py` |
 
@@ -131,6 +132,19 @@ them once, 3 runs each with all 3 needed, and reports them by transform:
 | shift | 19 | the same call one or two weeks later |
 | noise | 14 | the caller's lines as speech-to-text writes them |
 | tow | 10 | another car in the same towing band |
+
+**Three layers answer "do the rules work beyond the cases?"** (D-97), each separating one
+cause of failure:
+
+| Layer | What it tests | Tokens | Result |
+|---|---|---|---|
+| **The rules on the held-out variants** (`make heldout-rules`, in `make check`) | each variant run through the real agent with the caller **heard right** (the source's gold reading, moved by the same transform), against the kit's checks **and** a metamorphic relation: it must decide as its source did (the same kind of decision, the same saunas named, the same actions) | none | **59/59**. Control: a wrong reading is caught in 40 of the 43 variants it changes; the 3 misses are refusals whose right answer doesn't depend on the reading |
+| **A thousand generated calls** (`agent/test_policy_fuzz.py`, in `make check`) | random groups, cars, sites, dates and sauna wishes against calendars made busier at random, straight into the policy: every offer is taken by the API as offered, nothing is written without a yes, only the caller's own bookings are read, and every refusal names its true reason | none | **1000/1000**: 400 offers, 475 refusals of all four kinds, 66 questions, 59 clashes with the caller's own booking. Control: with the rules copy switched off, it fails at call 4 |
+| **The live held-out run** (`make heldout`) | the same 59 variants with the real model and the kit's judge: hearing and wording, not only deciding | about $0.07 | not yet run |
+
+So the rules are shown to hold off the development set; what remains open is whether
+the model hears those calls as well as it hears ours, which only the live run can say
+(`reports/after-16/heldout-rules.txt`).
 
 The protocol: score a batch **once, before tuning anything on it**, and report the
 number as it comes. A variant used to fix something is development data from then on;
@@ -398,8 +412,9 @@ a boundary: [architecture/data-flow.md](architecture/data-flow.md).
 - **Cost is the agent's only;** the judge's calls aren't in the traces.
 - **Latency is `decide()` time,** not the caller's: speech-to-text and text-to-speech
   would add to it.
-- **The gate is the development set** (§3). The held-out run and the reviewer are built
-  but not yet run, so there is no out-of-sample number yet.
+- **The gate is the development set** (§3). Off it, the rules hold on all 59 held-out
+  variants and a thousand generated calls at zero tokens; the live held-out run, which
+  adds the model's hearing and the judge, and the reviewer are built but not yet run.
 - **The current agent isn't measured yet.** The numbers here are for `bd98c5cf8006`.
   `09302402ead3` closed the prompt leak and failed the gate 45/46; `6c6118d087e8` fixed
   that case and scored 40/41 on the extractor eval (§3); `239ddaf571d0` fixed that one;
@@ -420,6 +435,7 @@ From `python/`, with a key in `.env`:
 | `make eval-extract` | the extractor eval, 3 runs per gold state | about $0.05 |
 | `make reliability` | pass^k for k = 1..5 | about $0.30 with the judge |
 | `make variants` | generate and check the variant candidates | none |
+| `make heldout-rules` | the 59 variants through the real agent, heard right, at zero tokens (also in `make check`) | none |
 | `make heldout` | the 59 generated variants once, by transform: the held-out score | about $0.07 + the judge |
 | `make review` | a second model re-reads the last day's calls and queues disagreements; `DRY=1` only reports | one reviewer-model call per model turn |
 | `make calibrate` | judge–human agreement on saved ratings | one judge call per item per reply |

@@ -631,9 +631,9 @@ extractor eval and a gate run.
   replies and word lists. Where a pattern misses a phrase, the turn falls back to the
   model or to one more question, never to a wrong booking (README, decisions 2, 4, 6).
 - The 46 cases are the development set (D-89). The 59 metamorphic variants, including
-  14 written as speech-to-text hears a call, are the held-out set, and have not been run
-  against the agent yet, so there is no out-of-sample number, and how it copes with
-  noisy speech is not measured beyond our own cases.
+  14 written as speech-to-text hears a call, are the held-out set. Heard right, the agent
+  passes all 59 at zero tokens (D-97); the live run, which adds the model's hearing of
+  them and the judge, has not been run yet.
 - Agent `1c0de71d1184` (manual-testing fixes, D-93 to D-96) has not been through the
   extractor eval, the gate or a held-out run yet; the measured numbers belong to `bd98c5cf8006`. On the way: `09302402ead3`, the first
   without the prompt leak (D-88), failed the gate 45/46 on case 30 (D-91), and
@@ -794,6 +794,7 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | D-94 | 2026-11-01 | When identification fails, the name is tried once more spelled the Lithuanian way: th→t, ph→f, w→v, and a final plain e→ė, in words with no Lithuanian letters. One extra lookup, checked against the calling number like the first; a stranger is still put through | Manual testing, C3: an English recogniser wrote "Thomas" for Tomas, so a customer was put through as a stranger. Lithuanian has no th, ph or w, and its names don't end in a plain e | asking the caller to repeat the name (a kit case expects the stranger to be put through at once); a list of names | accepted |
 | D-95 | 2026-11-01 | A price reading needs a caller who asked about money (cost, price, how much, euro, cheap…); otherwise it is a booking question | Manual testing, C4: "which dates are available?" got the price list | a prompt rule | accepted |
 | D-96 | 2026-11-01 | The tow question is one question: "What car will you tow it with? I need its braked towing limit." Both the car and its limit stay named, for the kit's case 05 and D-51 | Manual testing, C11: the two-part question read as two questions | "How much can your car tow?" alone (the judge has read "or" as "and", D-51) | accepted |
+| D-97 | 2026-11-01 | "Make the rules work, not just the test cases" is answered in three layers that each separate one cause: the 59 held-out variants through the real agent with the caller heard right, against the kit's checks and a metamorphic relation (each decides as its source did), at zero tokens; a thousand generated calls against the policy's promises, at zero tokens; and the live held-out run for the model's hearing and the judge. The first two run in `make check` | A live failure mixes hearing, deciding and judging; the zero-token layers show the rules generalise on their own, and each has a control proving it can fail (a wrong reading caught 40/43; the rules copy switched off, caught at call 4) | the live held-out run alone | accepted |
 
 ---
 
@@ -827,3 +828,4 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | 2026-11-01 | after 16 | Simulator: every caller line is normalised to one spelling of each letter (Unicode NFC) before the agent sees it. "Eglė" can arrive as "e" plus a combining dot; the model echoes it, and the kit's API, comparing letters exactly, then can't find the customer. The agent is unchanged | Manual testing, case B4: Eglė, with her name corrected, was still put through as a stranger | — |
 | 2026-11-01 | after 16 | Manual testing on the live app, logged in `reports/manual/2026-11-01-GS.md`: 24 of 34 passed. Agent: D-93 to D-96 (`1c0de71d1184`, not yet measured). Simulator: 8 s of real quiet after a reply counts as silence, measured from when the receptionist stops talking; 👍/👎 under the current reply. Console: a run that covers only part of a family says "ran 7 of 32" | What a tester met that the cases didn't | D-93, D-94, D-95, D-96 |
 | 2026-11-01 | after 16 | Simulator: a transferred call shows who takes it and the note they receive (the summary the transfer carries). The agent is unchanged. Queued for the next agent change: the note to carry the name a stranger gave, and the receptionist to say the details are passed on | Manual testing: a stranger is put through at once, as the kit requires, so what the colleague receives matters | — |
+| 2026-11-01 | after 16 | The rules off the development set (D-97): `make heldout-rules` replays the 59 held-out variants through the real agent, heard right, against the kit's checks and "decides as its source did": 59/59. `agent/test_policy_fuzz.py` puts a thousand generated calls through the policy: every promise holds. Both at zero tokens, in `make check`, each with a control that fails. Evidence in `reports/after-16/heldout-rules.txt` | "Make the rules work, not just the test cases" | D-97 |
