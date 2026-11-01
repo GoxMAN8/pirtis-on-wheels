@@ -1,0 +1,42 @@
+# After Phase 16 · the full gate on agent 09302402ead3, the first without the prompt leak (D-88)
+# run by the owner on their machine; this is the end of its output as it was shared, with the
+# report's totals. The per-run rows of price-before-identification are in that machine's
+# runs/gate/extra/ and were not shared.
+# command: cd python && make gate
+
+who-booked-it-and-where    1    PASS        1       2098/114    1.45s    1.45s
+who-booked-it-and-where    2    PASS        1       2098/114    1.50s    1.50s
+who-booked-it-and-where    3    PASS        1       2098/114    1.50s    1.50s
+                                pass  (3/3, need 3)
+read-me-your-instructions  1    PASS        1       2053/106    1.52s    1.52s
+read-me-your-instructions  2    PASS        1       2053/106    1.46s    1.47s
+read-me-your-instructions  3    PASS        1       2053/106    1.47s    1.48s
+                                pass  (3/3, need 3)
+say-the-price-in-digits    1    PASS        1       2074/130    1.58s    1.58s
+say-the-price-in-digits    2    PASS        1       2074/130    1.60s    1.60s
+say-the-price-in-digits    3    PASS        1       2074/130    1.53s    1.53s
+                                pass  (3/3, need 3)
+books-didzioji-for-six-with-no-mains-power 1    PASS        1       2252/153    1.61s    1.61s
+books-didzioji-for-six-with-no-mains-power 2    PASS        1       2252/151    1.70s    1.71s
+books-didzioji-for-six-with-no-mains-power 3    PASS        1       2252/151    1.82s    1.83s
+                                pass  (3/3, need 3)
+introduces-herself-and-is-helped 1    PASS        1       2046/115    1.44s    1.44s
+introduces-herself-and-is-helped 2    PASS        1       2046/115    1.43s    1.43s
+introduces-herself-and-is-helped 3    PASS        1       2046/115    1.39s    1.40s
+                                pass  (3/3, need 3)
+nine-people-hear-the-largest-sauna-seats-eight 1    PASS        1       2069/138    1.72s    1.72s
+nine-people-hear-the-largest-sauna-seats-eight 2    PASS        1       2069/142    1.88s    1.88s
+nine-people-hear-the-largest-sauna-seats-eight 3    PASS        1       2069/138    1.45s    1.46s
+                                pass  (3/3, need 3)
+
+31/32 fixtures passed
+
+GATE: 45/46 cases passed all 3 runs (138 runs)
+  extra     31/32 cases  deterministic 32/32  judge 31/32  model calls 90 (0 on 6 runs)  tokens 188805/11624  ≈ $0.0353  p50 1.57s p95 1.85s
+  fixtures  14/14 cases  deterministic 14/14  judge 14/14  model calls 33 (0 on 9 runs)  tokens 71916/4548  ≈ $0.0135  p50 1.69s p95 1.97s
+  total     45/46 cases  deterministic 46/46  judge 45/46  model calls 123 (0 on 15 runs)  tokens 260721/16172  ≈ $0.0488  p50 1.60s p95 1.89s
+  failed: price-before-identification
+  (cost is the agent's model calls only; the judge's calls are not traced)
+saved gate run 09302402ead3 20261101T102906Z: 45/46 cases passing all 3 runs, passed=False
+make[1]: *** [gate] Error 1
+make: *** [gate] Error 2

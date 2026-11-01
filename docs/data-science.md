@@ -136,10 +136,18 @@ The protocol: score a batch **once, before tuning anything on it**, and report t
 number as it comes. A variant used to fix something is development data from then on;
 the next held-out score needs a fresh batch (`make variants`).
 
+**What closing it showed.** The gate on `09302402ead3`, the first agent without the
+leak, failed 45/46 (deterministic 46/46, judge 45/46). `turnaround`, whose words were the
+main leak, still passed 3/3. Case 30 did not: its caller asks "how much is the electric
+six seater per day?", which had been a prompt example word for word. Without it the model
+recorded no sauna, so the reply gave the whole price list and the judge's "gives the daily
+price of Vidutinė" failed. A zero-token replay reproduced the reply exactly. The leak had
+been carrying that case; code now reads a price question for its sauna (D-91), and the
+unit tests use wordings no case contains (`reports/after-16/`).
+
 **Status:** the numbers in §3–§5 belong to agent `bd98c5cf8006`, before the leak was
-closed. The current agent, `09302402ead3`, has not been measured yet: the extractor eval,
-the gate and the held-out run come next, and `turnaround` and the heater cases are the
-ones to watch.
+closed. The current agent, `6c6118d087e8`, has not been measured yet: the extractor eval,
+the gate and the held-out run come next.
 
 ## 4. The reliability curve: pass^k
 
@@ -346,6 +354,7 @@ flowchart TD
 | 62 nine-people-hear-the-largest-sauna-seats-eight | 👎 | nine people asked about their car before hearing no sauna seats nine; later, on the curve, a 1-in-5 flake | D-68, then D-79 (§4) |
 | fixture 01, final gate | a red cell | the judge flipped on a correct reply, 1 run in about 43 | D-87: the reply states the fact outright |
 | the prompt's examples | a review of the method | test-case wording in the prompt | D-88 (§3) |
+| 30 price-before-identification | a red cell: the gate on `09302402ead3`, on the judge | once its words left the prompt, the model recorded no sauna for a price question, and the caller got the whole price list | D-91: code reads a price question for its sauna |
 
 ### Measuring the loop itself
 
@@ -383,9 +392,9 @@ a boundary: [architecture/data-flow.md](architecture/data-flow.md).
   would add to it.
 - **The gate is the development set** (§3). The held-out run and the reviewer are built
   but not yet run, so there is no out-of-sample number yet.
-- **The current agent isn't measured yet.** The numbers here are for `bd98c5cf8006`;
-  `09302402ead3` closed the prompt leak and needs the extractor eval, the gate and the
-  held-out run.
+- **The current agent isn't measured yet.** The numbers here are for `bd98c5cf8006`.
+  `09302402ead3` closed the prompt leak and failed the gate 45/46 (§3); `6c6118d087e8`
+  fixes that case in code and needs the extractor eval, the gate and the held-out run.
 - **Drift is watched on intents only,** without an alert.
 - **Fixtures are hand-written or promoted from the simulator,** not from real phone
   calls.

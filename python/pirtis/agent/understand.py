@@ -208,6 +208,15 @@ class CallState(BaseModel):
             and names_a_sauna(quote, names)
         ):
             data["unit"] = unit_from_quote(quote, units)  # the quote is there, the sauna wasn't
+        # a price question about one sauna, with the sauna left out: read the question
+        # itself the same way (D-91). Only for a price: in a booking, words like "a big
+        # group" describe the people, and must not choose a sauna for them.
+        if data.get("intent") == "price" and data.get("unit") is None and units and latest:
+            for line in latest:
+                found = unit_from_quote(line, units)
+                if found is not None:
+                    data["unit"], data["unit_quote"] = found, line
+                    break
         if latest is not None and not quote_in(data.get("consent_quote"), latest):
             data["accepted_offer"], data["go_ahead"] = False, False
         # a yes that names its own price, or that talks to the system, isn't a yes to us

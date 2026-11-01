@@ -49,11 +49,16 @@ flowchart LR
 - **Cost and speed:** 0 or 1 model calls a turn, about $0.0004 a turn; p95 2.15 s.
 - **The naive starter** passed 4 of the 14 given cases.
 
-**Since then** (agent `09302402ead3`, not yet measured):
-- **A leak closed:** the prompt's examples quoted the kit's own `turnaround` case word for
-  word; they were rewritten, and a test now fails if the prompt shares a four-word run
-  with any test case (D-88). The gate, the extractor eval and the first held-out run come
-  next; until then the numbers above belong to `bd98c5cf8006`.
+**Since then** (agent `6c6118d087e8`, not yet measured):
+- **A leak closed (D-88):** the prompt's examples quoted test cases word for word: the
+  kit's `turnaround` case and our case 30. They were rewritten, and a test now fails if
+  the prompt shares a four-word run with any test case.
+- **What it uncovered:** the gate on `09302402ead3` failed 45/46. `turnaround` still
+  passed, but case 30 had been passing partly on its own words: without them the model
+  recorded no sauna for "how much is the electric six seater per day?", and the caller
+  got the whole price list. Code now reads a price question for its sauna (D-91), tested
+  on wordings no case uses. The gate runs again next; until it passes, the numbers above
+  belong to `bd98c5cf8006`.
 - **Measured honestly:** the 46 cases are the development set, so 46/46 is a development
   score. The 59 generated variants are kept as a held-out set, scored once by
   `make heldout` (D-89).

@@ -23,4 +23,8 @@ Test lists are re-runnable: check out that commit and run the command.
 | `cloud-checks.txt` | the live deployment probed from outside, as a stranger, and read back from its own logs and storage |
 | `security-review.md` | an independent adversarial review's findings, and what was done with each |
 
-Phase 1 produced documents only, so it has no folder.
+| `replay-*.txt` | a fixture replayed with the model's answer scripted, zero tokens, to show what the receptionist says for a given reading; the script beside it |
+
+Phase 1 produced documents only, so it has no folder. `after-16/` holds the work after
+the final phase: the gate that failed once the prompt leak was closed (D-88, D-91), and
+the replay that reproduced its reply.

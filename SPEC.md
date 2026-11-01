@@ -339,6 +339,7 @@ blocks deployment.
 | 2026-10-31 | ours, the final gate, unchanged agent (454b3a30e0ee) | all 46 cases, 3 runs, 3 must pass | **FAILED 45/46 cases, 137/138 runs**: deterministic 46/46, judge 45/46 (fixture 01 run 2: the judge flipped on a correct reply); then fixture 01 alone, 20 runs: 20/20 | 123 (0 on 15 runs) | 260,844 / 16,211 |
 | 2026-10-31 | ours, D-87 (bd98c5cf8006) | fixture 01, 20 runs | **20/20** | 1 per run | — |
 | 2026-10-31 | **ours: the final agent (bd98c5cf8006)** | **all 46 cases, 3 runs, 3 must pass** | **46/46 cases, 138/138 runs; deterministic 46/46, judge 46/46**; p50 1.74 s, p95 2.15 s | 123 (0 on 15 runs) | 260,844 / 16,182 |
+| 2026-11-01 | ours, the prompt leak closed (09302402ead3) | all 46 cases, 3 runs, 3 must pass | **FAILED 45/46 cases**: deterministic 46/46, judge 45/46 (price-before-identification: the model recorded no sauna once its words left the prompt; D-91). `turnaround` 3/3; p50 1.60 s, p95 1.89 s | 123 (0 on 15 runs) | 260,721 / 16,172 |
 
 At the Phase 6 gate, model turns took p50 1.54 s and p95 1.77 s (max 1.84 s), with
 about 1.7k prompt tokens each. After understanding v2 they take p50 1.76 s and p95
@@ -630,8 +631,9 @@ extractor eval and a gate run.
   14 written as speech-to-text hears a call, are the held-out set, and have not been run
   against the agent yet, so there is no out-of-sample number, and how it copes with
   noisy speech is not measured beyond our own cases.
-- Agent `09302402ead3` (the prompt leak closed, D-88) has not been through the extractor
-  eval, the gate or a held-out run yet; the measured numbers belong to `bd98c5cf8006`.
+- Agent `6c6118d087e8` has not been through the extractor eval, the gate or a held-out run
+  yet; the measured numbers belong to `bd98c5cf8006`. Its predecessor `09302402ead3`, the
+  first without the prompt leak (D-88), failed the gate 45/46 on case 30 (D-91).
 - A move by one day is checked conservatively.
 - The agent package needs pydantic, installed by `uv sync`.
 - Terraform state is local.
@@ -668,7 +670,7 @@ extractor eval and a gate run.
   not seen by the next call (each call has its own API, as each fixture does).
 
 **Next steps:**
-- measure `09302402ead3`: `make eval-extract`, `make gate`, then `make heldout` once; the
+- measure `6c6118d087e8`: `make eval-extract`, `make gate`, then `make heldout` once; the
   14 speech-noise variants say whether a correction layer is needed at all
 - run the reviewer (`make review`) on a schedule in Azure, beside the nightly gate
 - real telephony: call automation and streaming speech in front of `decide`, with a
@@ -782,6 +784,7 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | D-88 | 2026-11-01 | The prompt quotes no test case: its examples are in words no case uses, and `agent/test_no_leak.py` fails on any four-word run the system prompt or schema shares with a caller line in any suite, the generated variants included | A scan found eight shared runs; "the wood smoke sets off my asthma" and "it has to be that one" were the kit's turnaround case word for word. A copied example teaches the model that answer and flatters the score | leaving the examples; a manual check only | accepted |
 | D-89 | 2026-11-01 | The 46 cases are the development set; the 59 generated variants are the held-out set, scored once by `make heldout` (by transform), before anything is tuned on them, and refreshed once used | Every change was made looking at the 46, so 46/46 is a development score; an out-of-sample number needs cases nobody tuned on | accepting the variants into the gate first | accepted |
 | D-90 | 2026-11-01 | An off-path reviewer (`make review`): another model, with its own prompt and schema, re-reads each model turn of recent calls and queues every turn it hears differently into Feedback, with both readings; it never overwrites a person's rating and never promotes | Real calls carry no gold answer; a second reading finds misheard facts and gives an agreement rate per field. Off the call path it adds no silence, and the kit's model pin inside decide() doesn't bind it | a second model call inside decide() (latency, and the kit pins gpt-4o-mini there) | accepted |
+| D-91 | 2026-11-01 | A price question names its sauna in code too: when the intent is a price and the model recorded no sauna, the caller's latest words are read with the same matcher as a quote (a name, a heater, an N-seater, a size), and a sauna is taken only when exactly one fits. Only for a price: in a booking, words like "a big group" describe the people | The gate on 09302402ead3, the first agent without the prompt leak, failed 45/46: case 30's "how much is the electric six seater per day?" had been a prompt example word for word; without it the model recorded no sauna, and the caller got the whole price list. The leak had been carrying the case; the rule now holds for wordings no case uses | putting an example back in the prompt; a prompt rule alone | accepted |
 
 ---
 
@@ -809,3 +812,4 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | 2026-10-31 | 16 | Documentation and the final run. `docs/architecture/` (containers, data flow with nine labelled stores, five trust boundaries and five tabled crossings, two sequences with their unhappy branches, deployment), checked for shape with 0 errors and 0 warnings. `docs/evaluation.md` with graphs, `docs/using-the-app.md` (the live link, sign-in, a tour), screenshots, the READMEs. The final gate on the unchanged agent failed 45/46 on a judge flip in fixture 01; fixed in the wording (D-87), then **46/46 cases, 138/138 runs** on bd98c5cf8006. Extractor 41/41. 692 tests | Readable without running it, and a final run that holds | D-87 |
 | 2026-10-31 | after 16 | Follow-ups after a documentation review. Docs: `docs/data-science.md` (every metric's method and limits), the README led by its core technical decisions, separate guides for testers (`docs/guide-caller.md`) and admins (`docs/guide-admin.md`). Console: `ops/cases.py` says where each case comes from, and the Reliability view, thermal view and replay list keep the kit's 14 apart from ours by kind. Simulator: the sign-in page says it is waiting while the app wakes; *Check speech before sending* puts recognised speech in the box to fix first. Voice: the mic is the main control and works by tap (tap again to send) or by hold; a press let go before the microphone starts counts as a tap, so answering the browser's permission prompt no longer ends it; a session the browser ends by itself restarts while the caller is still talking; Cancel or Esc discards; a blocked or missing microphone says what to do. Your last line stays above the reply, which dims while the next is on its way; Hang up is set apart; *Stay quiet* moved to the test controls. The agent is unchanged (`bd98c5cf8006`) | Reviewers read the kit's results and ours separately; a tester shouldn't blame the agent for the browser's speech errors | — |
 | 2026-11-01 | after 16 | The method reviewed. The prompt's examples no longer quote any test case, and a test keeps it so (D-88; agent `09302402ead3`, not yet measured). The 46 cases named as the development set and the 59 variants as the held-out set, with `make heldout` (D-89). An off-path reviewer, `make review`, queues turns a second model hears differently (D-90; data-flow crossing C6). Docs: the logic flow (`docs/architecture/logic-flow.md`), the feedback loop and held-out protocol in `docs/data-science.md`, the test cases in `docs/fixtures.md` | 46/46 was a development score, and one case's own words were in the prompt | D-88, D-89, D-90 |
+| 2026-11-01 | after 16 | The gate on `09302402ead3` failed 45/46 on case 30: with the leak closed, the model recorded no sauna for a price question. Code now reads a price question for its sauna (D-91), tested on wordings no case uses; agent `6c6118d087e8`, not yet measured | The leak had been carrying the case | D-91 |
