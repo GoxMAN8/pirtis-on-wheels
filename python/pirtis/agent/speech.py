@@ -70,7 +70,9 @@ QUESTIONS = {
     "past_dates": "That date has already passed. Which dates were you thinking of?",
     "people": "How many of you will there be?",
     # names both the car and the figure, so either reading of the question is covered
-    "tow": "What car will you tow it with, and how much can it tow, braked?",
+    # one question (manual testing found the two-part form hard to answer); the second
+    # sentence keeps both readings the kit's case 05 checks for (D-51, D-96)
+    "tow": "What car will you tow it with? I need its braked towing limit.",
     "power": "Is there mains power where the sauna is going?",
     "which_booking": "Which of your bookings do you mean? The dates are enough.",
     "new_dates": "Which dates would you like to move it to?",

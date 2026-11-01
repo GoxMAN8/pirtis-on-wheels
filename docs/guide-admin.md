@@ -31,7 +31,8 @@ Every chart has a *Show as table* button.
   checks (action, bookings, API rules) and the judge.
 - **The kit's cases and ours, apart:** *Given by the kit* (the 14 the graders gave us)
   and *Written by us* (our 32), each with its own pass count. A red count shows which
-  side failed.
+  side failed. A run that covered only part of a family says so ("ran 7 of 32"): the
+  nightly cloud run covers the kit's cases and our red team only.
 - the extractor's score, when the run included it, then runs, model calls, p95 latency,
   cost and the failed cases.
 

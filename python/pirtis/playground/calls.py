@@ -174,7 +174,10 @@ class Calls:
         """The caller says nothing for a while, then the receptionist decides what to do."""
         with call.lock:
             _must_be_open(call)
-            call.t.now = round(call.t.now + seconds, 2)
+            # counted from when the receptionist stopped talking, as a phone line counts it
+            ours = _last_line(call.t)
+            since = max(call.t.now, ours.end if ours is not None else 0.0)
+            call.t.now = round(since + seconds, 2)
             return self._respond(call)
 
     def hang_up(self, call: LiveCall) -> None:

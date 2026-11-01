@@ -208,6 +208,16 @@ class CallState(BaseModel):
             and names_a_sauna(quote, names)
         ):
             data["unit"] = unit_from_quote(quote, units)  # the quote is there, the sauna wasn't
+        # a price needs a caller who asked about money (D-95): "which dates are free?" is
+        # a booking question, and a price list doesn't answer it
+        if (
+            data.get("intent") == "price"
+            and latest
+            and not any(
+                _words(line) & _PRICE_WORDS or "how much" in fold(line).lower() for line in latest
+            )
+        ):
+            data["intent"] = "book"
         # a price question about one sauna, with the sauna left out: read the question
         # itself the same way (D-91). Only for a price: in a booking, words like "a big
         # group" describe the people, and must not choose a sauna for them.
@@ -269,6 +279,13 @@ def quote_supported(quote: object, caller_lines: Sequence[str]) -> bool:
     has_number = any(w.isdigit() for w in words) or bool(words & _NUMBER_WORDS)
     return has_number and quote_in(quote, caller_lines)
 
+
+# words a caller uses when asking what something costs ("how much" is checked as a phrase)
+_PRICE_WORDS = {
+    "cost", "costs", "costing", "price", "prices", "priced", "pricing", "euro", "euros",
+    "eur", "expensive", "cheap", "cheaper", "cheapest", "rate", "rates", "charge", "charges",
+    "fee", "fees", "pay", "paying", "budget", "afford", "quote",
+}  # fmt: skip
 
 # words a caller uses when heating matters to them; "power" and "electricity" are about the
 # site, not the heater, so they don't count

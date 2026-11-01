@@ -358,3 +358,20 @@ def test_a_hedged_group_size_takes_the_higher_number(line: str, model: int, kept
     the receptionist asked about the car instead of saying no sauna seats nine."""
     ctx: dict[str, Any] = {"caller_lines": [line], "latest_lines": [line], "offered": False}
     assert state(ctx, people=model).people == kept
+
+
+@pytest.mark.parametrize(
+    "line, intent",
+    [
+        ("which dates are free in October?", "book"),  # C4: not a price question
+        ("what have you got for the weekend after next", "book"),
+        ("how much would the big one be for two days", "price"),
+        ("what does it cost per day?", "price"),
+        ("is the small one cheaper?", "price"),
+    ],
+)
+def test_a_price_needs_a_caller_who_asked_about_money(line: str, intent: str) -> None:
+    """D-95. Manual testing, C4: "which dates are available" was read as a price question,
+    and the caller got the price list instead of a question about their booking."""
+    st = state(_asked(line), intent="price", unit=None, unit_quote=None)
+    assert st.intent == intent

@@ -83,6 +83,7 @@ function speak(text, speed) {
   u.onstart = () => { $("stove").classList.add("speaking"); smoke.set(1); };
   u.onend = u.onerror = () => {
     if (!speechSynthesis.speaking) { $("stove").classList.remove("speaking"); smoke.set(0.5); }
+    armSilence(); // the quiet is counted from when the receptionist stops talking
   };
   speechSynthesis.speak(u);
 }
@@ -142,6 +143,7 @@ function listenLang() {
 
 function listen() {
   if (mic.want || S.busy || !S.call || S.call.status !== "open") return false;
+  clearTimeout(quietTimer);
   cutIn = "speechSynthesis" in window && speechSynthesis.speaking;
   hush();
   heard = "";
@@ -314,6 +316,24 @@ if (!Recognition) {
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && mic.want) cancelListening(); });
 }
 
+// ---- a real silence: on a phone line, saying nothing for a while is a turn too ----
+// Eight seconds of quiet after the receptionist finishes speaking is sent as a silence,
+// as the "Stay quiet" control does: the receptionist checks in, then says goodbye.
+// Typing, the microphone, or an open rating form keeps it from counting.
+const QUIET_MS = 8000;
+const QUIET_KEY = "pirtis-auto-quiet";
+let quietTimer = 0;
+
+function armSilence() {
+  clearTimeout(quietTimer);
+  if (!$("auto-quiet").checked || !S.call || S.call.status !== "open" || S.busy || mic.want) return;
+  quietTimer = setTimeout(() => {
+    if ("speechSynthesis" in window && speechSynthesis.speaking) { armSilence(); return; }
+    if (S.busy || mic.want || $("text").value.trim() || !$("rate").hidden) return;
+    post("/api/silence", { seconds: QUIET_MS / 1000 });
+  }, QUIET_MS);
+}
+
 // ---- the call ----
 const STATUS = {
   open: ["On the line", "cold"],
@@ -389,6 +409,7 @@ async function send(text, barge = false) {
   } finally {
     S.busy = false;
     setBusy(false);
+    armSilence(); // the reply is in: from now on the quiet counts
   }
 }
 
@@ -405,6 +426,7 @@ async function post(path, extra = {}) {
   } finally {
     S.busy = false;
     setBusy(false);
+    armSilence(); // the reply is in: from now on the quiet counts
   }
 }
 
@@ -445,6 +467,8 @@ function render(view) {
   fresh.forEach((line, i) => speak(line.content, speeds[i] || 1));
   S.spoken = ours.length;
 
+  renderLineRate(view);
+  armSilence();
   renderCard(view.card);
   renderTranscript(view);
   renderLastTurn(view);
@@ -538,6 +562,13 @@ function stepFor(item, steps) {
   return found;
 }
 
+function renderLineRate(view) {
+  // the latest reply's 👍/👎, where the caller is looking; the transcript has them all
+  const ours = view.items.filter((i) => i.role === "assistant");
+  const step = ours.length && view.status === "open" ? stepFor(ours[ours.length - 1], view.steps) : null;
+  clear($("line-rate"), step ? [el("span", { text: "How was this reply?" }), rating(step.turn_id)] : []);
+}
+
 function renderTranscript(view) {
   const list = view.items.map((it) => {
     const step = it.role === "assistant" ? stepFor(it, view.steps) : null;
@@ -575,6 +606,7 @@ async function rate(turnId, verdict, note) {
     await api("/api/feedback", { session_id: S.call.session_id, turn_id: turnId, verdict, note });
     S.rated.set(turnId, verdict);
     renderTranscript(S.call);
+    renderLineRate(S.call);
   } catch (e) {
     showError(e.message);
   }
@@ -751,6 +783,12 @@ $("say").addEventListener("submit", (e) => {
   if (text) send(text, pendingCutIn).then((ok) => { if (ok) pendingCutIn = false; });
 });
 $("quiet").addEventListener("click", () => post("/api/silence", { seconds: 8 }));
+$("text").addEventListener("input", armSilence);
+try { $("auto-quiet").checked = localStorage.getItem(QUIET_KEY) !== "0"; } catch { /* starts on */ }
+$("auto-quiet").addEventListener("change", () => {
+  try { localStorage.setItem(QUIET_KEY, $("auto-quiet").checked ? "1" : "0"); } catch { /* not kept */ }
+  armSilence();
+});
 $("hangup").addEventListener("click", () => post("/api/hangup"));
 
 async function boot() {

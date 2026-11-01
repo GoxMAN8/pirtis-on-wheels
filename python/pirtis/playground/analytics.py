@@ -266,6 +266,10 @@ def by_family(rows: list[RunRow], groups: Groups) -> list[dict[str, Any]]:
                         all(x.deterministic_ok for x in v) for v in mine
                     ),
                     "judge_passed_cases": sum(all(x.judge_ok for x in v) for v in mine),
+                    # the family's cases on disk, so a run of only some of them says so
+                    "available": sum(
+                        1 for g in groups.values() if cases.BY_KEY[g].family == family
+                    ),
                 }
             )
     return out

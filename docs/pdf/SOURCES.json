@@ -1,6 +1,6 @@
 {
   "admin-guide.pdf": {
-    "docs/guide-admin.md": "916548d7316cd1ce"
+    "docs/guide-admin.md": "b8db9a8f8ad8ec39"
   },
   "architecture.pdf": {
     "docs/architecture/containers.md": "cef45bc3cf317ccf",
@@ -13,7 +13,7 @@
     "BUILD_LOG.md": "046a076e3970ee22"
   },
   "data-science.pdf": {
-    "docs/data-science.md": "d11ff4fe60899212"
+    "docs/data-science.md": "4340e79c2070af53"
   },
   "deploy.pdf": {
     "deploy/README.md": "1a84cee86c900460"
@@ -32,16 +32,16 @@
     "python/README.md": "c95abd0f2c65d22f"
   },
   "readme.pdf": {
-    "README.md": "63d47a7a353771b8"
+    "README.md": "cba678131a0e1009"
   },
   "reports.pdf": {
-    "reports/README.md": "36ec50a6266b648c"
+    "reports/README.md": "cd04b8b98fa83cd5"
   },
   "spec.pdf": {
-    "SPEC.md": "e7b55cdda771a64b"
+    "SPEC.md": "959057b657c4b041"
   },
   "tester-guide.pdf": {
-    "docs/guide-caller.md": "237162a6e85ead56"
+    "docs/guide-caller.md": "f1a06a6807f1837e"
   },
   "using-the-app.pdf": {
     "docs/using-the-app.md": "9caf41f3919d5982"

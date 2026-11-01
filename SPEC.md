@@ -634,8 +634,8 @@ extractor eval and a gate run.
   14 written as speech-to-text hears a call, are the held-out set, and have not been run
   against the agent yet, so there is no out-of-sample number, and how it copes with
   noisy speech is not measured beyond our own cases.
-- Agent `239ddaf571d0` has not been through the extractor eval, the gate or a held-out run
-  yet; the measured numbers belong to `bd98c5cf8006`. On the way: `09302402ead3`, the first
+- Agent `1c0de71d1184` (manual-testing fixes, D-93 to D-96) has not been through the
+  extractor eval, the gate or a held-out run yet; the measured numbers belong to `bd98c5cf8006`. On the way: `09302402ead3`, the first
   without the prompt leak (D-88), failed the gate 45/46 on case 30 (D-91), and
   `6c6118d087e8` scored 40/41 on the extractor eval (D-92).
 - A move by one day is checked conservatively.
@@ -674,7 +674,7 @@ extractor eval and a gate run.
   not seen by the next call (each call has its own API, as each fixture does).
 
 **Next steps:**
-- measure `239ddaf571d0`: `make eval-extract`, `make gate`, then `make heldout` once; the
+- measure `1c0de71d1184`: `make eval-extract`, `make gate`, then `make heldout` once; the
   14 speech-noise variants say whether a correction layer is needed at all
 - run the reviewer (`make review`) on a schedule in Azure, beside the nightly gate
 - real telephony: call automation and streaming speech in front of `decide`, with a
@@ -790,6 +790,10 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | D-90 | 2026-11-01 | An off-path reviewer (`make review`): another model, with its own prompt and schema, re-reads each model turn of recent calls and queues every turn it hears differently into Feedback, with both readings; it never overwrites a person's rating and never promotes | Real calls carry no gold answer; a second reading finds misheard facts and gives an agreement rate per field. Off the call path it adds no silence, and the kit's model pin inside decide() doesn't bind it | a second model call inside decide() (latency, and the kit pins gpt-4o-mini there) | accepted |
 | D-91 | 2026-11-01 | A price question names its sauna in code too: when the intent is a price and the model recorded no sauna, the caller's latest words are read with the same matcher as a quote (a name, a heater, an N-seater, a size), and a sauna is taken only when exactly one fits. Only for a price: in a booking, words like "a big group" describe the people | The gate on 09302402ead3, the first agent without the prompt leak, failed 45/46: case 30's "how much is the electric six seater per day?" had been a prompt example word for word; without it the model recorded no sauna, and the caller got the whole price list. The leak had been carrying the case; the rule now holds for wordings no case uses | putting an example back in the prompt; a prompt rule alone | accepted |
 | D-92 | 2026-11-01 | A heater preference counts only from a caller who talked about heating (wood, electric, smoke, fire, a stove, a heater…); "power" and "electricity" are about the site and don't count | The extractor eval on 6c6118d087e8: barge-in-correction recorded "electric" in 2 of 3 runs though the caller never mentioned a heater; it came from our own cut-off offer of an electric sauna. Harmless there (a preference without a reason only sorts, and one sauna seats eight), but an invented fact; the same principle as D-54, checked in code | rewording the heater example again (each rewording has moved something else, D-75) | accepted |
+| D-93 | 2026-11-01 | A booking for more people than the biggest sauna seats is told so before the caller is identified | Manual testing, C2: ten people were asked for a full name first. Saying no sauna seats ten reads no customer data, so it needn't wait | keeping identification first for everything | accepted |
+| D-94 | 2026-11-01 | When identification fails, the name is tried once more spelled the Lithuanian way: th→t, ph→f, w→v, and a final plain e→ė, in words with no Lithuanian letters. One extra lookup, checked against the calling number like the first; a stranger is still put through | Manual testing, C3: an English recogniser wrote "Thomas" for Tomas, so a customer was put through as a stranger. Lithuanian has no th, ph or w, and its names don't end in a plain e | asking the caller to repeat the name (a kit case expects the stranger to be put through at once); a list of names | accepted |
+| D-95 | 2026-11-01 | A price reading needs a caller who asked about money (cost, price, how much, euro, cheap…); otherwise it is a booking question | Manual testing, C4: "which dates are available?" got the price list | a prompt rule | accepted |
+| D-96 | 2026-11-01 | The tow question is one question: "What car will you tow it with? I need its braked towing limit." Both the car and its limit stay named, for the kit's case 05 and D-51 | Manual testing, C11: the two-part question read as two questions | "How much can your car tow?" alone (the judge has read "or" as "and", D-51) | accepted |
 
 ---
 
@@ -821,3 +825,4 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | 2026-11-01 | after 16 | The extractor eval on `6c6118d087e8`: 40/41; case 30 passes 3/3, and barge-in-correction recorded a heater the caller never mentioned. A heater preference now needs a caller who talked about heating (D-92); agent `239ddaf571d0`, not yet measured. The run is in `reports/after-16/` | an invented fact, caught by the eval | D-92 |
 | 2026-11-01 | after 16 | Simulator: *Lithuanian for names*. When the receptionist's last line asks for the caller's full name, the browser's recogniser listens in Lithuanian (`lt-LT`) for that turn only, so diacritics survive; it falls back to English for the visit where the browser has no Lithuanian. The agent is unchanged | Manual testing: the English recogniser lost Lithuanian names, so identification failed | — |
 | 2026-11-01 | after 16 | Simulator: every caller line is normalised to one spelling of each letter (Unicode NFC) before the agent sees it. "Eglė" can arrive as "e" plus a combining dot; the model echoes it, and the kit's API, comparing letters exactly, then can't find the customer. The agent is unchanged | Manual testing, case B4: Eglė, with her name corrected, was still put through as a stranger | — |
+| 2026-11-01 | after 16 | Manual testing on the live app, logged in `reports/manual/2026-11-01-GS.md`: 24 of 34 passed. Agent: D-93 to D-96 (`1c0de71d1184`, not yet measured). Simulator: 8 s of real quiet after a reply counts as silence, measured from when the receptionist stops talking; 👍/👎 under the current reply. Console: a run that covers only part of a family says "ran 7 of 32" | What a tester met that the cases didn't | D-93, D-94, D-95, D-96 |

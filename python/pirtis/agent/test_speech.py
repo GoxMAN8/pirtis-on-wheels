@@ -336,3 +336,13 @@ def test_before_identification_a_booking_question_is_deferred_out_loud() -> None
     text = str(say["text"])
     assert "can't look at your bookings until I know who's calling" in text
     assert text.endswith("Can I get your full name, please?")
+
+
+def test_the_tow_question_is_one_question_that_names_both_things() -> None:
+    """D-96. Manual testing, C11: "What car will you tow it with, and how much can it tow,
+    braked?" read as two questions. One question now, and the car and its towing limit
+    are both named, for the kit's case 05 ("asks what car … or how much it can tow")."""
+    from pirtis.agent.speech import QUESTIONS
+
+    line = QUESTIONS["tow"]
+    assert line.count("?") == 1 and "car" in line and "tow" in line and "braked" in line

@@ -208,12 +208,20 @@ def next_step(t: Transcript, s: CallState, api: ApiClient, units: list[Unit]) ->
             return Reply(answer) if answer else Sorry()
 
     customer = identified_customer(t)
+    biggest = max(u.capacity for u in units)
+    if not customer and s.intent == "book" and s.people is not None and s.people > biggest:
+        # no sauna takes them, whoever they are: say so before asking who's calling (D-93)
+        return NoFit("too_many", limit=biggest)
     if not customer:
         name = normalise_name(s.full_name, caller_lines(t))
         if not is_full_name(name):
             about_a_booking = s.intent in ("check_booking", "change", "cancel")
             return Ask("name_booking" if about_a_booking else "name")
         found = api.identify_customer(t.caller.phone, name or "")
+        respelled = lithuanian_spelling(name or "")
+        if not found.ok and respelled != name:
+            # the name as a speech recogniser spells it, once more as Lithuanian (D-94)
+            found = api.identify_customer(t.caller.phone, respelled)
         if not found.ok:
             reason = "no customer matches this phone and name"
             return Handoff("new_customers", reason, summary(s, t))
@@ -695,6 +703,24 @@ def normalise_name(name: str | None, lines: list[str]) -> str | None:
         theirs = said.get(fold(w).lower())
         words.append(theirs if theirs and theirs != fold(theirs) and w == fold(w) else w)
     return " ".join(words) or None
+
+
+def lithuanian_spelling(name: str) -> str:
+    """A name as an English speech recogniser tends to spell it, written the Lithuanian way:
+    Lithuanian has no "th", "ph" or "w", and its names never end in a plain "e" ("Eglė",
+    "Butkutė", "Paulauskienė"). Only words with no Lithuanian letters are touched, since
+    those kept the caller's own spelling. It is one more guess at the same caller's name,
+    checked like the first against the calling number."""
+
+    def respell(word: str) -> str:
+        if fold(word) != word:  # already has Lithuanian letters
+            return word
+        w = re.sub("th", "t", word)
+        w = re.sub("Th", "T", w)
+        w = re.sub("ph", "f", w).replace("Ph", "F").replace("w", "v").replace("W", "V")
+        return w[:-1] + "ė" if len(w) > 2 and w.endswith("e") else w
+
+    return re.sub(r"[^\W\d_]+", lambda m: respell(m[0]), name)
 
 
 def is_full_name(name: str | None) -> bool:

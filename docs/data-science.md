@@ -151,8 +151,8 @@ caller never stated, taken from our own cut-off offer of an electric sauna. A he
 preference now counts only from a caller who talked about heating (D-92).
 
 **Status:** the numbers in §3–§5 belong to agent `bd98c5cf8006`, before the leak was
-closed. The current agent, `239ddaf571d0`, has not been through the extractor eval, the
-gate or the held-out run yet.
+closed. The current agent, `1c0de71d1184`, adds the fixes from the first manual test session
+(D-93 to D-96) and has not been through the extractor eval, the gate or the held-out run yet.
 
 ## 4. The reliability curve: pass^k
 
@@ -328,6 +328,7 @@ flowchart TD
 | Signal | Catches | Cost | Status |
 |---|---|---|---|
 | **People's 👍/👎** on any reply, or *Flag this turn* in a trace | what a person notices: a wrong answer, a clumsy line, a missed cue | testers' time | built and used: cases 60–62 |
+| **Manual test sessions** in the Pirtis Test Log: 34 cases marked pass, fail, blocked or skipped, plus findings | what a scripted walk through the product finds: recognition, rigid rules, missing affordances | testers' time | first session 1 Nov: 24/34, logged in `reports/manual/` |
 | **The reviewer** (`make review`): another model re-reads each model turn and compares its reading with the agent's, fact by fact | misheard facts on real calls, which have no gold answer | one call to the reviewer's model per model turn | built and tested; not yet run on live calls |
 | **Human evaluation** with scenario cards | how it sounds to people, and how far to trust the judge | testers' time | built, not yet run |
 | **The gate and the nightly job** | a regression on a known case | about $0.05 for a full gate | running nightly in Azure |
@@ -360,6 +361,7 @@ flowchart TD
 | fixture 01, final gate | a red cell | the judge flipped on a correct reply, 1 run in about 43 | D-87: the reply states the fact outright |
 | the prompt's examples | a review of the method | test-case wording in the prompt | D-88 (§3) |
 | 30 price-before-identification | a red cell: the gate on `09302402ead3`, on the judge | once its words left the prompt, the model recorded no sauna for a price question, and the caller got the whole price list | D-91: code reads a price question for its sauna |
+| manual session GS, 1 Nov (`reports/manual/`) | people: 9 of 34 cases failed, 1 finding | names an English recogniser respelled ("Thomas"); ten people asked for a name first; "which dates are free?" read as a price; a two-part tow question; real quiet not treated as silence; hidden 👍/👎 | D-93 to D-96 in the agent; the simulator and console in code |
 | 27 barge-in-correction | the extractor eval on `6c6118d087e8`, 2 of 3 runs | a heater preference the caller never stated, taken from our cut-off offer of an electric sauna | D-92: a heater preference needs a caller who talked about heating |
 
 ### Measuring the loop itself
@@ -400,8 +402,9 @@ a boundary: [architecture/data-flow.md](architecture/data-flow.md).
   but not yet run, so there is no out-of-sample number yet.
 - **The current agent isn't measured yet.** The numbers here are for `bd98c5cf8006`.
   `09302402ead3` closed the prompt leak and failed the gate 45/46; `6c6118d087e8` fixed
-  that case and scored 40/41 on the extractor eval (§3); `239ddaf571d0` fixes that one and
-  needs the extractor eval, the gate and the held-out run.
+  that case and scored 40/41 on the extractor eval (§3); `239ddaf571d0` fixed that one;
+  `1c0de71d1184` adds the manual-testing fixes and needs the extractor eval, the gate and
+  the held-out run.
 - **Drift is watched on intents only,** without an alert.
 - **Fixtures are hand-written or promoted from the simulator,** not from real phone
   calls.

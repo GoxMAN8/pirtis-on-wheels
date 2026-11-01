@@ -46,6 +46,7 @@
         <div id="scenario" class="scenario" hidden></div>
         <p id="you" class="you" hidden><span class="speaker">You</span><span id="you-text"></span></p>
         <p id="line" class="line" aria-live="polite"></p>
+        <div id="line-rate" class="line-rate"></div>
         <p id="interim" class="interim" aria-live="polite"></p>
         <div id="stove" class="stove" aria-hidden="true"></div>
 
@@ -103,6 +104,7 @@
             <input type="range" id="anger" min="0" max="1" step="0.1" value="0">
           </label>
           <label class="toggle"><input type="checkbox" id="barge"> Cut in on the receptionist's last line with your next one</label>
+          <label class="toggle"><input type="checkbox" id="auto-quiet" checked> Treat 8 s of quiet after a reply as silence, as a phone line would</label>
           <div class="replay">
             <button class="btn" id="quiet" type="button">Stay quiet 8 s</button>
             <span class="muted">a silence: the receptionist checks in, then ends the call</span>

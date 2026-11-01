@@ -49,7 +49,7 @@ flowchart LR
 - **Cost and speed:** 0 or 1 model calls a turn, about $0.0004 a turn; p95 2.15 s.
 - **The naive starter** passed 4 of the 14 given cases.
 
-**Since then** (agent `239ddaf571d0`, not yet through the gate):
+**Since then** (agent `1c0de71d1184`, not yet through the gate):
 - **A leak closed (D-88):** the prompt's examples quoted test cases word for word: the
   kit's `turnaround` case and our case 30. They were rewritten, and a test now fails if
   the prompt shares a four-word run with any test case.
@@ -61,8 +61,15 @@ flowchart LR
     taken from our own cut-off offer. A heater preference now needs a caller who talked
     about heating (D-92).
 
-  `turnaround`, whose words were the main leak, passed throughout. Until the gate passes
-  again, the numbers above belong to `bd98c5cf8006`.
+  `turnaround`, whose words were the main leak, passed throughout.
+- **Manual testing** on the live app (`reports/manual/2026-11-01-GS.md`, 24 of 34 passed)
+  led to four agent changes: a group no sauna seats is told so before the name is asked
+  (D-93); a name an English recogniser spells the English way ("Thomas") is tried once
+  more the Lithuanian way (D-94); a price reading needs a price word (D-95); and the tow
+  question is one question (D-96). The simulator now treats real quiet as silence, puts
+  👍/👎 under each reply, and listens for names in Lithuanian.
+
+  Until the gate passes again, the numbers above belong to `bd98c5cf8006`.
 - **Measured honestly:** the 46 cases are the development set, so 46/46 is a development
   score. The 59 generated variants are kept as a held-out set, scored once by
   `make heldout` (D-89).

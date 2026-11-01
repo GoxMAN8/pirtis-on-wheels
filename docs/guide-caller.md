@@ -40,7 +40,8 @@ python && make playground`, then open <http://127.0.0.1:8000>; no sign-in.
    hears it: dates, number of people, the car's towing limit, power at the site, the
    sauna. **Hover over a detail** to see the words it came from. After a booking, a
    text-message preview appears.
-4. **Rate any reply** with 👍 or 👎 and a short note. A 👎 lands in the admin console's
+4. **Rate any reply** with 👍 or 👎 (under the receptionist's latest line, and beside every
+   line in the Transcript) and a short note. A 👎 lands in the admin console's
    Feedback queue, where a reviewer may turn it into a permanent test case.
 5. **Hang up** when you're done.
 
@@ -67,7 +68,8 @@ The drawer under the call:
 |---|---|
 | How angry you sound | sets your next line's anger, 0 to 1. Angry and cutting in gets you a person |
 | Cut in | your next line interrupts the receptionist's last one |
-| Stay quiet 8 s | a silence: the receptionist checks in, then ends the call |
+| Treat 8 s of quiet as silence | on by default: eight seconds of quiet after the receptionist finishes speaking counts as a silence, as on a phone line; typing or the microphone holds it off |
+| Stay quiet 8 s | a silence at once: the receptionist checks in, then ends the call |
 | Replay a fixture | runs one test case through the real test harness and shows its verdicts. The list is grouped: the kit's own cases first, then ours by kind |
 
 ## 4. Scenario cards: the human evaluation

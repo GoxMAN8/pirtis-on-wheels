@@ -142,6 +142,8 @@ main { max-width: 1240px; margin: 0 auto; padding: 0 24px 64px; }
 .turn.system { color: var(--muted); font-family: var(--f-mono); font-size: 0.8125rem; }
 .turn .cut { color: var(--muted); font-size: 0.8125rem; }
 .rate { display: flex; gap: 4px; align-items: center; }
+.line-rate { display: flex; gap: 8px; align-items: center; min-height: 32px; font-size: 0.875rem; color: var(--muted); }
+.line-rate:empty { display: none; }
 .rate .btn { min-height: 32px; padding: 0 8px; }
 .rate .btn[aria-pressed="true"] { border-color: var(--ember); }
 .rate-note { display: flex; gap: 6px; margin-top: 6px; }

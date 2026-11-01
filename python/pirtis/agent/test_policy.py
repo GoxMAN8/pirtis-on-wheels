@@ -472,3 +472,55 @@ def test_our_own_offers_read_back_exactly(fid: str, kw: dict[str, Any]) -> None:
         items=[Item(type="message", role="assistant", start=1, end=2, content=line)],
     )
     assert last_offer(heard_in, api.list_units()) == HeardOffer(d.unit.id, d.start, d.end, d.people)
+
+
+# ---- manual testing, 2026-11-01 (D-93, D-94) ----
+
+TOMAS_CALLS = "price-before-identification"  # Tomas's phone, nobody identified yet
+
+
+def test_a_group_no_sauna_takes_hears_so_before_giving_a_name() -> None:
+    """C2: ten people were asked for a full name first. No customer data is needed to
+    say that no sauna seats ten, so it comes first now."""
+    d, api = run(TOMAS_CALLS, intent="book", people=10)
+    assert isinstance(d, NoFit) and d.reason == "too_many"
+    assert "customers.identify" not in methods(api)
+
+
+@pytest.mark.parametrize(
+    "heard, found",
+    [
+        ("Thomas Petrauskas", True),  # C3: an English recogniser's "Thomas"
+        ("tomas petrauskas", True),  # lower case was always fine
+        ("Thomas Wilde", False),  # respelled, still nobody on this number
+    ],
+)
+def test_a_name_spelled_the_english_way_is_tried_once_more_the_lithuanian_way(
+    heard: str, found: bool
+) -> None:
+    d, api = run(TOMAS_CALLS, intent="book", full_name=heard)
+    assert isinstance(d, Handoff) != found
+    assert methods(api).count("customers.identify") <= 2
+
+
+def test_a_stranger_is_still_put_through() -> None:
+    d, api = run("unknown-caller", intent="book", full_name="Marius Kazlauskas")
+    assert isinstance(d, Handoff) and d.queue == "new_customers"
+    assert methods(api).count("customers.identify") == 1  # nothing to respell
+
+
+@pytest.mark.parametrize(
+    "name, respelled",
+    [
+        ("Thomas Petrauskas", "Tomas Petrauskas"),
+        ("Egle Butkute", "Eglė Butkutė"),
+        ("Rasa Paulauskiene", "Rasa Paulauskienė"),
+        ("Eglė Butkutė", "Eglė Butkutė"),  # already Lithuanian: untouched
+        ("Jonas Jonaitis", "Jonas Jonaitis"),
+        ("Wilhelm Stephens", "Vilhelm Stefens"),
+    ],
+)
+def test_lithuanian_spelling(name: str, respelled: str) -> None:
+    from pirtis.agent.policy import lithuanian_spelling
+
+    assert lithuanian_spelling(name) == respelled

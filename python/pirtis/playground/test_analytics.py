@@ -214,8 +214,8 @@ def test_a_gate_run_is_split_into_the_kits_cases_and_ours() -> None:
     [view] = gate_runs_view([GateRun.from_rows(rows, agent_version="v1", run_ts=NOW)], groups)
     assert view["by_family"] == [
         {"family": "given", "label": "Given by the kit", "cases": 1, "passed_cases": 1,
-         "deterministic_passed_cases": 1, "judge_passed_cases": 1},
+         "deterministic_passed_cases": 1, "judge_passed_cases": 1, "available": 1},
         {"family": "ours", "label": "Written by us", "cases": 2, "passed_cases": 1,
-         "deterministic_passed_cases": 2, "judge_passed_cases": 1},
+         "deterministic_passed_cases": 2, "judge_passed_cases": 1, "available": 2},
     ]  # fmt: skip
     assert "rows" not in view
