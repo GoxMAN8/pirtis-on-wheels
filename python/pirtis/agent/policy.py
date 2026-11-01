@@ -11,6 +11,7 @@ import re
 from dataclasses import dataclass
 from datetime import date
 
+from pirtis.agent.reading import latest_caller_turn
 from pirtis.agent.rules import DAY, days, free_days, violations, without_booking
 from pirtis.agent.understand import CallState, caller_lines, fold
 from pirtis.agent.words import spoken_number, spoken_ordinal
@@ -170,12 +171,21 @@ class NoFit:
 
     reason: str  # "too_many" | "too_light" | "nothing_fits" | "no_dates" | "no_booking"
     limit: int = 0
+    closing: bool = False  # said once already: close the topic instead of asking again
+
+
+@dataclass(frozen=True)
+class FreeDates:
+    """What is free on the coming weekends, for a caller who asked what's available."""
+
+    weekends: tuple[tuple[str, str, int], ...]  # Saturday, Sunday, saunas free both days
+    units: int
 
 
 Decision = (
     Ask | Offer | Booked | OwnClash | Refuse | ConfirmChange | Moved | ConfirmCancel
     | Cancelled | BookingsRead | Price | Goodbye | Hold | Reply | Sorry | Handoff | NoFit
-    | OffTopic
+    | OffTopic | FreeDates
 )  # fmt: skip
 
 
@@ -183,6 +193,22 @@ Decision = (
 
 
 def next_step(t: Transcript, s: CallState, api: ApiClient, units: list[Unit]) -> Decision:
+    """The one next thing to do, given the call so far. A refusal we just gave is not given
+    again word for word: the second time it closes the topic (D-98)."""
+    d = _next_step(t, s, api, units)
+    if isinstance(d, NoFit) and not d.closing and _said_last(t, d):
+        return NoFit(d.reason, d.limit, closing=True)
+    return d
+
+
+def _said_last(t: Transcript, d: "NoFit") -> bool:
+    from pirtis.agent.speech import no_fit_line  # speech renders decisions: imported late
+
+    ours = [it for it in t.items if it.type == "message" and it.role == "assistant"]
+    return bool(ours) and ours[-1].content == no_fit_line(d)
+
+
+def _next_step(t: Transcript, s: CallState, api: ApiClient, units: list[Unit]) -> Decision:
     """The one next thing to do, given the call so far."""
     today = date.fromisoformat(t.today)
     by_id = {u.id: u for u in units}
@@ -212,6 +238,9 @@ def next_step(t: Transcript, s: CallState, api: ApiClient, units: list[Unit]) ->
     if not customer and s.intent == "book" and s.people is not None and s.people > biggest:
         # no sauna takes them, whoever they are: say so before asking who's calling (D-93)
         return NoFit("too_many", limit=biggest)
+    if s.intent == "book" and s.start is None and asks_what_is_free(t):
+        # an answer, not a question back; it reads no customer data (D-99)
+        return free_dates(api, units, date.fromisoformat(t.today))
     if not customer:
         name = normalise_name(s.full_name, caller_lines(t))
         if not is_full_name(name):
@@ -284,7 +313,7 @@ def book(
 
     heard = last_offer(t, units)
     agreed = (
-        s.accepted_offer
+        (s.accepted_offer or s.go_ahead)  # "book it" to our read-back is a yes too (D-98)
         and heard is not None
         and (heard.unit_id, heard.start, heard.end) == (choice.unit.id, choice.start, choice.end)
         and heard.people in (None, s.people)
@@ -703,6 +732,33 @@ def normalise_name(name: str | None, lines: list[str]) -> str | None:
         theirs = said.get(fold(w).lower())
         words.append(theirs if theirs and theirs != fold(theirs) and w == fold(w) else w)
     return " ".join(words) or None
+
+
+_WHATS_FREE = re.compile(
+    r"\b(available|availability|vacanc\w*"
+    r"|what(?:'s| is| are|s)? (?:free|open)"
+    r"|(?:which|what) (?:dates|days|weekends?)\b[^?.]*\b(?:free|open|available)"
+    r"|when (?:are|is|can)\b[^?.]*\b(?:free|open|available|book)"
+    r"|any (?:free|open) (?:dates|days|weekends?))\b",
+    re.IGNORECASE,
+)
+
+
+def asks_what_is_free(t: Transcript) -> bool:
+    """The caller's latest turn asks which dates are free."""
+    return any(_WHATS_FREE.search(it.content) for it in latest_caller_turn(t))
+
+
+def free_dates(api: ApiClient, units: list[Unit], today: date, weekends: int = 3) -> FreeDates:
+    """How many saunas are free on each of the coming weekends, Saturday and Sunday both."""
+    sat = today + (5 - today.weekday()) % 7 * DAY  # today, if it's a Saturday
+    out = []
+    for k in range(weekends):
+        s0, s1 = sat + 7 * k * DAY, sat + (7 * k + 1) * DAY
+        q = AvailabilityQuery(from_=s0.isoformat(), to=s1.isoformat())
+        n = sum(1 for a in api.availability(q) if {s0, s1} <= free_days(a.free))
+        out.append((s0.isoformat(), s1.isoformat(), n))
+    return FreeDates(tuple(out), len(units))
 
 
 def lithuanian_spelling(name: str) -> str:

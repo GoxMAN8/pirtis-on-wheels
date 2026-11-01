@@ -50,7 +50,7 @@ flowchart LR
 - **Cost and speed:** 0 or 1 model calls a turn, about $0.0004 a turn; p95 2.15 s.
 - **The naive starter** passed 4 of the 14 given cases.
 
-**Since then** (agent `1c0de71d1184`, not yet through the gate):
+**Since then** (agent `14e773f54eac`, not yet through the gate):
 - **A leak closed (D-88):** the prompt's examples quoted test cases word for word: the
   kit's `turnaround` case and our case 30. They were rewritten, and a test now fails if
   the prompt shares a four-word run with any test case.
@@ -70,7 +70,16 @@ flowchart LR
   question is one question (D-96). The simulator now treats real quiet as silence, puts
   👍/👎 under each reply, and listens for names in Lithuanian.
 
-  Until the gate passes again, the numbers above belong to `bd98c5cf8006`.
+  Agent `1c0de71d1184`, with those fixes, passed the gate to deploy and scored 58/59 on
+  the held-out run.
+- **The thread of the call** (`14e773f54eac`, from the second manual session): the
+  transcript stays the only memory, and the agent now also reads its own last line. A
+  finished task asks "anything else?" and a "no, that's all" closes the call; "yes, I'm
+  here" after a check-in brings back the last question; a refusal isn't repeated word for
+  word; "book it" to an offer read back is a yes; "which dates are free?" gets the coming
+  weekends (D-98, D-99). See [how the receptionist remembers](docs/architecture/logic-flow.md#how-the-receptionist-remembers).
+
+  Until the gate passes again, the measured numbers above belong to earlier agents.
 - **Measured honestly:** the 46 cases are the development set, so 46/46 is a development
   score. The 59 generated variants are kept as a held-out set (D-89). Heard right, the
   agent passes all 59 and decides each as its source did, and a thousand generated calls

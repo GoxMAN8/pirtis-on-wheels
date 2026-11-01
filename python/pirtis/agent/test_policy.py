@@ -524,3 +524,59 @@ def test_lithuanian_spelling(name: str, respelled: str) -> None:
     from pirtis.agent.policy import lithuanian_spelling
 
     assert lithuanian_spelling(name) == respelled
+
+
+# ---- keeping the thread of the call (D-98, D-99) ----
+
+
+def test_a_refusal_is_not_repeated_word_for_word() -> None:
+    """Manual testing, C2: ten people, then ten again, got the same line forever."""
+    from pirtis.agent.speech import no_fit_line
+
+    first, _ = run(TOMAS_CALLS, intent="book", people=10)
+    assert isinstance(first, NoFit) and not first.closing
+    f = ALL[TOMAS_CALLS]
+    said = no_fit_line(first)
+    items = [*f.transcript.items,
+             Item(type="message", role="assistant", content=said, start=20, end=22),
+             Item(type="message", role="user", content="ten. we are ten.", start=23, end=24,
+                  is_final=True, speech_final=True)]  # fmt: skip
+    again, _ = run(TOMAS_CALLS, items=items, intent="book", people=10)
+    assert isinstance(again, NoFit) and again.closing
+
+
+def test_book_it_to_our_read_back_is_a_yes() -> None:
+    """Manual testing, C8: "book it" got "Shall I book it?" again: the model heard a
+    go-ahead, not an accepted offer. To the offer we just read back, either is a yes."""
+    import json as _json
+
+    gold = _json.loads((FIXTURES.parent / "python/pirtis/agent/gold/happy-path.json").read_text())
+    heard = {k: v for k, v in gold["state"].items() if k in CallState.model_fields}
+    d, _ = run("happy-path", **{**heard, "accepted_offer": False, "go_ahead": True})
+    assert isinstance(d, Booked)
+    d, _ = run("happy-path", **{**heard, "accepted_offer": False, "go_ahead": False})
+    assert not isinstance(d, Booked)  # and without either, nothing is booked
+
+
+@pytest.mark.parametrize(
+    "line, asks",
+    [
+        ("which dates are available?", True),
+        ("what's free in October?", True),
+        ("any free weekends coming up?", True),
+        ("when can I book the big one?", True),
+        ("we'd like the tenth and eleventh", False),
+        ("book it for free", False),  # a price demand, not a question about dates
+    ],
+)
+def test_what_is_free_is_answered(line: str, asks: bool) -> None:
+    from pirtis.agent.policy import FreeDates
+
+    f = ALL[TOMAS_CALLS]
+    items = [*f.transcript.items[:-1],
+             Item(type="message", role="user", content=line, start=3, end=5,
+                  is_final=True, speech_final=True)]  # fmt: skip
+    d, _ = run(TOMAS_CALLS, items=items, intent="book")
+    assert isinstance(d, FreeDates) == asks
+    if isinstance(d, FreeDates):
+        assert len(d.weekends) == 3 and d.weekends[0][0] == "2026-10-03"

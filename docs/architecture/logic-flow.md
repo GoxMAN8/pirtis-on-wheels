@@ -1,4 +1,4 @@
-> Verified against `fd7d34f` on 2026-11-01.
+> Verified against `14e773f54eac`'s source on 2026-11-01.
 
 # Logic flow
 
@@ -10,6 +10,23 @@ follows the two writes across the containers; this page follows the decisions in
 The agent is **stateless**: each turn it receives the whole call so far and rebuilds
 what it knows from it. The kit calls `decide()` once per caller turn, so a conversation
 of any length is this flow, run again on a longer transcript.
+
+## How the receptionist remembers
+
+**The transcript is the memory.** Nothing is stored between turns: each turn, `decide()`
+reads the whole call so far and rebuilds three kinds of memory from it, the same way
+every time. A memory rebuilt from the record can't drift or go stale, and a call survives
+a restart by replaying its transcript.
+
+| Memory | What it holds | Rebuilt by | Used for |
+|---|---|---|---|
+| **Facts** | name, dates, people, the car's limit, power, the sauna, consent, each with the caller's words behind it | the model reads them from both sides of the call; code checks each against the caller's own words (§3) | what to ask, what to offer, whether to book |
+| **What has happened** | who the caller is; their bookings; what was booked, moved or cancelled in this call | the API calls recorded in the transcript (`identified_customer`, `own_bookings`) | never asking for a name twice; never reading anyone else's data |
+| **Where the conversation is** | our last line: the question pending, the offer just read back (`last_offer`), a refusal already given, a check-in, a finished task | code, from our own lines (D-98) | picking the thread up after a pause, taking "book it" as a yes to the offer, not repeating a refusal, closing a call that's done |
+
+The model sees the facts and the whole call; it never has to remember anything itself.
+The cost is a prompt that grows with the call, about 2.1k tokens a turn for booking calls;
+a much longer call would need older turns summarised (SPEC §12).
 
 ## 1 · One turn, end to end
 
@@ -54,7 +71,10 @@ flowchart TD
   human -->|"yes"| tr1["Announce a colleague, transfer"]
   human -->|"no"| angry{"Anger ≥ 0.7<br/>and cut us off?"}
   angry -->|"yes"| tr2["Apologise, transfer"]
-  angry -->|"no"| go["Go on to understanding"]
+  angry -->|"no"| thread{"After our 'anything else?' a short<br/>'no, that's all'? After our check-in<br/>a short 'yes, I'm here'?"}
+  thread -->|"closing"| bye2["Goodbye, end the call"]
+  thread -->|"still here"| resume["'Great.' and our last question again"]
+  thread -->|"neither"| go["Go on to understanding"]
   start -->|"we did"| cut{"We were cut off, or<br/>under 6 s of silence?"}
   cut -->|"yes"| w2["Wait 1.5 s"]
   cut -->|"no"| bye{"Our last line<br/>was a goodbye?"}
@@ -63,6 +83,9 @@ flowchart TD
   again -->|"yes"| end2["'I'll let you go', end the call"]
   again -->|"no"| check["'Are you still there?'"]
 ```
+
+The last two checks keep the thread of the call (D-98): they read our own last line, so
+a short reply that adds nothing new is answered at once, with no model call.
 
 A paraphrase the patterns miss ("could a human help me?") still reaches the model,
 whose intents include `human`, `hold` and `goodbye`: a miss costs a model call, not a
@@ -107,6 +130,7 @@ flowchart LR
   un -->|"no"| so["'Sorry, say that again?'"]
   un -->|"yes"| h
   open -->|"smalltalk"| sm["Short safe answer, or 'sorry'"]
+  open -->|"book, asking what's free"| fd["The next three weekends, how many saunas are free on each"]
   open -->|"anything else"| idq{"Caller identified<br/>earlier in the call?"}
   idq -->|"no"| full{"Full name given?<br/>two words or more"}
   full -->|"no"| askn["Ask for the name"]
@@ -120,6 +144,10 @@ flowchart LR
   intent2 -->|"cancel"| ca["Cancel flow, section 6"]
   intent2 -->|"book"| bk["Booking flow, section 5"]
 ```
+
+A refusal that would repeat the line we just said word for word closes the topic
+instead: "I'm sorry, none of our saunas can take that many people, so I can't book this
+one. Is there anything else I can help with?" (D-98).
 
 ## 5 · Booking: one question at a time, then an offer
 
@@ -145,8 +173,8 @@ flowchart TD
   b5 -->|"yes"| a5["Ask about mains power"]
   b5 -->|"no"| b6{"Caller said yes to this exact offer?<br/>sauna, dates, people as read back"}
   b6 -->|"no"| of["Read the offer back with the price,<br/>'Shall I book it?'"]
-  b6 -->|"yes"| cr["create: pre-flight, write, retries"]
-  cr --> ok["'That's booked', a text message"]
+  b6 -->|"yes, or 'book it'"| cr["create: pre-flight, write, retries"]
+  cr --> ok["'That's booked', a text message,<br/>'Is there anything else I can help with?'"]
 ```
 
 **The offer engine** (`choose_offer()`, D-12, D-35):

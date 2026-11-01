@@ -165,8 +165,9 @@ caller never stated, taken from our own cut-off offer of an electric sauna. A he
 preference now counts only from a caller who talked about heating (D-92).
 
 **Status:** the numbers in §3–§5 belong to agent `bd98c5cf8006`, before the leak was
-closed. The current agent, `1c0de71d1184`, adds the fixes from the first manual test session
-(D-93 to D-96) and has not been through the extractor eval, the gate or the held-out run yet.
+closed. `1c0de71d1184` added the fixes from the first manual test session (D-93 to D-96),
+passed the gate and scored 58/59 held out; the current agent, `14e773f54eac`, adds the
+thread of the call (D-98, D-99) and has not been through the extractor eval or the gate yet.
 
 ## 4. The reliability curve: pass^k
 
@@ -375,6 +376,7 @@ flowchart TD
 | fixture 01, final gate | a red cell | the judge flipped on a correct reply, 1 run in about 43 | D-87: the reply states the fact outright |
 | the prompt's examples | a review of the method | test-case wording in the prompt | D-88 (§3) |
 | 30 price-before-identification | a red cell: the gate on `09302402ead3`, on the judge | once its words left the prompt, the model recorded no sauna for a price question, and the caller got the whole price list | D-91: code reads a price question for its sauna |
+| manual session GS 2, 1 Nov (25 of 36 marked) | people: C1, C2, C8 failed; notes on C3b, C4b | no closure after a booking, a refusal repeated forever, the thread lost after a check-in, "book it" not taken as a yes, "what's free?" met with a question | D-98, D-99: the agent reads its own last line |
 | manual session GS, 1 Nov (`reports/manual/`) | people: 9 of 34 cases failed, 1 finding | names an English recogniser respelled ("Thomas"); ten people asked for a name first; "which dates are free?" read as a price; a two-part tow question; real quiet not treated as silence; hidden 👍/👎 | D-93 to D-96 in the agent; the simulator and console in code |
 | 27 barge-in-correction | the extractor eval on `6c6118d087e8`, 2 of 3 runs | a heater preference the caller never stated, taken from our cut-off offer of an electric sauna | D-92: a heater preference needs a caller who talked about heating |
 

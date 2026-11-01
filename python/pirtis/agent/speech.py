@@ -18,6 +18,7 @@ from pirtis.agent.policy import (
     ConfirmCancel,
     ConfirmChange,
     Decision,
+    FreeDates,
     Goodbye,
     Handoff,
     Hold,
@@ -101,6 +102,11 @@ def check_in_line() -> str:
     return "Are you still there? No rush if you need a moment."
 
 
+# how a finished task ends: the caller can go on, or close the call (the turn gate hears a
+# short "no, that's all" after it and says goodbye, with no model call)
+ANYTHING_ELSE = "Is there anything else I can help with?"
+
+
 def goodbye_line() -> str:
     return "Thanks for calling Pirtis on Wheels. Goodbye!"
 
@@ -148,7 +154,7 @@ def render(d: Decision, voice: Voice = NEUTRAL) -> list[Action]:
             return [
                 _say(
                     f"Done: {u.name} is moved to {spoken_range(b.start, b.end)}. I'll text you "
-                    "the new dates.",
+                    f"the new dates. {ANYTHING_ELSE}",
                     voice,
                 ),
                 sms(f"Pirtis on Wheels: {u.name} is now booked {_dates(b)}. Booking {b.id}."),
@@ -161,7 +167,7 @@ def render(d: Decision, voice: Voice = NEUTRAL) -> list[Action]:
             return [
                 _say(
                     f"Done: {u.name} for {spoken_range(b.start, b.end)} is cancelled. I'll text "
-                    "you a confirmation.",
+                    f"you a confirmation. {ANYTHING_ELSE}",
                     voice,
                 ),
                 sms(f"Pirtis on Wheels: {u.name} {_dates(b)} is cancelled. Booking {b.id}."),
@@ -172,6 +178,8 @@ def render(d: Decision, voice: Voice = NEUTRAL) -> list[Action]:
             return [_say(price_line(d), voice)]
         case Goodbye():
             return [_say(goodbye_line(), voice), end_call("caller said goodbye")]
+        case FreeDates():
+            return [_say(free_dates_line(d), voice)]
         case Hold():
             return [wait(HOLD_S)]
         case Reply(text=text):
@@ -215,7 +223,7 @@ def booked_line(b: Booking, u: Unit) -> str:
     return (
         f"That's booked: {u.name}, {spoken_range(b.start, b.end)}, for "
         f"{spoken_number(b.people)} people. The total is {spoken_euros(b.total)}, and I'll "
-        "text you the details."
+        f"text you the details. {ANYTHING_ELSE}"
     )
 
 
@@ -245,7 +253,35 @@ def price_line(p: Price) -> str:
     )
 
 
+# a refusal said once already closes the topic instead of asking the same again (D-98)
+_CLOSING_NO_FIT = {
+    "too_many": "I'm sorry, none of our saunas can take that many people, so I can't book "
+    "this one.",
+    "too_light": "I'm sorry, none of our saunas is light enough for that car, so I can't "
+    "book this one.",
+    "nothing_fits": "I'm sorry, none of our saunas fits all of that.",
+    "no_dates": "I'm sorry, I can't find dates that work for that.",
+    "no_booking": "I'm sorry, I can't find a booking of yours to change.",
+}
+
+
+def free_dates_line(f: FreeDates) -> str:
+    """The coming weekends, how many saunas are free on each, then the one question."""
+
+    def free(n: int) -> str:
+        if n == 0:
+            return "everything is booked"
+        if n == f.units:
+            return f"all {spoken_number(n)} saunas are free"
+        return "one sauna is free" if n == 1 else f"{spoken_number(n)} saunas are free"
+
+    weekends = "; ".join(f"{spoken_range(a, b)}, {free(n)}" for a, b, n in f.weekends)
+    return f"Weekends go first. {weekends}. Weekdays are mostly free. Which dates would you like?"
+
+
 def no_fit_line(n: NoFit) -> str:
+    if n.closing:
+        return f"{_CLOSING_NO_FIT.get(n.reason, _CLOSING_NO_FIT['nothing_fits'])} {ANYTHING_ELSE}"
     match n.reason:
         case "too_many":
             return (
