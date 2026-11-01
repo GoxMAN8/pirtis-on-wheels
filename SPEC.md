@@ -366,6 +366,7 @@ every fixture it sees: 20, then 23 with the promoted cases, then 41 with the han
 | 2026-10-31 | **+ the caller's own name (a40b5e6fcd67)** | 3 | **41/41** | every field 100% |
 | 2026-10-31 | + a hedge raised in code (454b3a30e0ee) | 3 | **41/41** | every field 100% |
 | 2026-11-01 | the leak closed (D-88) and a price read for its sauna (D-91), 6c6118d087e8 | 3 | 40/41 | `heater_pref` 98%: barge-in-correction recorded "electric" in 2 of 3 runs, unsaid by the caller |
+| 2026-11-01 | **the final agent (8612d72cfa25)** | 3 | **41/41** | every field 100% (`reports/after-16/extract-8612d72cfa25.txt`) |
 
 The naive agent swings between samples (4/14, then 3/14), which is why the gate needs
 3 of 3 runs. The skeleton's failures are all features of later phases: the silence
@@ -640,8 +641,8 @@ extractor eval and a gate run.
   passes all 59 at zero tokens (D-97); the live run scored 58/59, every decision right and
   one reply (turnaround--noise) graded down by the judge. One batch, run once.
 - Agent `8612d72cfa25` (the thread of the call, D-98 to D-101) passed the gate, 46/46
-  cases at 3 of 3, and scored 58/59 held out again (the same judge miss); its extractor
-  eval is not recorded yet. `1c0de71d1184` before it passed the gate
+  cases at 3 of 3, scored 58/59 held out again (the same judge miss) and 41/41 on the
+  extractor eval, every field 100%. It is deployed. `1c0de71d1184` before it passed the gate
   and scored 58/59 held out; the measured numbers belong to `bd98c5cf8006`. On the way: `09302402ead3`, the first
   without the prompt leak (D-88), failed the gate 45/46 on case 30 (D-91), and
   `6c6118d087e8` scored 40/41 on the extractor eval (D-92).
@@ -681,7 +682,7 @@ extractor eval and a gate run.
   not seen by the next call (each call has its own API, as each fixture does).
 
 **Next steps:**
-- record the extractor eval for `8612d72cfa25` (gate 46/46, held out 58/59); a fresh variant batch (`make variants`) before any
+- a fresh variant batch (`make variants`) before any
   further tuning, since this one has now been seen
 - run the reviewer (`make review`) on a schedule in Azure, beside the nightly gate
 - real telephony: call automation and streaming speech in front of `decide`, with a
