@@ -24,6 +24,10 @@ python && make playground`, then open <http://127.0.0.1:8000>; no sign-in.
    - **Type** in the box under it and press *Say it*. This always works.
    - Your browser sends your voice to its own speech service, so type if you'd rather
      not.
+   - **Lithuanian for names** (on by default): when the receptionist asks for your full
+     name, the browser listens in Lithuanian for that one answer, so "Eglė Butkutė" keeps
+     its letters; everything else is heard in English. Say just the name on that turn. A
+     browser that can't recognise Lithuanian (Safari may not) quietly uses English.
    - **Check speech before sending:** tick it and what the browser heard goes into the
      box instead of straight to the receptionist. Fix any misheard word, then press
      *Say it*. Use it for names: the browser often drops Lithuanian letters ("Egle" for

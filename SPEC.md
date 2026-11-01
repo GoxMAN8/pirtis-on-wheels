@@ -621,8 +621,10 @@ extractor eval and a gate run.
   agent may not read the customer list before the caller is identified, so this can't be
   repaired safely in the agent (trying spelling variants against the API would be
   guessing an identity). The fix belongs in the speech recogniser: a vocabulary hint
-  with the customers' and saunas' names. In the simulator, *Check speech before sending*
-  lets a tester correct a misheard word first.
+  with the customers' and saunas' names. In the simulator, the browser listens in
+  Lithuanian for the turn that answers "Can I get your full name?" (*Lithuanian for
+  names*, falling back to English where the browser has no Lithuanian), and *Check speech
+  before sending* lets a tester correct a misheard word first.
 - **English only.** The turn gate's patterns, the quote checks' word lists, the reply
   templates and numbers said as words are all English. The model's part would follow
   another language; the code's part wouldn't. Lithuanian callers would need Lithuanian
@@ -817,3 +819,4 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | 2026-11-01 | after 16 | The method reviewed. The prompt's examples no longer quote any test case, and a test keeps it so (D-88; agent `09302402ead3`, not yet measured). The 46 cases named as the development set and the 59 variants as the held-out set, with `make heldout` (D-89). An off-path reviewer, `make review`, queues turns a second model hears differently (D-90; data-flow crossing C6). Docs: the logic flow (`docs/architecture/logic-flow.md`), the feedback loop and held-out protocol in `docs/data-science.md`, the test cases in `docs/fixtures.md` | 46/46 was a development score, and one case's own words were in the prompt | D-88, D-89, D-90 |
 | 2026-11-01 | after 16 | The gate on `09302402ead3` failed 45/46 on case 30: with the leak closed, the model recorded no sauna for a price question. Code now reads a price question for its sauna (D-91), tested on wordings no case uses; agent `6c6118d087e8`, not yet measured | The leak had been carrying the case | D-91 |
 | 2026-11-01 | after 16 | The extractor eval on `6c6118d087e8`: 40/41; case 30 passes 3/3, and barge-in-correction recorded a heater the caller never mentioned. A heater preference now needs a caller who talked about heating (D-92); agent `239ddaf571d0`, not yet measured. The run is in `reports/after-16/` | an invented fact, caught by the eval | D-92 |
+| 2026-11-01 | after 16 | Simulator: *Lithuanian for names*. When the receptionist's last line asks for the caller's full name, the browser's recogniser listens in Lithuanian (`lt-LT`) for that turn only, so diacritics survive; it falls back to English for the visit where the browser has no Lithuanian. The agent is unchanged | Manual testing: the English recogniser lost Lithuanian names, so identification failed | — |

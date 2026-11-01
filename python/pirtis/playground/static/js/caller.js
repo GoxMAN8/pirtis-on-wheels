@@ -120,7 +120,25 @@ let cutIn = false;
 const REVIEW_KEY = "pirtis-review-speech";
 let pendingCutIn = false;
 const mic = { want: false, live: false, holding: false, latched: false, cancelled: false,
-  downAt: 0, startedAt: 0, restarts: 0, error: "", ignoreUp: false, timer: 0 };
+  downAt: 0, startedAt: 0, restarts: 0, error: "", ignoreUp: false, timer: 0, lang: "en-GB" };
+// Names in Lithuanian: an English recogniser hears "Eglė Butkutė" as English words, and a
+// name that loses its letters can't be found. When the receptionist has just asked for the
+// caller's full name, the browser listens in Lithuanian for that one turn, as a phone
+// system would with a language hint; anything else stays English. A browser that can't
+// recognise Lithuanian falls back to English for the rest of the visit.
+const NAME_ASKED = /\byour full name\b/i;
+const LT_KEY = "pirtis-lt-names";
+let ltUnsupported = false;
+
+function nameTurn() {
+  const ours = (S.call?.items || []).filter((i) => i.role === "assistant");
+  const last = ours[ours.length - 1];
+  return Boolean(last && NAME_ASKED.test(last.content));
+}
+
+function listenLang() {
+  return nameTurn() && $("lt-names").checked && !ltUnsupported ? "lt-LT" : "en-GB";
+}
 
 function listen() {
   if (mic.want || S.busy || !S.call || S.call.status !== "open") return false;
@@ -136,7 +154,8 @@ function listen() {
 
 function session() {
   rec = new Recognition();
-  rec.lang = "en-GB";
+  mic.lang = listenLang();
+  rec.lang = mic.lang;
   rec.interimResults = true;
   rec.continuous = true;
   rec.onstart = () => {
@@ -154,6 +173,10 @@ function session() {
     $("interim").textContent = (heard + interim).trim();
   };
   rec.onerror = (e) => {
+    if (mic.lang !== "en-GB" && (e.error === "language-not-supported" || e.error === "service-not-allowed")) {
+      ltUnsupported = true; // no Lithuanian here: the restart below listens in English
+      return;
+    }
     mic.error = e.error;
     if (FATAL[e.error]) { mic.want = false; showError(FATAL[e.error]); }
   };
@@ -208,7 +231,7 @@ function setMic(state) {
   const label = {
     idle: "Tap to talk",
     starting: "Starting the microphone…",
-    listening: mic.holding ? `Listening · let go to ${verb}` : `Listening · tap to ${verb}`,
+    listening: `${mic.lang === "lt-LT" ? "Your name, in Lithuanian" : "Listening"} · ${mic.holding ? "let go" : "tap"} to ${verb}`,
   }[state];
   $("talk").dataset.state = state;
   $("mic").setAttribute("aria-pressed", String(on));
@@ -256,6 +279,7 @@ if (!Recognition) {
   $("mic-label").textContent = "No microphone in this browser";
   $("mic-hint").textContent = "This browser can't listen (Firefox can't). Type what you'd say below, or open the page in Chrome, Edge or Safari.";
   $("review-wrap").hidden = true;
+  $("lt-wrap").hidden = true;
   $("send").classList.add("primary");
 } else {
   try {
@@ -263,6 +287,12 @@ if (!Recognition) {
   } catch { /* storage blocked: the option starts off */ }
   $("review").addEventListener("change", () => {
     try { localStorage.setItem(REVIEW_KEY, $("review").checked ? "1" : "0"); } catch { /* not kept */ }
+  });
+  try {
+    $("lt-names").checked = localStorage.getItem(LT_KEY) !== "0";
+  } catch { /* storage blocked: the option starts on */ }
+  $("lt-names").addEventListener("change", () => {
+    try { localStorage.setItem(LT_KEY, $("lt-names").checked ? "1" : "0"); } catch { /* not kept */ }
   });
   $("text").addEventListener("input", () => { if (!$("text").value.trim()) pendingCutIn = false; });
   const btn = $("mic");
