@@ -1,4 +1,4 @@
-> Verified against `b41246127e7b`'s source on 2026-11-01.
+> Verified against `8a7e195494af`'s source on 2026-11-01.
 
 # Logic flow
 
@@ -134,7 +134,7 @@ flowchart LR
   open -->|"anything else"| idq{"Caller identified<br/>earlier in the call?"}
   idq -->|"no"| full{"Full name given?<br/>two words or more"}
   full -->|"no"| askn["Ask for the name"]
-  full -->|"yes"| ident["customers.identify<br/>phone + name"]
+  full -->|"yes"| ident["customers.identify<br/>phone + name; again respelled,<br/>and two words at a time (max six)"]
   ident -->|"no match"| nc["Hand-off to new customers<br/>no sign-up by phone"]
   ident -->|"match"| intent2{"Intent"}
   idq -->|"yes"| intent2

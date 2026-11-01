@@ -50,7 +50,7 @@ flowchart LR
 - **Cost and speed:** 0 or 1 model calls a turn, about $0.0004 a turn; p95 2.15 s.
 - **The naive starter** passed 4 of the 14 given cases.
 
-**Since then** (agent `b41246127e7b`, not yet through the gate):
+**Since then** (agent `8a7e195494af`, not yet through the gate):
 - **A leak closed (D-88):** the prompt's examples quoted test cases word for word: the
   kit's `turnaround` case and our case 30. They were rewritten, and a test now fails if
   the prompt shares a four-word run with any test case.
@@ -82,6 +82,10 @@ flowchart LR
   month's weekends, and "when is the big one free?" gets that sauna's weekends, free and
   booked; both together work too (D-100). The month is read from the caller's words in
   code, the sauna from the model's checked reading; the answer reads only availability.
+- **A stray word beside the name** (`8a7e195494af`): the Lithuanian name recogniser heard "my name
+  is Jonas Jonaitis" as "manitis Jonas jonaitis", and the extra word hid the caller. A name
+  that isn't found is tried again two words at a time, still against the calling number,
+  so a stranger is still put through (D-101).
 
   Until the gate passes again, the measured numbers above belong to earlier agents.
 - **Measured honestly:** the 46 cases are the development set, so 46/46 is a development

@@ -252,12 +252,10 @@ def _next_step(t: Transcript, s: CallState, api: ApiClient, units: list[Unit]) -
         if not is_full_name(name):
             about_a_booking = s.intent in ("check_booking", "change", "cancel")
             return Ask("name_booking" if about_a_booking else "name")
-        found = api.identify_customer(t.caller.phone, name or "")
-        respelled = lithuanian_spelling(name or "")
-        if not found.ok and respelled != name:
-            # the name as a speech recogniser spells it, once more as Lithuanian (D-94)
-            found = api.identify_customer(t.caller.phone, respelled)
-        if not found.ok:
+        # each guess checked against the calling number, stopping at the first match
+        tries = (api.identify_customer(t.caller.phone, g) for g in name_guesses(name or ""))
+        found = next((r for r in tries if r.ok), None)
+        if found is None:
             reason = "no customer matches this phone and name"
             return Handoff("new_customers", reason, summary(s, t))
         customer = found.customer_id
@@ -811,6 +809,22 @@ def lithuanian_spelling(name: str) -> str:
         return w[:-1] + "ė" if len(w) > 2 and w.endswith("e") else w
 
     return re.sub(r"[^\W\d_]+", lambda m: respell(m[0]), name)
+
+
+def name_guesses(name: str, most: int = 6) -> list[str]:
+    """The name as heard, then the same name as a speech recogniser may have garbled it:
+    spelled the Lithuanian way (D-94), and without a stray word on either side, two words
+    at a time from the end ("manitis Jonas jonaitis", a Lithuanian recogniser's "my name
+    is", D-101). Every guess is the caller's own words, and the API checks each against
+    the calling number, so a stranger still isn't found."""
+    words = re.findall(r"[^\W\d_]+", name)
+    pairs = [" ".join(words[i : i + 2]) for i in range(len(words) - 2, -1, -1)]
+    out: list[str] = []
+    for g in [name, *pairs] if len(words) > 2 else [name]:
+        for v in (g, lithuanian_spelling(g)):
+            if v not in out and is_full_name(v):
+                out.append(v)
+    return out[:most]
 
 
 def is_full_name(name: str | None) -> bool:

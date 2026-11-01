@@ -510,6 +510,38 @@ def test_a_stranger_is_still_put_through() -> None:
 
 
 @pytest.mark.parametrize(
+    "heard, found",
+    [
+        ("manitis Tomas petrauskas", True),  # "my name is", heard as Lithuanian (D-101)
+        ("it's Thomas Petrauskas", True),  # a stray word and the English spelling
+        ("Tomas Petrauskas speaking", True),
+        ("manitis Tomas Wilde", False),  # no two of the words are this caller
+    ],
+)
+def test_a_stray_word_beside_the_name_doesnt_hide_the_caller(heard: str, found: bool) -> None:
+    d, api = run(TOMAS_CALLS, intent="book", full_name=heard)
+    assert isinstance(d, Handoff) != found
+    assert methods(api).count("customers.identify") <= 6
+
+
+def test_a_stray_word_doesnt_find_a_stranger() -> None:
+    d, api = run("unknown-caller", intent="book", full_name="manitis Jonas Jonaitis")
+    assert isinstance(d, Handoff) and d.queue == "new_customers"  # the number decides
+
+
+def test_name_guesses() -> None:
+    from pirtis.agent.policy import name_guesses
+
+    assert name_guesses("Jonas Jonaitis") == ["Jonas Jonaitis"]
+    assert name_guesses("Thomas Petrauskas") == ["Thomas Petrauskas", "Tomas Petrauskas"]
+    assert name_guesses("manitis Jonas jonaitis") == [
+        "manitis Jonas jonaitis", "Jonas jonaitis", "manitis Jonas"
+    ]  # fmt: skip
+    assert name_guesses("Jonas Jonas") == []  # one name twice is not a full name
+    assert len(name_guesses("a b c d e f g h i j k")) <= 6  # a bounded number of lookups
+
+
+@pytest.mark.parametrize(
     "name, respelled",
     [
         ("Thomas Petrauskas", "Tomas Petrauskas"),
