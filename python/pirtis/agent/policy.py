@@ -10,6 +10,7 @@ import json
 import re
 from dataclasses import dataclass
 from datetime import date
+from typing import Literal
 
 from pirtis.agent.reading import latest_caller_turn
 from pirtis.agent.rules import DAY, days, free_days, violations, without_booking
@@ -35,6 +36,16 @@ from pirtis.transcript.types import Transcript
 
 # ---- decisions: what speech renders ------------------------------------------------
 
+# The closed sets a decision may name. Literal types, so mypy rejects a misspelt value
+# and speech's tables are checked to cover each one (test_speech).
+Slot = Literal[
+    "name", "name_booking", "dates", "past_dates", "people", "tow", "power",
+    "which_booking", "new_dates", "need",
+]  # fmt: skip
+WhyNot = Literal["", "capacity", "weight", "power", "taken"]
+NoFitReason = Literal["too_many", "too_light", "nothing_fits", "no_dates", "no_booking"]
+Queue = Literal["new_customers", "front_desk", "bookings_support"]
+
 
 @dataclass(frozen=True)
 class Ask:
@@ -43,7 +54,7 @@ class Ask:
     people, tow, power, which_booking or new_dates; or, for a caller who only greeted us,
     what they need."""
 
-    slot: str
+    slot: Slot
 
 
 @dataclass(frozen=True)
@@ -61,7 +72,7 @@ class Offer:
     people: int
     total: int
     instead_of: Unit | None = None
-    why_not: str = ""  # "capacity" | "weight" | "power" | "taken"
+    why_not: WhyNot = ""  # why the sauna asked for isn't the one offered
     weekend_min: bool = False
     blocked_day: str | None = None
 
@@ -159,7 +170,7 @@ class Handoff:
     """Pass the call to a person in the named queue, with what we already know so the
     caller doesn't have to repeat it."""
 
-    queue: str
+    queue: Queue
     reason: str
     summary: str = ""
     apologise: bool = False  # the caller is upset with us, not just asking
@@ -169,7 +180,7 @@ class Handoff:
 class NoFit:
     """Nothing can be offered. limit is the catalogue figure that rules it out."""
 
-    reason: str  # "too_many" | "too_light" | "nothing_fits" | "no_dates" | "no_booking"
+    reason: NoFitReason
     limit: int = 0
     closing: bool = False  # said once already: close the topic instead of asking again
 
@@ -479,7 +490,7 @@ def apply_weekend_min(start: date, end: date) -> tuple[date, date]:
     return start, end
 
 
-def hard_limit(u: Unit, r: Request) -> str:
+def hard_limit(u: Unit, r: Request) -> WhyNot:
     """Why this unit can never work for this caller, whatever the dates, or ""."""
     if u.capacity < r.people:
         return "capacity"
@@ -529,7 +540,7 @@ def choose_offer(
         s: date,
         e: date,
         instead_of: Unit | None = None,
-        why_not: str = "",
+        why_not: WhyNot = "",
         weekend_min: bool = False,
         blocked_day: str | None = None,
     ) -> Offer:

@@ -8,6 +8,7 @@ back from the transcript before it books.
 """
 
 from datetime import date
+from typing import assert_never
 
 from pirtis.agent.actions import handoff, sms
 from pirtis.agent.policy import (
@@ -24,13 +25,17 @@ from pirtis.agent.policy import (
     Hold,
     Moved,
     NoFit,
+    NoFitReason,
     Offer,
     OffTopic,
     OwnClash,
     Price,
+    Queue,
     Refuse,
     Reply,
+    Slot,
     Sorry,
+    WhyNot,
 )
 from pirtis.agent.reading import emotion, latest_caller_turn
 from pirtis.agent.words import spoken_date, spoken_euros, spoken_number, spoken_range
@@ -59,7 +64,7 @@ OFF_TOPIC = (
     "What would you like to book?"
 )
 
-QUESTIONS = {
+QUESTIONS: dict[Slot, str] = {
     # says out loud that we're deferring, so "does not say whether…" can't be misread
     "name": "I can help with that once I know who's calling. Can I get your full name, please?",
     # about a booking they already have: says outright that it can't look yet (D-87)
@@ -80,17 +85,16 @@ QUESTIONS = {
     "need": "Thanks, I have your details. What can I do for you today?",
 }
 
-HANDOFF_LINES = {
+HANDOFF_LINES: dict[Queue, str] = {
     "new_customers": "I can't find an account under that name and number, and new "
     "customers are set up by a colleague. I'll put you through now.",
     "front_desk": "Of course. I'll put you through to a colleague now.",
     "bookings_support": "Sorry, something went wrong on my side. I'll put you through to "
     "a colleague who can sort it out.",
 }
-HANDOFF_DEFAULT = "I'll put you through to a colleague now."
 HANDOFF_SORRY = "I'm sorry about this. I'll put you through to a colleague now."
 
-_WHY_NOT = {
+_WHY_NOT: dict[WhyNot, str] = {  # capacity has its own line
     "weight": "{was} is too heavy for your car",
     "power": "{was} needs mains power",
     "taken": "{was} isn't free then",
@@ -189,7 +193,7 @@ def render(d: Decision, voice: Voice = NEUTRAL) -> list[Action]:
         case OffTopic():
             return [_say(OFF_TOPIC, voice)]
         case Handoff(queue=queue, reason=reason, summary=summary, apologise=apologise):
-            line = HANDOFF_SORRY if apologise else HANDOFF_LINES.get(queue, HANDOFF_DEFAULT)
+            line = HANDOFF_SORRY if apologise else HANDOFF_LINES[queue]
             return [_say(line, voice), handoff(queue, reason, summary)]
         case NoFit():
             return [_say(no_fit_line(d), voice)]
@@ -208,7 +212,7 @@ def offer_line(o: Offer) -> str:
             f"{spoken_number(o.people)} of you I can offer {o.unit.name}, {when}."
         )
     elif o.instead_of is not None:
-        reason = _WHY_NOT.get(o.why_not, _WHY_NOT["taken"]).format(was=o.instead_of.name)
+        reason = _WHY_NOT[o.why_not or "taken"].format(was=o.instead_of.name)
         first = f"{reason}, so I can offer {o.unit.name} {people}, {when}."
     elif o.weekend_min:
         first = (
@@ -254,7 +258,7 @@ def price_line(p: Price) -> str:
 
 
 # a refusal said once already closes the topic instead of asking the same again (D-98)
-_CLOSING_NO_FIT = {
+_CLOSING_NO_FIT: dict[NoFitReason, str] = {
     "too_many": "I'm sorry, none of our saunas can take that many people, so I can't book "
     "this one.",
     "too_light": "I'm sorry, none of our saunas is light enough for that car, so I can't "
@@ -311,7 +315,7 @@ def _and(parts: list[str]) -> str:
 
 def no_fit_line(n: NoFit) -> str:
     if n.closing:
-        return f"{_CLOSING_NO_FIT.get(n.reason, _CLOSING_NO_FIT['nothing_fits'])} {ANYTHING_ELSE}"
+        return f"{_CLOSING_NO_FIT[n.reason]} {ANYTHING_ELSE}"
     match n.reason:
         case "too_many":
             return (
@@ -329,8 +333,10 @@ def no_fit_line(n: NoFit) -> str:
             return (
                 "I'm sorry, nothing that fits is free around those dates. Would other dates work?"
             )
-        case _:
+        case "nothing_fits":
             return "I'm sorry, none of our saunas fit that. Would other dates work for you?"
+        case _:
+            assert_never(n.reason)
 
 
 def sms_text(b: Booking, u: Unit) -> str:

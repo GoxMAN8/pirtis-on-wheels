@@ -249,7 +249,7 @@ SAMPLES: list[Decision] = [
     Handoff("front_desk", "caller asked for a person"),
     Handoff("bookings_support", "api error"),
     Handoff("front_desk", "caller upset and cut us off", apologise=True),
-    NoFit("nothing fits"),
+    NoFit("nothing_fits"),
 ]
 
 
@@ -346,3 +346,17 @@ def test_the_tow_question_is_one_question_that_names_both_things() -> None:
 
     line = QUESTIONS["tow"]
     assert line.count("?") == 1 and "car" in line and "tow" in line and "braked" in line
+
+
+def test_every_value_a_decision_can_name_has_its_line() -> None:
+    """The decision fields are Literal types; these tables must cover each value, so a
+    new value can't fall through to some other line unnoticed."""
+    from typing import get_args
+
+    from pirtis.agent.policy import NoFitReason, Queue, Slot, WhyNot
+    from pirtis.agent.speech import _CLOSING_NO_FIT, _WHY_NOT, HANDOFF_LINES, QUESTIONS
+
+    assert set(QUESTIONS) == set(get_args(Slot))
+    assert set(HANDOFF_LINES) == set(get_args(Queue))
+    assert set(_CLOSING_NO_FIT) == set(get_args(NoFitReason))
+    assert set(_WHY_NOT) == set(get_args(WhyNot)) - {"", "capacity"}  # capacity: own line

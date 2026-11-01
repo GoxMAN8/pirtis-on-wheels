@@ -50,7 +50,7 @@ flowchart LR
 - **Cost and speed:** 0 or 1 model calls a turn, about $0.0004 a turn; p95 2.15 s.
 - **The naive starter** passed 4 of the 14 given cases.
 
-**Since then** (agent `8a7e195494af`, not yet through the gate):
+**Since then** (agent `8612d72cfa25`, not yet through the gate):
 - **A leak closed (D-88):** the prompt's examples quoted test cases word for word: the
   kit's `turnaround` case and our case 30. They were rewritten, and a test now fails if
   the prompt shares a four-word run with any test case.
@@ -86,6 +86,10 @@ flowchart LR
   is Jonas Jonaitis" as "manitis Jonas jonaitis", and the extra word hid the caller. A name
   that isn't found is tried again two words at a time, still against the calling number,
   so a stranger is still put through (D-101).
+- **Closed sets typed as such** (`8612d72cfa25`): what a decision can name (the question asked,
+  the queue, why nothing fits, why another sauna was offered) is a `Literal` type, and a
+  test checks that speech has a line for every value. It found a test passing on a
+  misspelt reason that fell through to a default line. No reply changed.
 
   Until the gate passes again, the measured numbers above belong to earlier agents.
 - **Measured honestly:** the 46 cases are the development set, so 46/46 is a development

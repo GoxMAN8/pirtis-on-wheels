@@ -635,7 +635,7 @@ extractor eval and a gate run.
   14 written as speech-to-text hears a call, are the held-out set. Heard right, the agent
   passes all 59 at zero tokens (D-97); the live run scored 58/59, every decision right and
   one reply (turnaround--noise) graded down by the judge. One batch, run once.
-- Agent `8a7e195494af` (the thread of the call, D-98 to D-101) has not been through the
+- Agent `8612d72cfa25` (the thread of the call, D-98 to D-101) has not been through the
   extractor eval, the gate or a held-out run yet; `1c0de71d1184` before it passed the gate
   and scored 58/59 held out; the measured numbers belong to `bd98c5cf8006`. On the way: `09302402ead3`, the first
   without the prompt leak (D-88), failed the gate 45/46 on case 30 (D-91), and
@@ -841,3 +841,4 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | 2026-11-01 | after 16 | The thread of the call (D-98, D-99), from the second manual session: closure after a finished task, the last question brought back after a check-in, no refusal repeated word for word, "book it" to an offer read back as a yes, and "what's free?" answered with the coming weekends. The memory model is written up in `docs/architecture/logic-flow.md`. Agent `14e773f54eac`, not yet measured | The conversation remembered facts but not where it stood | D-98, D-99 |
 | 2026-11-01 | after 16 | "What's free" for a month, a sauna or both (D-100). Agent `b41246127e7b`, not yet measured | D-99 answered only the next three weekends | D-100 |
 | 2026-11-01 | after 16 | A stray word beside the caller's name no longer hides them (D-101). Agent `8a7e195494af`, not yet measured | "manitis Jonas jonaitis" was put through as a stranger | D-101 |
+| 2026-11-01 | after 16 | The closed sets a decision names (question slot, queue, no-fit reason, why-not) are `Literal` types; speech's tables have no default fallbacks, and a test checks they cover every value. No reply changed. Agent `8612d72cfa25` | A test used `NoFit("nothing fits")`, which fell through to a default line unnoticed | |

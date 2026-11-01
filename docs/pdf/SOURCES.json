@@ -9,14 +9,14 @@
     "docs/architecture/containers.md": "cef45bc3cf317ccf",
     "docs/architecture/data-flow.md": "ed3151d75918142e",
     "docs/architecture/sequences.md": "795dc28cfaa48e72",
-    "docs/architecture/logic-flow.md": "37f13d4e26aaf256",
+    "docs/architecture/logic-flow.md": "a42d0fa6baaf8a6f",
     "docs/architecture/deployment.md": "55c354a22d4d1b91"
   },
   "build-log.pdf": {
     "BUILD_LOG.md": "046a076e3970ee22"
   },
   "data-science.pdf": {
-    "docs/data-science.md": "4af5bc72c42c27e6"
+    "docs/data-science.md": "b2e1acd3e3719fda"
   },
   "deploy.pdf": {
     "deploy/README.md": "1a84cee86c900460"
@@ -35,13 +35,13 @@
     "python/README.md": "c95abd0f2c65d22f"
   },
   "readme.pdf": {
-    "README.md": "18af158bdc9aefb0"
+    "README.md": "a9afa3fe60aa1052"
   },
   "reports.pdf": {
     "reports/README.md": "cd04b8b98fa83cd5"
   },
   "spec.pdf": {
-    "SPEC.md": "c27613350729dd85"
+    "SPEC.md": "302192e9cfc469a9"
   },
   "tester-guide.pdf": {
     "docs/guide-caller.md": "f8529f86f3a1eb78"
