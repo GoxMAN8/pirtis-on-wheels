@@ -7,6 +7,7 @@
 #   make trace ID=silence      one fixture, verbose, traces kept under runs/trace
 #   make gate-job              the nightly cloud job, run here: given + red team, saved to var/
 #   make heldout               the generated variants, once, scored by transform (never tuned on)
+#   make review                a second model re-reads recent calls, queues disagreements
 
 SHELL := /bin/bash
 
@@ -16,7 +17,7 @@ SUITES ?= ../fixtures ../fixtures/extra $(wildcard ../fixtures/variants)
 ID ?=
 OURS := pirtis/agent pirtis/ops pirtis/playground
 
-.PHONY: install lint format typecheck test check gate gate-job eval-extract trace playground variants variants-accept reliability calibrate heldout
+.PHONY: install lint format typecheck test check gate gate-job eval-extract trace playground variants variants-accept reliability calibrate heldout review
 
 install:
 	uv sync
@@ -108,6 +109,13 @@ reliability:
 		uv run harness --fixtures $$suite --runs 5 --need 1 --trace runs/reliability/$$name > runs/reliability/$$name.txt; \
 	done; \
 	uv run python -m pirtis.ops.reliability --dir runs/reliability --json runs/reliability/curve.json
+
+# The off-path reviewer (pirtis/ops/review.py): another model re-reads the simulator calls of
+# the last DAYS and puts every turn it hears differently into the Feedback queue for a
+# person. REVIEW_MODEL picks the model (default gpt-4o); DRY=1 reports without queueing.
+DAYS ?= 1
+review:
+	uv run python -m pirtis.ops.review --days $(DAYS) $(if $(DRY),--dry-run)
 
 # Judge calibration against the human ratings (tests/human/README.md); spends judge calls.
 calibrate:

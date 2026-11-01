@@ -22,6 +22,7 @@ flowchart LR
     records[("Turn records and ratings · ids, a salted phone hash, scores · pseudonymised · 90 days / 1 year")]
     gates[("Gate runs and calibrations · counts and verdicts · no PII · 1 year")]
     job["Gate job"]
+    reviewer["Off-path reviewer · make review"]
     logs[("Log Analytics · turn lines pseudonymised, gate lines no PII · 30 days")]
   end
   subgraph TB3["Trust boundary · the model vendor"]
@@ -50,6 +51,9 @@ flowchart LR
   job -->|gate turn records| records
   job -->|one gate line| logs
   logs -->|C4: alert: rule, owner, action, count| mail
+  sessions -->|the last day's calls| reviewer
+  reviewer -->|C6: the call so far, each model turn| llm
+  reviewer -->|a flag with both readings| sessions
 ```
 
 ## Stores
@@ -77,6 +81,7 @@ Retention is applied by the gate job's prune on every run (`python/pirtis/ops/st
 | C3 | gate job → model vendor | synthetic fixture calls, and the kit's judge prompts with our replies | nothing: synthetic data only | as C2 | as C2 | as C2 | `python/pirtis/ops/gate_job.py`, `python/pirtis/harness/judge.py` |
 | C4 | Azure Monitor → owner's mailbox | an alert: the rule's name, its owner-and-action text, a count, a link; the queries project only versions, case ids and counts | nothing: the rules read content-free lines | [CONFIRM: the mail provider's region] | [CONFIRM: depends on the mail provider] | [CONFIRM: the mailbox's retention] | `deploy/terraform/monitoring.tf` |
 | C5 | caller simulator → the browser's speech vendor | the tester's voice, while they hold the mic button | nothing: the browser sends the audio itself (Chrome to Google's service) | [CONFIRM: the browser vendor's region] | [CONFIRM: the browser vendor's terms] | [CONFIRM: the browser vendor's retention] | `python/pirtis/playground/static/js/caller.js` |
+| C6 | off-path reviewer → model vendor | each model turn of a stored call: the call so far as text, the saunas, a 42-day calendar; by default to another model (`REVIEW_MODEL`) | nothing is redacted, as C2; it runs only when the owner runs `make review`, never inside a call | as C2 | as C2 | as C2 | `python/pirtis/ops/review.py` |
 
 **What this diagram says plainly:**
 - **C2 leaves the EEA on the OpenAI path.** The data is synthetic customers plus whatever
@@ -90,7 +95,7 @@ Retention is applied by the gate job's prune on every run (`python/pirtis/ops/st
 |---|---|---|---|
 | Linking | turn records | the salted phone hash links one caller's turns across calls, by design for analytics | the salt is a secret; records expire after 90 days |
 | Identifying | sessions, feedback | a tester can say their own name or details | seed personas only (scenario cards, the dial page's note); 30-day expiry |
-| Data disclosure | C2, C5 | call text leaves the EEA to the model vendor; voice goes to the browser's vendor | synthetic personas; typing as an alternative; the EU model path. Recorded as a known limit (SPEC §12) |
+| Data disclosure | C2, C5, C6 | call text leaves the EEA to the model vendor; voice goes to the browser's vendor | synthetic personas; typing as an alternative; the EU model path. Recorded as a known limit (SPEC §12) |
 | Unawareness and unintervenability | the caller simulator | the only notice is the dial page's line that calls are kept 30 days; a tester can't delete their own calls | the owner deletes on request (files on the share); a self-service delete is not built |
 | Non-compliance | C2 | no DPA with the model vendor is recorded here | [CONFIRM: OpenAI DPA] |
 
@@ -98,3 +103,4 @@ Retention is applied by the gate job's prune on every run (`python/pirtis/ops/st
 - redaction before C2 (names spoken by the caller go to the model as said)
 - a self-service way for a tester to delete their calls
 - a privacy notice beyond the dial page's line
+- the reviewer on a schedule in Azure (today the owner runs `make review` where the data is)
