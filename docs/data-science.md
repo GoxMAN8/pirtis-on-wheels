@@ -145,9 +145,14 @@ price of Vidutinė" failed. A zero-token replay reproduced the reply exactly. Th
 been carrying that case; code now reads a price question for its sauna (D-91), and the
 unit tests use wordings no case contains (`reports/after-16/`).
 
+The extractor eval on that fix (`6c6118d087e8`) passed case 30 3/3 and found one more:
+40/41, with `barge-in-correction` recording a heater preference in 2 of 3 runs that the
+caller never stated, taken from our own cut-off offer of an electric sauna. A heater
+preference now counts only from a caller who talked about heating (D-92).
+
 **Status:** the numbers in §3–§5 belong to agent `bd98c5cf8006`, before the leak was
-closed. The current agent, `6c6118d087e8`, has not been measured yet: the extractor eval,
-the gate and the held-out run come next.
+closed. The current agent, `239ddaf571d0`, has not been through the extractor eval, the
+gate or the held-out run yet.
 
 ## 4. The reliability curve: pass^k
 
@@ -355,6 +360,7 @@ flowchart TD
 | fixture 01, final gate | a red cell | the judge flipped on a correct reply, 1 run in about 43 | D-87: the reply states the fact outright |
 | the prompt's examples | a review of the method | test-case wording in the prompt | D-88 (§3) |
 | 30 price-before-identification | a red cell: the gate on `09302402ead3`, on the judge | once its words left the prompt, the model recorded no sauna for a price question, and the caller got the whole price list | D-91: code reads a price question for its sauna |
+| 27 barge-in-correction | the extractor eval on `6c6118d087e8`, 2 of 3 runs | a heater preference the caller never stated, taken from our cut-off offer of an electric sauna | D-92: a heater preference needs a caller who talked about heating |
 
 ### Measuring the loop itself
 
@@ -393,8 +399,9 @@ a boundary: [architecture/data-flow.md](architecture/data-flow.md).
 - **The gate is the development set** (§3). The held-out run and the reviewer are built
   but not yet run, so there is no out-of-sample number yet.
 - **The current agent isn't measured yet.** The numbers here are for `bd98c5cf8006`.
-  `09302402ead3` closed the prompt leak and failed the gate 45/46 (§3); `6c6118d087e8`
-  fixes that case in code and needs the extractor eval, the gate and the held-out run.
+  `09302402ead3` closed the prompt leak and failed the gate 45/46; `6c6118d087e8` fixed
+  that case and scored 40/41 on the extractor eval (§3); `239ddaf571d0` fixes that one and
+  needs the extractor eval, the gate and the held-out run.
 - **Drift is watched on intents only,** without an alert.
 - **Fixtures are hand-written or promoted from the simulator,** not from real phone
   calls.

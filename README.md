@@ -49,16 +49,20 @@ flowchart LR
 - **Cost and speed:** 0 or 1 model calls a turn, about $0.0004 a turn; p95 2.15 s.
 - **The naive starter** passed 4 of the 14 given cases.
 
-**Since then** (agent `6c6118d087e8`, not yet measured):
+**Since then** (agent `239ddaf571d0`, not yet through the gate):
 - **A leak closed (D-88):** the prompt's examples quoted test cases word for word: the
   kit's `turnaround` case and our case 30. They were rewritten, and a test now fails if
   the prompt shares a four-word run with any test case.
-- **What it uncovered:** the gate on `09302402ead3` failed 45/46. `turnaround` still
-  passed, but case 30 had been passing partly on its own words: without them the model
-  recorded no sauna for "how much is the electric six seater per day?", and the caller
-  got the whole price list. Code now reads a price question for its sauna (D-91), tested
-  on wordings no case uses. The gate runs again next; until it passes, the numbers above
-  belong to `bd98c5cf8006`.
+- **What it uncovered, fixed in code:**
+  - the gate on `09302402ead3` failed 45/46: without its own words in the prompt, case
+    30's price question got the whole price list, not Vidutinė's. Code now reads a price
+    question for its sauna (D-91); case 30 then passed 3/3 in the extractor eval.
+  - that eval (`6c6118d087e8`, 40/41) caught a heater preference the caller never stated,
+    taken from our own cut-off offer. A heater preference now needs a caller who talked
+    about heating (D-92).
+
+  `turnaround`, whose words were the main leak, passed throughout. Until the gate passes
+  again, the numbers above belong to `bd98c5cf8006`.
 - **Measured honestly:** the 46 cases are the development set, so 46/46 is a development
   score. The 59 generated variants are kept as a held-out set, scored once by
   `make heldout` (D-89).

@@ -307,6 +307,26 @@ def test_a_price_question_names_its_sauna_even_when_the_model_leaves_it_out(
     assert st.unit == unit
 
 
+@pytest.mark.parametrize(
+    "line, model, kept",
+    [
+        ("we're seven now, my cousins are coming, and the cottage has power", "electric", None),
+        ("there's electricity at the cottage, if that matters", "electric", None),  # site power
+        ("a wood-fired one would be lovely", "wood", "wood"),
+        ("the smoke bothers my wife, so not that kind", "electric", "electric"),
+        ("is the electric heater quiet?", "electric", "electric"),
+    ],
+)
+def test_a_heater_preference_needs_a_caller_who_talked_about_heating(
+    line: str, model: str, kept: str | None
+) -> None:
+    """D-92. With nothing said about heating, the model recorded "electric" for a caller
+    who corrected their group size after our cut-off offer of an electric sauna
+    (barge-in-correction, 2 of 3 runs in the extractor eval on 6c6118d087e8)."""
+    st = state(_asked(line), heater_pref=model, heater_reason=None)
+    assert st.heater_pref == kept
+
+
 def test_only_a_price_question_is_read_for_a_sauna() -> None:
     """In a booking, "a big group" describes the people: it must not choose a sauna."""
     line = "it's a big group, six of us, the weekend after next"

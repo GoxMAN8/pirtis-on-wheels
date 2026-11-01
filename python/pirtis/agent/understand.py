@@ -217,6 +217,12 @@ class CallState(BaseModel):
                 if found is not None:
                     data["unit"], data["unit_quote"] = found, line
                     break
+        # a heater preference only from a caller who talked about heating (D-92): the model
+        # has taken one from our own offer of an electric sauna, unasked
+        if data.get("heater_pref") is not None and not any(
+            _words(line) & _HEATING_WORDS for line in lines
+        ):
+            data["heater_pref"] = None
         if latest is not None and not quote_in(data.get("consent_quote"), latest):
             data["accepted_offer"], data["go_ahead"] = False, False
         # a yes that names its own price, or that talks to the system, isn't a yes to us
@@ -263,6 +269,13 @@ def quote_supported(quote: object, caller_lines: Sequence[str]) -> bool:
     has_number = any(w.isdigit() for w in words) or bool(words & _NUMBER_WORDS)
     return has_number and quote_in(quote, caller_lines)
 
+
+# words a caller uses when heating matters to them; "power" and "electricity" are about the
+# site, not the heater, so they don't count
+_HEATING_WORDS = {
+    "wood", "wooden", "woodfired", "fired", "firewood", "logs", "fire", "smoke", "smoky",
+    "electric", "stove", "heater", "heaters", "heating", "burner",
+}  # fmt: skip
 
 # words that describe a sauna rather than people or dates
 _SAUNA_WORDS = {

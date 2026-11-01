@@ -362,6 +362,7 @@ every fixture it sees: 20, then 23 with the promoted cases, then 41 with the han
 | 2026-10-31 | + 18 hand-written gold states (07cb85ca425e) | 3 | 40/41 | `full_name` 98%: red-team case 52 recorded the asked-about name as the caller's |
 | 2026-10-31 | **+ the caller's own name (a40b5e6fcd67)** | 3 | **41/41** | every field 100% |
 | 2026-10-31 | + a hedge raised in code (454b3a30e0ee) | 3 | **41/41** | every field 100% |
+| 2026-11-01 | the leak closed (D-88) and a price read for its sauna (D-91), 6c6118d087e8 | 3 | 40/41 | `heater_pref` 98%: barge-in-correction recorded "electric" in 2 of 3 runs, unsaid by the caller |
 
 The naive agent swings between samples (4/14, then 3/14), which is why the gate needs
 3 of 3 runs. The skeleton's failures are all features of later phases: the silence
@@ -631,9 +632,10 @@ extractor eval and a gate run.
   14 written as speech-to-text hears a call, are the held-out set, and have not been run
   against the agent yet, so there is no out-of-sample number, and how it copes with
   noisy speech is not measured beyond our own cases.
-- Agent `6c6118d087e8` has not been through the extractor eval, the gate or a held-out run
-  yet; the measured numbers belong to `bd98c5cf8006`. Its predecessor `09302402ead3`, the
-  first without the prompt leak (D-88), failed the gate 45/46 on case 30 (D-91).
+- Agent `239ddaf571d0` has not been through the extractor eval, the gate or a held-out run
+  yet; the measured numbers belong to `bd98c5cf8006`. On the way: `09302402ead3`, the first
+  without the prompt leak (D-88), failed the gate 45/46 on case 30 (D-91), and
+  `6c6118d087e8` scored 40/41 on the extractor eval (D-92).
 - A move by one day is checked conservatively.
 - The agent package needs pydantic, installed by `uv sync`.
 - Terraform state is local.
@@ -670,7 +672,7 @@ extractor eval and a gate run.
   not seen by the next call (each call has its own API, as each fixture does).
 
 **Next steps:**
-- measure `6c6118d087e8`: `make eval-extract`, `make gate`, then `make heldout` once; the
+- measure `239ddaf571d0`: `make eval-extract`, `make gate`, then `make heldout` once; the
   14 speech-noise variants say whether a correction layer is needed at all
 - run the reviewer (`make review`) on a schedule in Azure, beside the nightly gate
 - real telephony: call automation and streaming speech in front of `decide`, with a
@@ -785,6 +787,7 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | D-89 | 2026-11-01 | The 46 cases are the development set; the 59 generated variants are the held-out set, scored once by `make heldout` (by transform), before anything is tuned on them, and refreshed once used | Every change was made looking at the 46, so 46/46 is a development score; an out-of-sample number needs cases nobody tuned on | accepting the variants into the gate first | accepted |
 | D-90 | 2026-11-01 | An off-path reviewer (`make review`): another model, with its own prompt and schema, re-reads each model turn of recent calls and queues every turn it hears differently into Feedback, with both readings; it never overwrites a person's rating and never promotes | Real calls carry no gold answer; a second reading finds misheard facts and gives an agreement rate per field. Off the call path it adds no silence, and the kit's model pin inside decide() doesn't bind it | a second model call inside decide() (latency, and the kit pins gpt-4o-mini there) | accepted |
 | D-91 | 2026-11-01 | A price question names its sauna in code too: when the intent is a price and the model recorded no sauna, the caller's latest words are read with the same matcher as a quote (a name, a heater, an N-seater, a size), and a sauna is taken only when exactly one fits. Only for a price: in a booking, words like "a big group" describe the people | The gate on 09302402ead3, the first agent without the prompt leak, failed 45/46: case 30's "how much is the electric six seater per day?" had been a prompt example word for word; without it the model recorded no sauna, and the caller got the whole price list. The leak had been carrying the case; the rule now holds for wordings no case uses | putting an example back in the prompt; a prompt rule alone | accepted |
+| D-92 | 2026-11-01 | A heater preference counts only from a caller who talked about heating (wood, electric, smoke, fire, a stove, a heater…); "power" and "electricity" are about the site and don't count | The extractor eval on 6c6118d087e8: barge-in-correction recorded "electric" in 2 of 3 runs though the caller never mentioned a heater; it came from our own cut-off offer of an electric sauna. Harmless there (a preference without a reason only sorts, and one sauna seats eight), but an invented fact; the same principle as D-54, checked in code | rewording the heater example again (each rewording has moved something else, D-75) | accepted |
 
 ---
 
@@ -813,3 +816,4 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | 2026-10-31 | after 16 | Follow-ups after a documentation review. Docs: `docs/data-science.md` (every metric's method and limits), the README led by its core technical decisions, separate guides for testers (`docs/guide-caller.md`) and admins (`docs/guide-admin.md`). Console: `ops/cases.py` says where each case comes from, and the Reliability view, thermal view and replay list keep the kit's 14 apart from ours by kind. Simulator: the sign-in page says it is waiting while the app wakes; *Check speech before sending* puts recognised speech in the box to fix first. Voice: the mic is the main control and works by tap (tap again to send) or by hold; a press let go before the microphone starts counts as a tap, so answering the browser's permission prompt no longer ends it; a session the browser ends by itself restarts while the caller is still talking; Cancel or Esc discards; a blocked or missing microphone says what to do. Your last line stays above the reply, which dims while the next is on its way; Hang up is set apart; *Stay quiet* moved to the test controls. The agent is unchanged (`bd98c5cf8006`) | Reviewers read the kit's results and ours separately; a tester shouldn't blame the agent for the browser's speech errors | — |
 | 2026-11-01 | after 16 | The method reviewed. The prompt's examples no longer quote any test case, and a test keeps it so (D-88; agent `09302402ead3`, not yet measured). The 46 cases named as the development set and the 59 variants as the held-out set, with `make heldout` (D-89). An off-path reviewer, `make review`, queues turns a second model hears differently (D-90; data-flow crossing C6). Docs: the logic flow (`docs/architecture/logic-flow.md`), the feedback loop and held-out protocol in `docs/data-science.md`, the test cases in `docs/fixtures.md` | 46/46 was a development score, and one case's own words were in the prompt | D-88, D-89, D-90 |
 | 2026-11-01 | after 16 | The gate on `09302402ead3` failed 45/46 on case 30: with the leak closed, the model recorded no sauna for a price question. Code now reads a price question for its sauna (D-91), tested on wordings no case uses; agent `6c6118d087e8`, not yet measured | The leak had been carrying the case | D-91 |
+| 2026-11-01 | after 16 | The extractor eval on `6c6118d087e8`: 40/41; case 30 passes 3/3, and barge-in-correction recorded a heater the caller never mentioned. A heater preference now needs a caller who talked about heating (D-92); agent `239ddaf571d0`, not yet measured. The run is in `reports/after-16/` | an invented fact, caught by the eval | D-92 |

@@ -27,4 +27,4 @@ Test lists are re-runnable: check out that commit and run the command.
 
 Phase 1 produced documents only, so it has no folder. `after-16/` holds the work after
 the final phase: the gate that failed once the prompt leak was closed (D-88, D-91), and
-the replay that reproduced its reply.
+the replay that reproduced its reply, and the extractor eval that followed (D-92).
