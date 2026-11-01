@@ -8,6 +8,8 @@
 #   make gate-job              the nightly cloud job, run here: given + red team, saved to var/
 #   make heldout               the generated variants, once, scored by transform (never tuned on)
 #   make review                a second model re-reads recent calls, queues disagreements
+#   make fixtures-doc          rewrite docs/fixtures.md from the test cases
+#   make pdfs                  every document as a PDF (needs Chrome)
 
 SHELL := /bin/bash
 
@@ -17,7 +19,7 @@ SUITES ?= ../fixtures ../fixtures/extra $(wildcard ../fixtures/variants)
 ID ?=
 OURS := pirtis/agent pirtis/ops pirtis/playground
 
-.PHONY: install lint format typecheck test check gate gate-job eval-extract trace playground variants variants-accept reliability calibrate heldout review
+.PHONY: install lint format typecheck test check gate gate-job eval-extract trace playground variants variants-accept reliability calibrate heldout review fixtures-doc pdfs
 
 install:
 	uv sync
@@ -116,6 +118,14 @@ reliability:
 DAYS ?= 1
 review:
 	uv run python -m pirtis.ops.review --days $(DAYS) $(if $(DRY),--dry-run)
+
+# docs/fixtures.md is written from the test cases; a test fails when it is stale.
+fixtures-doc:
+	uv run python -m pirtis.ops.fixture_doc
+
+# Every document as a PDF into docs/pdf/, with SOURCES.json; a test fails when one is stale.
+pdfs:
+	cd .. && python3 docs/tools/make_pdfs.py
 
 # Judge calibration against the human ratings (tests/human/README.md); spends judge calls.
 calibrate:

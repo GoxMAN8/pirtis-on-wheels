@@ -18,12 +18,14 @@ flowchart LR
     gold["Gold call states · 41"] --> ext["Extractor eval · field by field"]
     fx --> rel["Reliability curve · pass^k, k = 1..5"]
     fx --> var["Metamorphic variants · API as oracle"]
+    var --> ho["Held-out score · never tuned on"]
   end
   subgraph online["Online: once it runs"]
     tr["TurnRecords · no content"] --> mon["Funnel, intent drift (PSI), latency ECDF, cost"]
     tr --> alerts["Three alerts"]
     rate["Human ratings"] --> cal["Judge calibration · Cohen's κ"]
     fb["👍/👎 feedback"] --> promote["Promote to a fixture"]
+    rev2["Reviewer · a second model"] --> fb
   end
   promote --> fx
   gate --> runs[("GateRun records · thermal view")]
@@ -43,6 +45,8 @@ flowchart LR
 | **p50 / p95 latency** | How long is the silence? | nearest-rank percentiles of turns that called the model | `ops/gate_report.py`, `playground/analytics.py` |
 | **Cost per turn** | What does a turn cost? | tokens × gpt-4o-mini prices ($0.15 in, $0.60 out per million) | `ops/gate_report.py` |
 | **Zero-call share** | How often is the model not needed? | turns the turn gate settled ÷ all turns | `playground/analytics.py` |
+| **Held-out pass** | How does it do on calls it was never tuned on? | generated variants passing all 3 of 3 runs, by the transform that made them | `ops/heldout.py` |
+| **Reviewer agreement** | On real calls with no gold answer, how often does a second reader agree? | per field, turns where the agent's reading and an independent model's agree ÷ turns reviewed | `ops/review.py` |
 
 All paths are under `python/pirtis/`.
 
@@ -101,6 +105,41 @@ So one passing gate says little about one case. It says more about the whole age
 **138 runs with no failure puts a 95% upper bound of about 2.1% on the per-run failure
 rate**, pooled over all cases (1 − 0.05^(1/138); the "rule of three" gives 3/138). That
 is why there is also a reliability curve.
+
+### Development set and held-out set
+
+**The 46 cases are the development set.** Every change to the prompt and the policy was
+made while looking at them, so 46/46 is a development score: it shows the agent does what
+those cases ask, not how it does on calls nobody looked at.
+
+**A leak, found and closed (D-88).** A scan of everything the model always sees (the
+system prompt and the schema's field descriptions) against every test case's caller lines
+found eight shared four-word runs. Two were the kit's own `turnaround` case word for word:
+"the wood smoke sets off my asthma" and "it has to be that one". An example copied from a
+test case teaches the model that one answer and flatters its score. The examples were
+rewritten in words no case uses, the heater one in the opposite direction ("electric heat
+gives me a headache"), and `agent/test_no_leak.py` now fails on any four-word run the
+prompt shares with a caller line in any suite, the generated variants included.
+
+**The held-out set (D-89):** the 59 generated variants (§6). Code made them, the kit's API
+decided their right answers, and none was used to change the agent. `make heldout` runs
+them once, 3 runs each with all 3 needed, and reports them by transform:
+
+| Transform | Variants | What it tests |
+|---|---|---|
+| persona | 16 | another caller, another name and phone |
+| shift | 19 | the same call one or two weeks later |
+| noise | 14 | the caller's lines as speech-to-text writes them |
+| tow | 10 | another car in the same towing band |
+
+The protocol: score a batch **once, before tuning anything on it**, and report the
+number as it comes. A variant used to fix something is development data from then on;
+the next held-out score needs a fresh batch (`make variants`).
+
+**Status:** the numbers in §3–§5 belong to agent `bd98c5cf8006`, before the leak was
+closed. The current agent, `09302402ead3`, has not been measured yet: the extractor eval,
+the gate and the held-out run come next, and `turnaround` and the heater cases are the
+ones to watch.
 
 ## 4. The reliability curve: pass^k
 
@@ -242,17 +281,80 @@ take 0 ms and are counted apart, so they can't flatter the percentiles.
 fallback or API error, and p95 above 3 s. Gate and replay turns never reach the log, so
 fault cases made on purpose can't fire them.
 
-## 10. The improvement loop: a data flywheel
+## 10. The feedback loop
 
-1. **Capture:** 👍/👎 and a note on any reply, saved as `Feedback` with the call so far.
-2. **Promote:** a person turns a flagged reply into a fixture: the call as `decide` saw
-   it, the world as it stood, what should have happened. Seed people only (D-39).
-3. **Red:** the case fails 3 times for the right reason, or its statement is sharpened.
-4. **Fix, test first,** and add a gold state if the model sees the case.
-5. **Re-measure:** extractor eval, then the full gate. Every prompt or policy change
-   changes `agent_version`, so every number is tied to the code that made it.
+How what goes wrong becomes a permanent test, and how the loop is kept from fooling
+itself. Built in `playground/promote.py`, `ops/review.py` and the admin console's Feedback
+view (SPEC §11).
 
-Cases 60–62 came through this loop; case 62 then exposed the hedge flake in §4.
+```mermaid
+flowchart TD
+  subgraph found["Signals"]
+    people["People: 👍/👎 and a note"]
+    rev["Reviewer: a second model<br/>hears a turn differently"]
+    human["Human eval: a missed goal,<br/>a low rating"]
+  end
+  subgraph known["Known cases"]
+    gate["Gate or nightly job: a red cell"]
+    curve["Reliability curve: a flake"]
+  end
+  found --> queue["Feedback queue<br/>admin console"]
+  queue --> triage{"A person:<br/>a real defect?"}
+  triage -->|"no: a wish, or the<br/>reviewer misheard"| left["Left in the queue,<br/>with a note"]
+  triage -->|"yes"| promote["Promote: a test case from<br/>the call as decide saw it"]
+  promote --> red["Red: it fails 3 of 3<br/>for the right reason"]
+  known --> red
+  red --> fix["Fix in general, test first;<br/>a gold state if the model sees it"]
+  fix --> measure["Re-measure: extractor eval,<br/>the full gate"]
+  measure --> ship["Ship: the deploy needs a<br/>passing gate for this version"]
+  ship -.->|"new calls"| found
+```
+
+### The signals
+
+| Signal | Catches | Cost | Status |
+|---|---|---|---|
+| **People's 👍/👎** on any reply, or *Flag this turn* in a trace | what a person notices: a wrong answer, a clumsy line, a missed cue | testers' time | built and used: cases 60–62 |
+| **The reviewer** (`make review`): another model re-reads each model turn and compares its reading with the agent's, fact by fact | misheard facts on real calls, which have no gold answer | one call to the reviewer's model per model turn | built and tested; not yet run on live calls |
+| **Human evaluation** with scenario cards | how it sounds to people, and how far to trust the judge | testers' time | built, not yet run |
+| **The gate and the nightly job** | a regression on a known case | about $0.05 for a full gate | running nightly in Azure |
+| **The reliability curve** | a flake three runs can miss | about $0.30 | run once (Phase 13) |
+
+### The rules that keep it honest
+
+1. **A person decides.** Nothing becomes a test case on its own (D-30). A reviewer flag is
+   a suggestion with both readings shown, never a label, and it never overwrites a
+   person's own rating.
+2. **Seed people only** reach git: a promoted case carries no real name, phone or address
+   (D-39, D-66).
+3. **Red before green.** A promoted case must fail on the agent that got it wrong, for the
+   right reason, or it doesn't test the defect yet; its judge statement is sharpened.
+4. **Fix the rule, not the case.** No case's words in the prompt (`test_no_leak.py`); the
+   booking rules come from the API and are tested against it, not against the cases.
+5. **Every fix is re-measured.** A changed prompt or policy is a new `agent_version`
+   (D-56), so it needs the extractor eval and the full gate before the deploy lets it out
+   (D-85).
+6. **The held-out set stays out** of the loop until it has been scored (§3); a variant
+   used to fix something is development data afterwards.
+
+### What has come through it
+
+| Case or change | Signal | What it found | Fixed by |
+|---|---|---|---|
+| 60 books-didzioji-for-six-with-no-mains-power | 👍 on a live call | a regression guard for a four-turn booking without power; it entered green, and showed the gold set had silently stopped covering new cases | D-70: every model-facing case needs a gold state, checked against every suite |
+| 61 introduces-herself-and-is-helped | 👎 | "Hi, it's Rasa Paulauskienė" refused as a question about another customer | D-67: a greeting intent |
+| 62 nine-people-hear-the-largest-sauna-seats-eight | 👎 | nine people asked about their car before hearing no sauna seats nine; later, on the curve, a 1-in-5 flake | D-68, then D-79 (§4) |
+| fixture 01, final gate | a red cell | the judge flipped on a correct reply, 1 run in about 43 | D-87: the reply states the fact outright |
+| the prompt's examples | a review of the method | test-case wording in the prompt | D-88 (§3) |
+
+### Measuring the loop itself
+
+- **Reviewer agreement per field**, printed on every `make review`: the nearest thing to
+  an accuracy figure for real calls. A field whose agreement drops is the place to look
+  first.
+- **Not built yet:** the share of reviewer flags a person confirms (the reviewer's
+  precision), and the time from a flag to a fix. Both need the reviewer to run on real
+  calls first.
 
 ## 11. Data governance
 
@@ -279,8 +381,12 @@ a boundary: [architecture/data-flow.md](architecture/data-flow.md).
 - **Cost is the agent's only;** the judge's calls aren't in the traces.
 - **Latency is `decide()` time,** not the caller's: speech-to-text and text-to-speech
   would add to it.
-- **Variants aren't in the gate yet,** and drift is watched on intents only, without an
-  alert.
+- **The gate is the development set** (§3). The held-out run and the reviewer are built
+  but not yet run, so there is no out-of-sample number yet.
+- **The current agent isn't measured yet.** The numbers here are for `bd98c5cf8006`;
+  `09302402ead3` closed the prompt leak and needs the extractor eval, the gate and the
+  held-out run.
+- **Drift is watched on intents only,** without an alert.
 - **Fixtures are hand-written or promoted from the simulator,** not from real phone
   calls.
 
@@ -295,5 +401,7 @@ From `python/`, with a key in `.env`:
 | `make eval-extract` | the extractor eval, 3 runs per gold state | about $0.05 |
 | `make reliability` | pass^k for k = 1..5 | about $0.30 with the judge |
 | `make variants` | generate and check the variant candidates | none |
+| `make heldout` | the 59 generated variants once, by transform: the held-out score | about $0.07 + the judge |
+| `make review` | a second model re-reads the last day's calls and queues disagreements; `DRY=1` only reports | one reviewer-model call per model turn |
 | `make calibrate` | judge–human agreement on saved ratings | one judge call per item per reply |
 | `python -m pirtis.ops.gate_report --dir runs/gate` | the report alone, from saved traces | none |

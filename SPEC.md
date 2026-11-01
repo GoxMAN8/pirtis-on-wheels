@@ -576,7 +576,9 @@ Built in `python/pirtis/playground/promote.py` and the admin console's Feedback 
 Every step after capture is a person's; nothing promotes itself (D-30, D-39).
 
 1. **Capture:** 👍/👎 and a note on any receptionist line in the caller simulator, or
-   *Flag this turn* in a trace; saved as `Feedback` with a snapshot of the call.
+   *Flag this turn* in a trace; saved as `Feedback` with a snapshot of the call. The
+   off-path reviewer (`make review`, D-90) adds the turns a second model hears
+   differently, with both readings in the note.
 2. **Review:** the Feedback view lists rated lines, newest first, each with its reply,
    its note and its trace. A reviewer may decide a flag is not a defect (for example a
    wish that contradicts a voice rule) and leave it there.
@@ -624,9 +626,12 @@ extractor eval and a gate run.
   another language; the code's part wouldn't. Lithuanian callers would need Lithuanian
   replies and word lists. Where a pattern misses a phrase, the turn falls back to the
   model or to one more question, never to a wrong booking (README, decisions 2, 4, 6).
-- The 59 metamorphic variants, including 14 written as speech-to-text hears a call,
-  have not been run against the agent yet, so how it copes with noisy speech is not
-  measured beyond our own cases.
+- The 46 cases are the development set (D-89). The 59 metamorphic variants, including
+  14 written as speech-to-text hears a call, are the held-out set, and have not been run
+  against the agent yet, so there is no out-of-sample number, and how it copes with
+  noisy speech is not measured beyond our own cases.
+- Agent `09302402ead3` (the prompt leak closed, D-88) has not been through the extractor
+  eval, the gate or a held-out run yet; the measured numbers belong to `bd98c5cf8006`.
 - A move by one day is checked conservatively.
 - The agent package needs pydantic, installed by `uv sync`.
 - Terraform state is local.
@@ -663,8 +668,9 @@ extractor eval and a gate run.
   not seen by the next call (each call has its own API, as each fixture does).
 
 **Next steps:**
-- run the 59 variants (`make variants-accept`, then `make gate`); the 14 speech-noise ones
-  say whether a correction layer is needed at all
+- measure `09302402ead3`: `make eval-extract`, `make gate`, then `make heldout` once; the
+  14 speech-noise variants say whether a correction layer is needed at all
+- run the reviewer (`make review`) on a schedule in Azure, beside the nightly gate
 - real telephony: call automation and streaming speech in front of `decide`, with a
   vocabulary hint (customer and sauna names) for the speech recogniser
 - Lithuanian: replies and word lists per language, the model's part unchanged
@@ -773,6 +779,9 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | D-85 | 2026-10-31 | `make deploy` first asks whether the gate holds: the newest saved gate run for this agent version that covered every case must have passed. Otherwise the full gate runs and a failure stops the deploy. The app and the job exist only once an image digest is given, so `make infra` and `make deploy` share one configuration | D-21 (a failing gate blocks a deploy) without paying for a full gate when nothing changed. A nightly run covers only some cases, so it never counts | the full gate on every deploy; `-target` applies | accepted |
 | D-86 | 2026-10-31 | Hardening after an adversarial review of the sign-in and the deploy kit. Five wrong passwords lock the address, never the account. A guess is counted before it is hashed, and at most two hashes run at once. A session is signed over the password hash, so a new password ends the old sessions. Spending is capped per account each minute and for everyone each day; a replay costs two units. Openness is judged on the decoded path. The page after sign-in is checked on the parsed address. A bad `Content-Length` is refused. Terraform's state is treated as a secret (owner-only, local). Removing the last account fails closed | The review reproduced a memory exhaustion of the 0.5 GiB container through parallel sign-ins, a permanent lockout of a named account, an open redirect through a tab in `next`, and every static file readable through `/static/fonts/..%2f`; it also showed that the state holds keys | rate-limiting sign-in by account only; Key Vault references for the secrets (the storage keys stay in the state either way, so the state must be protected regardless) | accepted |
 | D-87 | 2026-10-31 | Before the caller is identified, a question about a booking they already have (check, change, cancel) is answered "I can't look at your bookings until I know who's calling. Can I get your full name, please?"; other questions keep "I can help with that once I know who's calling" | The final gate on 454b3a30e0ee failed 45/46: in fixture 01 the kit's judge marked "does not say whether the booking is still on" false on a correct reply, with a reason that agreed with it. Identical reply, 2 of 3 runs passed; 1 failure in about 43 runs overall. The reply now states that fact outright (the D-51 pattern) | re-running the gate until green; leaving a known 7% chance of a failed gate on the kit's own fixture | accepted |
+| D-88 | 2026-11-01 | The prompt quotes no test case: its examples are in words no case uses, and `agent/test_no_leak.py` fails on any four-word run the system prompt or schema shares with a caller line in any suite, the generated variants included | A scan found eight shared runs; "the wood smoke sets off my asthma" and "it has to be that one" were the kit's turnaround case word for word. A copied example teaches the model that answer and flatters the score | leaving the examples; a manual check only | accepted |
+| D-89 | 2026-11-01 | The 46 cases are the development set; the 59 generated variants are the held-out set, scored once by `make heldout` (by transform), before anything is tuned on them, and refreshed once used | Every change was made looking at the 46, so 46/46 is a development score; an out-of-sample number needs cases nobody tuned on | accepting the variants into the gate first | accepted |
+| D-90 | 2026-11-01 | An off-path reviewer (`make review`): another model, with its own prompt and schema, re-reads each model turn of recent calls and queues every turn it hears differently into Feedback, with both readings; it never overwrites a person's rating and never promotes | Real calls carry no gold answer; a second reading finds misheard facts and gives an agreement rate per field. Off the call path it adds no silence, and the kit's model pin inside decide() doesn't bind it | a second model call inside decide() (latency, and the kit pins gpt-4o-mini there) | accepted |
 
 ---
 
@@ -799,3 +808,4 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | 2026-10-31 | 15 | Azure, live in Germany West Central: 15 resources in Terraform, the app (0–1) behind a sign-in with accounts we create (D-83, at your request; replaces the allow-list), the nightly gate job, an action group and three alerts on the one-line events (D-84). A deploy asks whether the gate holds first (D-85). In Azure the gate job passed 21/21 cases, 63/63 runs, extractor 18/18, and wrote to the share as the non-root user. The alert test fired the gate-regression alert end to end; its email arrived. The live image is built from this phase's commit. An adversarial review found 11 issues, none reaching data; 10 fixed test-first and re-probed live, the state treated as a secret (D-86). 686 tests (32 new) | Run privately in the cloud where testers can sign in, watched by alerts with owners | D-83 – D-86 |
 | 2026-10-31 | 16 | Documentation and the final run. `docs/architecture/` (containers, data flow with nine labelled stores, five trust boundaries and five tabled crossings, two sequences with their unhappy branches, deployment), checked for shape with 0 errors and 0 warnings. `docs/evaluation.md` with graphs, `docs/using-the-app.md` (the live link, sign-in, a tour), screenshots, the READMEs. The final gate on the unchanged agent failed 45/46 on a judge flip in fixture 01; fixed in the wording (D-87), then **46/46 cases, 138/138 runs** on bd98c5cf8006. Extractor 41/41. 692 tests | Readable without running it, and a final run that holds | D-87 |
 | 2026-10-31 | after 16 | Follow-ups after a documentation review. Docs: `docs/data-science.md` (every metric's method and limits), the README led by its core technical decisions, separate guides for testers (`docs/guide-caller.md`) and admins (`docs/guide-admin.md`). Console: `ops/cases.py` says where each case comes from, and the Reliability view, thermal view and replay list keep the kit's 14 apart from ours by kind. Simulator: the sign-in page says it is waiting while the app wakes; *Check speech before sending* puts recognised speech in the box to fix first. Voice: the mic is the main control and works by tap (tap again to send) or by hold; a press let go before the microphone starts counts as a tap, so answering the browser's permission prompt no longer ends it; a session the browser ends by itself restarts while the caller is still talking; Cancel or Esc discards; a blocked or missing microphone says what to do. Your last line stays above the reply, which dims while the next is on its way; Hang up is set apart; *Stay quiet* moved to the test controls. The agent is unchanged (`bd98c5cf8006`) | Reviewers read the kit's results and ours separately; a tester shouldn't blame the agent for the browser's speech errors | — |
+| 2026-11-01 | after 16 | The method reviewed. The prompt's examples no longer quote any test case, and a test keeps it so (D-88; agent `09302402ead3`, not yet measured). The 46 cases named as the development set and the 59 variants as the held-out set, with `make heldout` (D-89). An off-path reviewer, `make review`, queues turns a second model hears differently (D-90; data-flow crossing C6). Docs: the logic flow (`docs/architecture/logic-flow.md`), the feedback loop and held-out protocol in `docs/data-science.md`, the test cases in `docs/fixtures.md` | 46/46 was a development score, and one case's own words were in the prompt | D-88, D-89, D-90 |

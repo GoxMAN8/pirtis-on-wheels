@@ -1,0 +1,49 @@
+{
+  "admin-guide.pdf": {
+    "docs/guide-admin.md": "916548d7316cd1ce"
+  },
+  "architecture.pdf": {
+    "docs/architecture/containers.md": "cef45bc3cf317ccf",
+    "docs/architecture/data-flow.md": "ed3151d75918142e",
+    "docs/architecture/sequences.md": "795dc28cfaa48e72",
+    "docs/architecture/logic-flow.md": "de04d3d28ba71686",
+    "docs/architecture/deployment.md": "55c354a22d4d1b91"
+  },
+  "build-log.pdf": {
+    "BUILD_LOG.md": "046a076e3970ee22"
+  },
+  "data-science.pdf": {
+    "docs/data-science.md": "f7c9a50c3cc0e3ed"
+  },
+  "deploy.pdf": {
+    "deploy/README.md": "1a84cee86c900460"
+  },
+  "evaluation.pdf": {
+    "docs/evaluation.md": "51cd52fa2ffb024e"
+  },
+  "fixtures.pdf": {
+    "docs/fixtures.md": "be848c45636c6d2f",
+    "fixtures/variants-candidates/REVIEW.md": "26e9a9278d365dd3"
+  },
+  "human-eval.pdf": {
+    "tests/human/README.md": "a444f21f088691ba"
+  },
+  "python.pdf": {
+    "python/README.md": "c95abd0f2c65d22f"
+  },
+  "readme.pdf": {
+    "README.md": "52c3c0ad4a17e508"
+  },
+  "reports.pdf": {
+    "reports/README.md": "ada3511a446b884c"
+  },
+  "spec.pdf": {
+    "SPEC.md": "af6a15f674536144"
+  },
+  "tester-guide.pdf": {
+    "docs/guide-caller.md": "734bca39f7de03bc"
+  },
+  "using-the-app.pdf": {
+    "docs/using-the-app.md": "9caf41f3919d5982"
+  }
+}

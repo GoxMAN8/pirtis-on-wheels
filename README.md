@@ -49,6 +49,15 @@ flowchart LR
 - **Cost and speed:** 0 or 1 model calls a turn, about $0.0004 a turn; p95 2.15 s.
 - **The naive starter** passed 4 of the 14 given cases.
 
+**Since then** (agent `09302402ead3`, not yet measured):
+- **A leak closed:** the prompt's examples quoted the kit's own `turnaround` case word for
+  word; they were rewritten, and a test now fails if the prompt shares a four-word run
+  with any test case (D-88). The gate, the extractor eval and the first held-out run come
+  next; until then the numbers above belong to `bd98c5cf8006`.
+- **Measured honestly:** the 46 cases are the development set, so 46/46 is a development
+  score. The 59 generated variants are kept as a held-out set, scored once by
+  `make heldout` (D-89).
+
 The graphs are in [docs/evaluation.md](docs/evaluation.md); how each number is computed
 is in [docs/data-science.md](docs/data-science.md).
 
@@ -154,6 +163,8 @@ options rejected.
   agrees on the answer.
 - *Why:* the hidden cases are "the same rules, other callers, cars and dates", and a
   test checked by the policy it tests proves nothing.
+- They are the **held-out set**: never used to change the agent, scored once by
+  `make heldout`, by transform, before anything is tuned on them (D-89).
 - *Evidence:* 64 generated, 59 kept. 5 were dropped because a shift changed which
   saunas fit.
 
@@ -172,6 +183,8 @@ options rejected.
 - One `TurnRecord` per turn: no text, no names, the phone only as a salted hash.
 - Intent-mix drift is watched with the PSI.
 - A 👎 on a reply becomes a fixture, but only after a person reviews it.
+- A second model re-reads calls **off the call path** and queues every turn it hears
+  differently, with both readings, for a person (`make review`, D-90).
 - `agent_version` is a hash of the agent's source code, so every number traces to the
   code that produced it.
 - *Evidence:* cases 60–62 came from simulator calls through this loop, and case 62
@@ -201,7 +214,7 @@ How each metric is computed, and how far to trust it: [docs/data-science.md](doc
 | `python/pirtis/ops/` | the gate report, gate job, extractor eval, reliability curve, variants, calibration, data model and store |
 | `python/pirtis/playground/` | the caller simulator, admin console, analytics, sign-in, promotion of calls to fixtures |
 | `python/pirtis/{api,llm,harness,cmd,transcript}/` | the kit's own parts, unchanged |
-| `fixtures/` | the kit's 14 cases; `extra/` our 32; `variants-candidates/` 59 awaiting review |
+| `fixtures/` | the kit's 14 cases; `extra/` our 32; `variants-candidates/` the 59 generated ones, kept as the held-out set. Every case, where it comes from and what it tests: [docs/fixtures.md](docs/fixtures.md) |
 | `tests/human/` | the human evaluation's scenario cards and protocol |
 | `deploy/` | Dockerfile, Terraform, saved monitoring queries, the deploy Makefile |
 | `docs/`, `reports/` | the documents below, and the raw output behind every number |
@@ -235,6 +248,9 @@ How each metric is computed, and how far to trust it: [docs/data-science.md](doc
   is the frozen gate: every case, 3 runs, all 3 must pass. `make playground` opens the
   caller simulator on <http://127.0.0.1:8000> and the admin console at `/admin`.
 - **The kit's own harness** works unchanged: `cd python && uv run harness`.
+- **Measuring more:** `make eval-extract` (the model's understanding against gold),
+  `make heldout` (the held-out score), `make review` (a second model re-reads recent
+  calls). What each costs is in [docs/data-science.md](docs/data-science.md#13-reproduce).
 
 **The model:** gpt-4o-mini, through OpenAI by default. To keep calls in the EU, set
 `LLM_BASE_URL` to an Azure OpenAI v1 endpoint with a deployment named `gpt-4o-mini`
@@ -249,11 +265,12 @@ nightly gate job, and three alerts. One `make` command per step; see
 | [SPEC.md](SPEC.md) | the design: constraints, architecture, rules and where each is enforced, voice UX, the frozen gate and every result, the data model, monitoring, the improvement loop, known limits, and the decision and change logs |
 | [docs/architecture/](docs/architecture/) | the diagrams of record: containers, data flow (personal data, trust boundaries, every crossing), the two critical sequences, deployment, and the [logic flow](docs/architecture/logic-flow.md): what the receptionist decides on a turn, in what order, and where the model's judgement ends |
 | [docs/evaluation.md](docs/evaluation.md) | the results as graphs and tables: reliability, the extractor, the baseline against ours, cost and latency |
-| [docs/data-science.md](docs/data-science.md) | the methods behind the results: every metric's definition and code, the gate's statistical power, pass^k, the extractor eval, metamorphic variants, judge calibration, drift, telemetry, and the limits of the numbers |
+| [docs/data-science.md](docs/data-science.md) | the methods behind the results: every metric's definition and code, the gate's statistical power, development and held-out sets, pass^k, the extractor eval, metamorphic variants, judge calibration, drift, telemetry, the feedback loop, and the limits of the numbers |
 | [tests/human/README.md](tests/human/README.md) | the human evaluation's protocol and rubric |
 | [docs/using-the-app.md](docs/using-the-app.md) | the live app: the link, signing in, and which guide is yours |
 | [docs/guide-caller.md](docs/guide-caller.md) | for testers: making calls, what to try, the test controls, scenario cards and rating |
 | [docs/guide-admin.md](docs/guide-admin.md) | for reviewers and the owner: every admin view and how to act on it, turning feedback into test cases, owner commands |
 | [BUILD_LOG.md](BUILD_LOG.md) | phase by phase: what was built, what failed and why, every decision |
 | [reports/](reports/) | the raw output behind every number |
-| [docs/pdf/](docs/pdf/) | the same documents as PDFs, diagrams drawn: readme, using the app, architecture, evaluation, data science, spec, deploy, build log. Rebuilt with `python3 docs/tools/make_pdfs.py` after an edit |
+| [docs/fixtures.md](docs/fixtures.md) | every test case: what a case holds, the world they share, where each group comes from, what each case tests, the generated variants |
+| [docs/pdf/](docs/pdf/) | every document here as a PDF, diagrams drawn, the guides each on their own for handing out. Rebuilt with `python3 docs/tools/make_pdfs.py` after an edit; a test fails when a PDF is older than its document |
