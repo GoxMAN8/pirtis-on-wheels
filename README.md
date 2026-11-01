@@ -247,7 +247,7 @@ nightly gate job, and three alerts. One `make` command per step; see
 | Document | What it holds |
 |---|---|
 | [SPEC.md](SPEC.md) | the design: constraints, architecture, rules and where each is enforced, voice UX, the frozen gate and every result, the data model, monitoring, the improvement loop, known limits, and the decision and change logs |
-| [docs/architecture/](docs/architecture/) | the diagrams of record: containers, data flow (personal data, trust boundaries, every crossing), the two critical sequences, deployment |
+| [docs/architecture/](docs/architecture/) | the diagrams of record: containers, data flow (personal data, trust boundaries, every crossing), the two critical sequences, deployment, and the [logic flow](docs/architecture/logic-flow.md): what the receptionist decides on a turn, in what order, and where the model's judgement ends |
 | [docs/evaluation.md](docs/evaluation.md) | the results as graphs and tables: reliability, the extractor, the baseline against ours, cost and latency |
 | [docs/data-science.md](docs/data-science.md) | the methods behind the results: every metric's definition and code, the gate's statistical power, pass^k, the extractor eval, metamorphic variants, judge calibration, drift, telemetry, and the limits of the numbers |
 | [tests/human/README.md](tests/human/README.md) | the human evaluation's protocol and rubric |

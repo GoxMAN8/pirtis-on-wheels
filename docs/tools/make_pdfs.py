@@ -38,6 +38,7 @@ DOCS = {
             "docs/architecture/containers.md",
             "docs/architecture/data-flow.md",
             "docs/architecture/sequences.md",
+            "docs/architecture/logic-flow.md",
             "docs/architecture/deployment.md",
         ],
     ),

@@ -33,8 +33,9 @@ like a person on the phone.
 
 ## 2. Architecture
 
-> The diagrams of record are in `docs/architecture/`: containers, data flow, sequences
-> and deployment, each stamped with the commit it was checked against.
+> The diagrams of record are in `docs/architecture/`: containers, data flow, sequences,
+> deployment and the logic flow (every decision of a turn, in order), each stamped with
+> the commit it was checked against.
 
 **The model listens; code talks.** Language understanding is the model's job. Rules,
 decisions, writes and the wording of anything factual belong to code. This is the
