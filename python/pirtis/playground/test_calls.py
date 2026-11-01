@@ -266,3 +266,18 @@ def test_feedback_on_a_turn_the_call_never_had_is_refused(tmp_path: Path) -> Non
     assert call is not None
     with pytest.raises(KeyError):
         calls.feedback(call, "nope", "down", "")
+
+
+def test_a_name_heard_with_combining_accents_still_finds_the_customer(tmp_path: Path) -> None:
+    """Manual testing, B4: "Eglė" can arrive as "e" plus a combining dot (NFD), and the
+    model echoes it back that way; the kit's API compares letters exactly, so Eglė was
+    put through as a stranger. Every line is normalised to one spelling (NFC) first."""
+    import unicodedata
+
+    line = unicodedata.normalize("NFD", "Hi, it's Eglė Butkutė.")
+    heard = state(intent="greeting", full_name=unicodedata.normalize("NFD", "Eglė Butkutė"))
+    calls = make(tmp_path, scripted(heard))
+    call = calls.start("+37068881122")
+    calls.say(call, line)
+    assert call.steps[-1]["decision"] != "Handoff"
+    assert call.t.items[-1].content == "Thanks, I have your details. What can I do for you today?"
