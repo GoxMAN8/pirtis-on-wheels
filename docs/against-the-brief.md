@@ -59,7 +59,7 @@ agent scored 58/59, with every decision right and one reply graded down by the j
 ## Before submitting
 
 - [x] Run `make heldout` and record the score as it comes, before tuning anything: 58/59.
-- [ ] Record the extractor eval and gate numbers for the deployed agent, `1c0de71d1184`, in
-      the README and SPEC §7b.
+- [ ] Record the extractor eval, gate and held-out numbers for the final agent,
+      `8612d72cfa25`, in the README and SPEC §7b.
 - [ ] Freeze the agent: no further agent changes unless the held-out run shows a real bug.
-- [ ] Walk through `python/pirtis/agent/` file by file, ready to explain each decision.
+- [x] Walk through `python/pirtis/agent/` file by file: [walkthrough.md](walkthrough.md).

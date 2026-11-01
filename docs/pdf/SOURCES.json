@@ -3,7 +3,7 @@
     "docs/guide-admin.md": "b8db9a8f8ad8ec39"
   },
   "against-the-brief.pdf": {
-    "docs/against-the-brief.md": "4236d4b919dd0884"
+    "docs/against-the-brief.md": "e6ef10b155291012"
   },
   "architecture.pdf": {
     "docs/architecture/containers.md": "cef45bc3cf317ccf",
@@ -35,18 +35,21 @@
     "python/README.md": "c95abd0f2c65d22f"
   },
   "readme.pdf": {
-    "README.md": "a9afa3fe60aa1052"
+    "README.md": "cf11d8fc9e75a7ee"
   },
   "reports.pdf": {
-    "reports/README.md": "cd04b8b98fa83cd5"
+    "reports/README.md": "732f6b5b34fb3d16"
   },
   "spec.pdf": {
-    "SPEC.md": "302192e9cfc469a9"
+    "SPEC.md": "6afb29896c161b41"
   },
   "tester-guide.pdf": {
     "docs/guide-caller.md": "f8529f86f3a1eb78"
   },
   "using-the-app.pdf": {
     "docs/using-the-app.md": "9caf41f3919d5982"
+  },
+  "walkthrough.pdf": {
+    "docs/walkthrough.md": "182c3a9a8e485bfd"
   }
 }

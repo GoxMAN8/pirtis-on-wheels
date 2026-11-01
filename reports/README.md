@@ -25,7 +25,7 @@ Test lists are re-runnable: check out that commit and run the command.
 
 | `replay-*.txt` | a fixture replayed with the model's answer scripted, zero tokens, to show what the receptionist says for a given reading; the script beside it |
 
-| `manual/<date>-<tester>.md` | a manual test session from the Pirtis Test Log: every case's mark and note, and each failure's cause and fix |
+| `manual/<date>-<tester>[-n].md` | a manual test session from the Pirtis Test Log: every case's mark and note, and each failure's cause and fix. Two so far: GS 1 (24 of 34 passed) and GS 2 (20 of 23) |
 
 Phase 1 produced documents only, so it has no folder. `after-16/` holds the work after
 the final phase: the gate that failed once the prompt leak was closed (D-88, D-91), and

@@ -617,12 +617,14 @@ extractor eval and a gate run.
 ## 12. Known limits and next steps
 
 **Known limits:**
-- If speech-to-text drops Lithuanian diacritics from a name, identification fails and
-  the caller is transferred. The kit's API matches names letter for letter, and the
-  agent may not read the customer list before the caller is identified, so this can't be
-  repaired safely in the agent (trying spelling variants against the API would be
-  guessing an identity). The fix belongs in the speech recogniser: a vocabulary hint
-  with the customers' and saunas' names. In the simulator, the browser listens in
+- If speech-to-text garbles a name past what the agent can undo, identification fails
+  and the caller is transferred. The kit's API matches names letter for letter, and the
+  agent may not read the customer list before the caller is identified. The agent tries
+  a few variants of the caller's own words: the Lithuanian spelling of an English-spelled
+  name (D-94) and the name without a stray word (D-101), at most six lookups, each
+  against the calling number, which stays the identifying factor. What it can't undo
+  (a dropped "ė" in a name it can't respell, a surname heard as another word) needs the
+  speech recogniser: a vocabulary hint with the customers' and saunas' names. In the simulator, the browser listens in
   Lithuanian for the turn that answers "Can I get your full name?" (*Lithuanian for
   names*, falling back to English where the browser has no Lithuanian), and *Check speech
   before sending* lets a tester correct a misheard word first.

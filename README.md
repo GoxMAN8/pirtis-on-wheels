@@ -72,7 +72,8 @@ flowchart LR
 
   Agent `1c0de71d1184`, with those fixes, passed the gate to deploy and scored 58/59 on
   the held-out run.
-- **The thread of the call** (`14e773f54eac`, from the second manual session): the
+- **The thread of the call** (`14e773f54eac`, from the second manual session,
+  `reports/manual/2026-11-01-GS-2.md`: 20 of 23 passed, all three failures this): the
   transcript stays the only memory, and the agent now also reads its own last line. A
   finished task asks "anything else?" and a "no, that's all" closes the call; "yes, I'm
   here" after a check-in brings back the last question; a refusal isn't repeated word for
@@ -303,6 +304,7 @@ nightly gate job, and three alerts. One `make` command per step; see
 | Document | What it holds |
 |---|---|
 | [docs/against-the-brief.md](docs/against-the-brief.md) | the take-home's brief, requirement by requirement: a verdict and the evidence for each, the open risks, and what to do before submitting |
+| [docs/walkthrough.md](docs/walkthrough.md) | the agent file by file, in the order a turn runs through it: what each file does, and the questions a reviewer is likely to ask with the short answer to each |
 | [SPEC.md](SPEC.md) | the design: constraints, architecture, rules and where each is enforced, voice UX, the frozen gate and every result, the data model, monitoring, the improvement loop, known limits, and the decision and change logs |
 | [docs/architecture/](docs/architecture/) | the diagrams of record: containers, data flow (personal data, trust boundaries, every crossing), the two critical sequences, deployment, and the [logic flow](docs/architecture/logic-flow.md): what the receptionist decides on a turn, in what order, and where the model's judgement ends |
 | [docs/evaluation.md](docs/evaluation.md) | the results as graphs and tables: reliability, the extractor, the baseline against ours, cost and latency |
