@@ -1,0 +1,8 @@
+58/59 fixtures passed
+
+HELD-OUT (generated variants, never tuned on): cases passing every run
+  noise     13/14  deterministic 14  judge 13  failed: turnaround--noise
+  persona   16/16  deterministic 16  judge 16
+  shift     19/19  deterministic 19  judge 19
+  tow       10/10  deterministic 10  judge 10
+  total     58/59  deterministic 59  judge 58  failed: turnaround--noise

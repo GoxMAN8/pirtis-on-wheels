@@ -50,7 +50,7 @@ flowchart LR
 - **Cost and speed:** 0 or 1 model calls a turn, about $0.0004 a turn; p95 2.15 s.
 - **The naive starter** passed 4 of the 14 given cases.
 
-**Since then** (agent `8612d72cfa25`, which **passed the gate: 46/46 cases, 138/138 runs, the judge included; p95 2.19 s**):
+**Since then** (agent `8612d72cfa25`, which **passed the gate: 46/46 cases, 138/138 runs, the judge included; p95 2.19 s; and scored 58/59 on the held-out set again**):
 - **A leak closed (D-88):** the prompt's examples quoted test cases word for word: the
   kit's `turnaround` case and our case 30. They were rewritten, and a test now fails if
   the prompt shares a four-word run with any test case.

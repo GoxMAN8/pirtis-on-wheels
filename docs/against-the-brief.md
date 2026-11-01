@@ -60,6 +60,7 @@ agent scored 58/59, with every decision right and one reply graded down by the j
 
 - [x] Run `make heldout` and record the score as it comes, before tuning anything: 58/59.
 - [x] Gate the final agent, `8612d72cfa25`: 46/46 cases, 138/138 runs, recorded.
-- [ ] Record its extractor eval and held-out run.
+- [x] Run it held out: 58/59 again, the same judge miss (`turnaround--noise`).
+- [ ] Record its extractor eval.
 - [ ] Freeze the agent: no further agent changes unless the held-out run shows a real bug.
 - [x] Walk through `python/pirtis/agent/` file by file: [walkthrough.md](walkthrough.md).

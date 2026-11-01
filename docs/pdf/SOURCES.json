@@ -3,7 +3,7 @@
     "docs/guide-admin.md": "b8db9a8f8ad8ec39"
   },
   "against-the-brief.pdf": {
-    "docs/against-the-brief.md": "d38a6b7d66cccba6"
+    "docs/against-the-brief.md": "0b15519ac1fd0895"
   },
   "architecture.pdf": {
     "docs/architecture/containers.md": "cef45bc3cf317ccf",
@@ -16,7 +16,7 @@
     "BUILD_LOG.md": "046a076e3970ee22"
   },
   "data-science.pdf": {
-    "docs/data-science.md": "d4f943c883fae7bb"
+    "docs/data-science.md": "463945fa89697652"
   },
   "deploy.pdf": {
     "deploy/README.md": "1a84cee86c900460"
@@ -35,13 +35,13 @@
     "python/README.md": "c95abd0f2c65d22f"
   },
   "readme.pdf": {
-    "README.md": "ed26ff76eacc48f1"
+    "README.md": "e0d7c636768241e9"
   },
   "reports.pdf": {
     "reports/README.md": "732f6b5b34fb3d16"
   },
   "spec.pdf": {
-    "SPEC.md": "0cf5cc2ca334c867"
+    "SPEC.md": "8ac5bc3992930803"
   },
   "tester-guide.pdf": {
     "docs/guide-caller.md": "f8529f86f3a1eb78"
