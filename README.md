@@ -74,8 +74,8 @@ flowchart LR
 - **Measured honestly:** the 46 cases are the development set, so 46/46 is a development
   score. The 59 generated variants are kept as a held-out set (D-89). Heard right, the
   agent passes all 59 and decides each as its source did, and a thousand generated calls
-  keep every promise of the brief, both at zero tokens (D-97); `make heldout` adds the
-  model and the judge.
+  keep every promise of the brief, both at zero tokens (D-97). **The live held-out run:
+  58/59** (every decision right; one reply graded down by the judge), recorded as it came.
 
 The graphs are in [docs/evaluation.md](docs/evaluation.md); how each number is computed
 is in [docs/data-science.md](docs/data-science.md).

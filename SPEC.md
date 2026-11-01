@@ -340,6 +340,7 @@ blocks deployment.
 | 2026-10-31 | ours, D-87 (bd98c5cf8006) | fixture 01, 20 runs | **20/20** | 1 per run | — |
 | 2026-10-31 | **ours: the final agent (bd98c5cf8006)** | **all 46 cases, 3 runs, 3 must pass** | **46/46 cases, 138/138 runs; deterministic 46/46, judge 46/46**; p50 1.74 s, p95 2.15 s | 123 (0 on 15 runs) | 260,844 / 16,182 |
 | 2026-11-01 | ours, the prompt leak closed (09302402ead3) | all 46 cases, 3 runs, 3 must pass | **FAILED 45/46 cases**: deterministic 46/46, judge 45/46 (price-before-identification: the model recorded no sauna once its words left the prompt; D-91). `turnaround` 3/3; p50 1.60 s, p95 1.89 s | 123 (0 on 15 runs) | 260,721 / 16,172 |
+| 2026-11-01 | **ours, the first live held-out run (1c0de71d1184)** | the 59 generated variants, never tuned on, 3 runs, 3 must pass | **58/59 cases: deterministic 59/59, judge 58/59** (turnaround--noise, on the judge); by transform: noise 13/14, persona 16/16, shift 19/19, tow 10/10. Recorded as it came, not tuned on | — | — |
 
 At the Phase 6 gate, model turns took p50 1.54 s and p95 1.77 s (max 1.84 s), with
 about 1.7k prompt tokens each. After understanding v2 they take p50 1.76 s and p95
@@ -632,8 +633,8 @@ extractor eval and a gate run.
   model or to one more question, never to a wrong booking (README, decisions 2, 4, 6).
 - The 46 cases are the development set (D-89). The 59 metamorphic variants, including
   14 written as speech-to-text hears a call, are the held-out set. Heard right, the agent
-  passes all 59 at zero tokens (D-97); the live run, which adds the model's hearing of
-  them and the judge, has not been run yet.
+  passes all 59 at zero tokens (D-97); the live run scored 58/59, every decision right and
+  one reply (turnaround--noise) graded down by the judge. One batch, run once.
 - Agent `1c0de71d1184` (manual-testing fixes, D-93 to D-96) has not been through the
   extractor eval, the gate or a held-out run yet; the measured numbers belong to `bd98c5cf8006`. On the way: `09302402ead3`, the first
   without the prompt leak (D-88), failed the gate 45/46 on case 30 (D-91), and
@@ -674,8 +675,9 @@ extractor eval and a gate run.
   not seen by the next call (each call has its own API, as each fixture does).
 
 **Next steps:**
-- measure `1c0de71d1184`: `make eval-extract`, `make gate`, then `make heldout` once; the
-  14 speech-noise variants say whether a correction layer is needed at all
+- record the extractor eval and gate numbers for `1c0de71d1184` (it passed the gate to
+  deploy; the figures weren't kept); a fresh variant batch (`make variants`) before any
+  further tuning, since this one has now been seen
 - run the reviewer (`make review`) on a schedule in Azure, beside the nightly gate
 - real telephony: call automation and streaming speech in front of `decide`, with a
   vocabulary hint (customer and sauna names) for the speech recogniser
@@ -829,3 +831,4 @@ Status is *accepted* unless marked otherwise. "R" marks a fix from the fixture t
 | 2026-11-01 | after 16 | Manual testing on the live app, logged in `reports/manual/2026-11-01-GS.md`: 24 of 34 passed. Agent: D-93 to D-96 (`1c0de71d1184`, not yet measured). Simulator: 8 s of real quiet after a reply counts as silence, measured from when the receptionist stops talking; 👍/👎 under the current reply. Console: a run that covers only part of a family says "ran 7 of 32" | What a tester met that the cases didn't | D-93, D-94, D-95, D-96 |
 | 2026-11-01 | after 16 | Simulator: a transferred call shows who takes it and the note they receive (the summary the transfer carries). The agent is unchanged. Queued for the next agent change: the note to carry the name a stranger gave, and the receptionist to say the details are passed on | Manual testing: a stranger is put through at once, as the kit requires, so what the colleague receives matters | — |
 | 2026-11-01 | after 16 | The rules off the development set (D-97): `make heldout-rules` replays the 59 held-out variants through the real agent, heard right, against the kit's checks and "decides as its source did": 59/59. `agent/test_policy_fuzz.py` puts a thousand generated calls through the policy: every promise holds. Both at zero tokens, in `make check`, each with a control that fails. Evidence in `reports/after-16/heldout-rules.txt` | "Make the rules work, not just the test cases" | D-97 |
+| 2026-11-01 | after 16 | The first live held-out run on `1c0de71d1184`: 58/59 (deterministic 59/59, judge 58/59; turnaround--noise). Recorded as it came, not tuned on; the 14 speech-noise variants, 13 passing, answer whether a correction layer is needed: not for deciding. Output in `reports/after-16/heldout-1c0de71d1184.txt` | The out-of-sample number the gate can't give | D-89 |
