@@ -144,6 +144,10 @@ main { max-width: 1240px; margin: 0 auto; padding: 0 24px 64px; }
 .rate { display: flex; gap: 4px; align-items: center; }
 .line-rate { display: flex; gap: 8px; align-items: center; min-height: 32px; font-size: 0.875rem; color: var(--muted); }
 .line-rate:empty { display: none; }
+.handoff { border-left: 3px solid var(--ember); padding: 10px 14px; background: var(--fog); border-radius: 0 var(--r) var(--r) 0; display: grid; gap: 6px; font-size: 0.9375rem; max-width: 60ch; }
+.handoff .t { font-weight: 700; }
+.handoff ul { margin: 0; padding-left: 18px; }
+.handoff .why { color: var(--muted); font-size: 0.875rem; }
 .rate .btn { min-height: 32px; padding: 0 8px; }
 .rate .btn[aria-pressed="true"] { border-color: var(--ember); }
 .rate-note { display: flex; gap: 6px; margin-top: 6px; }

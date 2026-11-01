@@ -476,7 +476,24 @@ function render(view) {
   renderScenario(view);
 }
 
+// who takes a transferred call, and the note they get with it: everything the caller said
+const QUEUES = { new_customers: "New customers", front_desk: "Front desk", bookings_support: "Bookings support" };
+
+function renderHandoff(view) {
+  const box = $("handoff");
+  const move = view.status === "transferred" ? (view.last?.actions || []).find((a) => a.type === "transfer") : null;
+  box.hidden = !move;
+  if (!move) return;
+  const facts = String(move.summary || "").split("; ").filter(Boolean)
+    .map((f) => (f === "not identified" ? "not identified as a customer" : f));
+  clear(box,
+    el("p", { class: "t", text: `Passed to ${QUEUES[move.to] || "a colleague"}, with this note` }),
+    facts.length ? el("ul", {}, facts.map((f) => el("li", { text: f }))) : el("p", { class: "muted", text: "Nothing to pass on yet." }),
+    el("p", { class: "why", text: `Why: ${move.reason}` }));
+}
+
 function renderEnd(view) {
+  renderHandoff(view);
   let again = $("again");
   if (view.status === "open") { if (again) again.remove(); return; }
   if (!again) {
