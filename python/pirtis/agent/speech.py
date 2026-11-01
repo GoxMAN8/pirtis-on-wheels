@@ -266,17 +266,47 @@ _CLOSING_NO_FIT = {
 
 
 def free_dates_line(f: FreeDates) -> str:
-    """The coming weekends, how many saunas are free on each, then the one question."""
+    """What's free on the weekends asked about, then the one question. For one sauna: the
+    weekends it's free and the ones it's booked; for all: how many are free on each."""
+    when = f"in {f.month}" if f.month else "on the coming weekends"
+    ask = "Which dates would you like?"
 
-    def free(n: int) -> str:
+    def rng(a: str, b: str) -> str:  # the month asked about goes without saying
+        return spoken_range(a, b).removesuffix(f" of {f.month}") if f.month else spoken_range(a, b)
+
+    if not f.weekends:
+        return f"I can't see any weekends left {when}. {ask}"
+    if f.unit is not None:
+        free = [rng(a, b) for a, b, n in f.weekends if n]
+        booked = [rng(a, b) for a, b, n in f.weekends if not n]
+        if not free:
+            return f"{f.unit.name} is booked every weekend {when}; weekdays are mostly free. {ask}"
+        if not booked and len(free) > 1:
+            return f"{f.unit.name} is free every weekend {when}. {ask}"
+        line = f"{f.unit.name} is free {_and(free)}"
+        if booked:
+            line += f", and booked {_and(booked)}"
+        return f"{line}. {ask}"
+
+    def free_count(n: int) -> str:
         if n == 0:
             return "everything is booked"
         if n == f.units:
             return f"all {spoken_number(n)} saunas are free"
         return "one sauna is free" if n == 1 else f"{spoken_number(n)} saunas are free"
 
-    weekends = "; ".join(f"{spoken_range(a, b)}, {free(n)}" for a, b, n in f.weekends)
-    return f"Weekends go first. {weekends}. Weekdays are mostly free. Which dates would you like?"
+    counts = {n for _, _, n in f.weekends}
+    if len(f.weekends) > 1 and len(counts) == 1:  # the same every weekend: say it once
+        n = counts.pop()
+        same = "everything is booked" if n == 0 else free_count(n)
+        return f"{when[0].upper()}{when[1:]}, {same} every weekend. Weekdays are mostly free. {ask}"
+    weekends = "; ".join(f"{rng(a, b)}, {free_count(n)}" for a, b, n in f.weekends)
+    lead = f"In {f.month}: " if f.month else "Weekends go first. "
+    return f"{lead}{weekends}. Weekdays are mostly free. {ask}"
+
+
+def _and(parts: list[str]) -> str:
+    return parts[0] if len(parts) == 1 else ", ".join(parts[:-1]) + " and " + parts[-1]
 
 
 def no_fit_line(n: NoFit) -> str:

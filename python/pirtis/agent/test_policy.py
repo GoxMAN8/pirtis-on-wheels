@@ -566,7 +566,10 @@ def test_book_it_to_our_read_back_is_a_yes() -> None:
         ("any free weekends coming up?", True),
         ("when can I book the big one?", True),
         ("we'd like the tenth and eleventh", False),
+        ("is the barrel sauna free in November?", True),
+        ("anything open next month?", True),
         ("book it for free", False),  # a price demand, not a question about dates
+        ("is it free?", False),  # nor is this
     ],
 )
 def test_what_is_free_is_answered(line: str, asks: bool) -> None:
@@ -579,4 +582,68 @@ def test_what_is_free_is_answered(line: str, asks: bool) -> None:
     d, _ = run(TOMAS_CALLS, items=items, intent="book")
     assert isinstance(d, FreeDates) == asks
     if isinstance(d, FreeDates):
-        assert len(d.weekends) == 3 and d.weekends[0][0] == "2026-10-03"
+        first, n = {"": ("2026-10-03", 3), "October": ("2026-10-03", 5),
+                    "November": ("2026-11-07", 4)}[d.month]  # fmt: skip
+        assert d.weekends[0][0] == first and len(d.weekends) == n
+
+
+def _ask(line: str, **state: Any) -> Any:
+    f = ALL[TOMAS_CALLS]
+    items = [*f.transcript.items[:-1],
+             Item(type="message", role="user", content=line, start=3, end=5,
+                  is_final=True, speech_final=True)]  # fmt: skip
+    return run(TOMAS_CALLS, items=items, intent="book", **state)[0]
+
+
+def test_what_is_free_for_a_month_or_one_sauna() -> None:
+    """D-100: "what's free in November?" covers that month's weekends; with a sauna
+    named, each weekend is that sauna's, free or booked. A month that has passed this
+    year is next year's, and the model's reading of the dates doesn't hide the answer."""
+    from pirtis.agent.policy import FreeDates
+    from pirtis.agent.speech import free_dates_line
+
+    nov = _ask("what's free in November?", start="2026-11-01", end="2026-11-30")
+    assert isinstance(nov, FreeDates) and nov.month == "November" and nov.unit is None
+    saturdays = ["2026-11-07", "2026-11-14", "2026-11-21", "2026-11-28"]
+    assert [a for a, _, _ in nov.weekends] == saturdays
+    assert free_dates_line(nov) == (
+        "In November, all four saunas are free every weekend. Weekdays are mostly free. "
+        "Which dates would you like?"
+    )
+
+    march = _ask("anything free in March?")
+    assert isinstance(march, FreeDates) and march.weekends[0][0] == "2027-03-06"
+
+    big = _ask("when is the big one free?", unit="unit_didzioji")
+    assert isinstance(big, FreeDates) and big.unit is not None and big.unit.name == "Didžioji"
+    assert len(big.weekends) == 3 and all(n in (0, 1) for _, _, n in big.weekends)
+    line = free_dates_line(big)
+    assert line.startswith("Didžioji is ") and line.endswith("Which dates would you like?")
+    assert not any(ch.isdigit() for ch in line)
+
+    both = _ask("is the big one free in November?", unit="unit_didzioji")
+    assert isinstance(both, FreeDates) and both.month == "November" and both.unit is not None
+    assert len(both.weekends) == 4
+
+
+def test_free_dates_line_for_one_sauna() -> None:
+    from pirtis.agent.policy import FreeDates
+    from pirtis.agent.speech import free_dates_line
+
+    u = load_seed(FIXTURES / "seeds" / "base.json").units[0]
+    weekends = (("2026-11-07", "2026-11-08", 1), ("2026-11-14", "2026-11-15", 0),
+                ("2026-11-21", "2026-11-22", 1))  # fmt: skip
+    line = free_dates_line(FreeDates(weekends, 4, u, "November"))
+    assert line == (
+        f"{u.name} is free Saturday the seventh to Sunday the eighth and Saturday the "
+        "twenty-first to Sunday the twenty-second, and booked Saturday the fourteenth to "
+        "Sunday the fifteenth. Which dates would you like?"
+    )
+    booked = tuple((a, b, 0) for a, b, _ in weekends)
+    assert free_dates_line(FreeDates(booked, 4, u, "November")) == (
+        f"{u.name} is booked every weekend in November; weekdays are mostly free. "
+        "Which dates would you like?"
+    )
+    assert free_dates_line(FreeDates((), 4, None, "November")).startswith(
+        "I can't see any weekends left in November."
+    )

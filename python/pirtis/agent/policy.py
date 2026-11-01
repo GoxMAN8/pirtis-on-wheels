@@ -180,6 +180,8 @@ class FreeDates:
 
     weekends: tuple[tuple[str, str, int], ...]  # Saturday, Sunday, saunas free both days
     units: int
+    unit: Unit | None = None  # the sauna asked about: then each count is 1 (free) or 0
+    month: str = ""  # the month asked about, as said: "November"
 
 
 Decision = (
@@ -238,9 +240,13 @@ def _next_step(t: Transcript, s: CallState, api: ApiClient, units: list[Unit]) -
     if not customer and s.intent == "book" and s.people is not None and s.people > biggest:
         # no sauna takes them, whoever they are: say so before asking who's calling (D-93)
         return NoFit("too_many", limit=biggest)
-    if s.intent == "book" and s.start is None and asks_what_is_free(t):
-        # an answer, not a question back; it reads no customer data (D-99)
-        return free_dates(api, units, date.fromisoformat(t.today))
+    if s.intent == "book" and asks_what_is_free(t) and (s.start is None or month_asked(t)):
+        # an answer, not a question back; it reads no customer data (D-99): the coming
+        # weekends, or a month's, for every sauna or the one the caller named
+        today = date.fromisoformat(t.today)
+        month = month_asked(t)
+        wanted = next((u for u in units if u.id == s.unit), None)
+        return free_dates(api, units, today, month=month, unit=wanted)
     if not customer:
         name = normalise_name(s.full_name, caller_lines(t))
         if not is_full_name(name):
@@ -739,7 +745,9 @@ _WHATS_FREE = re.compile(
     r"|what(?:'s| is| are|s)? (?:free|open)"
     r"|(?:which|what) (?:dates|days|weekends?)\b[^?.]*\b(?:free|open|available)"
     r"|when (?:are|is|can)\b[^?.]*\b(?:free|open|available|book)"
-    r"|any (?:free|open) (?:dates|days|weekends?))\b",
+    r"|any (?:free|open) (?:dates|days|weekends?)"
+    r"|anything (?:free|open|available)"
+    r"|\bis\b[^?.]*\b(?:free|open) (?:in|this|next|over|any))\b",
     re.IGNORECASE,
 )
 
@@ -749,16 +757,42 @@ def asks_what_is_free(t: Transcript) -> bool:
     return any(_WHATS_FREE.search(it.content) for it in latest_caller_turn(t))
 
 
-def free_dates(api: ApiClient, units: list[Unit], today: date, weekends: int = 3) -> FreeDates:
-    """How many saunas are free on each of the coming weekends, Saturday and Sunday both."""
-    sat = today + (5 - today.weekday()) % 7 * DAY  # today, if it's a Saturday
+def month_asked(t: Transcript) -> int:
+    """The month the caller's latest turn names (1-12), or 0."""
+    said = fold(" ".join(it.content for it in latest_caller_turn(t))).lower()
+    return next((i + 1 for i, m in enumerate(_MONTHS) if re.search(rf"\b{m}\b", said)), 0)
+
+
+def free_dates(
+    api: ApiClient,
+    units: list[Unit],
+    today: date,
+    weekends: int = 3,
+    month: int = 0,
+    unit: Unit | None = None,
+) -> FreeDates:
+    """Which coming weekends are free, Saturday and Sunday both: the next few, or every
+    weekend of the month asked (from today on, this year or next); for every sauna, as a
+    count, or for the one sauna asked about."""
+    first = today
+    if month:
+        year = today.year if month >= today.month else today.year + 1
+        first = max(today, date(year, month, 1))
+    sat = first + (5 - first.weekday()) % 7 * DAY  # that day, if it's a Saturday
     out = []
-    for k in range(weekends):
+    for k in range(5 if month else weekends):
         s0, s1 = sat + 7 * k * DAY, sat + (7 * k + 1) * DAY
+        if month and s0.month != month:
+            break
         q = AvailabilityQuery(from_=s0.isoformat(), to=s1.isoformat())
-        n = sum(1 for a in api.availability(q) if {s0, s1} <= free_days(a.free))
+        n = sum(
+            1
+            for a in api.availability(q)
+            if (unit is None or a.unit_id == unit.id) and {s0, s1} <= free_days(a.free)
+        )
         out.append((s0.isoformat(), s1.isoformat(), n))
-    return FreeDates(tuple(out), len(units))
+    name = _MONTHS[month - 1].capitalize() if month else ""
+    return FreeDates(tuple(out), len(units), unit, name)
 
 
 def lithuanian_spelling(name: str) -> str:

@@ -1,4 +1,4 @@
-> Verified against `14e773f54eac`'s source on 2026-11-01.
+> Verified against `b41246127e7b`'s source on 2026-11-01.
 
 # Logic flow
 
@@ -130,7 +130,7 @@ flowchart LR
   un -->|"no"| so["'Sorry, say that again?'"]
   un -->|"yes"| h
   open -->|"smalltalk"| sm["Short safe answer, or 'sorry'"]
-  open -->|"book, asking what's free"| fd["The next three weekends, how many saunas are free on each"]
+  open -->|"book, asking what's free"| fd["The weekends asked about (the next three, or those of a named month): how many saunas are free, or whether the named one is"]
   open -->|"anything else"| idq{"Caller identified<br/>earlier in the call?"}
   idq -->|"no"| full{"Full name given?<br/>two words or more"}
   full -->|"no"| askn["Ask for the name"]

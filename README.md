@@ -50,7 +50,7 @@ flowchart LR
 - **Cost and speed:** 0 or 1 model calls a turn, about $0.0004 a turn; p95 2.15 s.
 - **The naive starter** passed 4 of the 14 given cases.
 
-**Since then** (agent `14e773f54eac`, not yet through the gate):
+**Since then** (agent `b41246127e7b`, not yet through the gate):
 - **A leak closed (D-88):** the prompt's examples quoted test cases word for word: the
   kit's `turnaround` case and our case 30. They were rewritten, and a test now fails if
   the prompt shares a four-word run with any test case.
@@ -78,6 +78,10 @@ flowchart LR
   here" after a check-in brings back the last question; a refusal isn't repeated word for
   word; "book it" to an offer read back is a yes; "which dates are free?" gets the coming
   weekends (D-98, D-99). See [how the receptionist remembers](docs/architecture/logic-flow.md#how-the-receptionist-remembers).
+- **What's free, asked more precisely** (`b41246127e7b`): "what's free in November?" gets that
+  month's weekends, and "when is the big one free?" gets that sauna's weekends, free and
+  booked; both together work too (D-100). The month is read from the caller's words in
+  code, the sauna from the model's checked reading; the answer reads only availability.
 
   Until the gate passes again, the measured numbers above belong to earlier agents.
 - **Measured honestly:** the 46 cases are the development set, so 46/46 is a development

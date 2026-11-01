@@ -166,8 +166,8 @@ preference now counts only from a caller who talked about heating (D-92).
 
 **Status:** the numbers in §3–§5 belong to agent `bd98c5cf8006`, before the leak was
 closed. `1c0de71d1184` added the fixes from the first manual test session (D-93 to D-96),
-passed the gate and scored 58/59 held out; the current agent, `14e773f54eac`, adds the
-thread of the call (D-98, D-99) and has not been through the extractor eval or the gate yet.
+passed the gate and scored 58/59 held out; the current agent, `b41246127e7b`, adds the
+thread of the call (D-98 to D-100) and has not been through the extractor eval or the gate yet.
 
 ## 4. The reliability curve: pass^k
 
