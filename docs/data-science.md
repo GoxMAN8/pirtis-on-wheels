@@ -168,8 +168,8 @@ preference now counts only from a caller who talked about heating (D-92).
 closed. `1c0de71d1184` added the fixes from the first manual test session (D-93 to D-96),
 passed the gate and scored 58/59 held out; the current agent, `8612d72cfa25`, adds the
 thread of the call (D-98 to D-101) and passed the gate, 46/46 cases at 3 of 3 (p95 2.19 s), and
-scored 58/59 held out, the same as before (`reports/after-16/heldout-8612d72cfa25.txt`); its
-extractor eval is not recorded yet.
+scored 58/59 held out, the same as before (`reports/after-16/heldout-8612d72cfa25.txt`), and
+41/41 on the extractor eval with every field 100%.
 
 ## 4. The reliability curve: pass^k
 
@@ -420,12 +420,12 @@ a boundary: [architecture/data-flow.md](architecture/data-flow.md).
   variants and a thousand generated calls at zero tokens, and the live held-out run scored
   58/59 (every decision right, one judge miss). One batch of 59, run once; the reviewer is
   built but not yet run on real calls.
-- **The current agent is only partly measured.** The numbers in §3–§5 are for
+- **The final agent is measured on the gate, held out and the extractor, not yet the reliability curve.** The numbers in §3–§5 are for
   `bd98c5cf8006`. `09302402ead3` closed the prompt leak and failed the gate 45/46;
   `6c6118d087e8` fixed that case and scored 40/41 on the extractor eval (§3);
   `239ddaf571d0` fixed that one; `1c0de71d1184` passed the gate and scored 58/59 held out;
-  the final `8612d72cfa25` passed the gate (46/46) and scored 58/59 held out; its
-  extractor eval is still to be recorded.
+  the final `8612d72cfa25` passed the gate (46/46), scored 58/59 held out and 41/41
+  on the extractor eval.
 - **Drift is watched on intents only,** without an alert.
 - **Fixtures are hand-written or promoted from the simulator,** not from real phone
   calls.
