@@ -2,6 +2,9 @@
   "admin-guide.pdf": {
     "docs/guide-admin.md": "b8db9a8f8ad8ec39"
   },
+  "against-the-brief.pdf": {
+    "docs/against-the-brief.md": "40f417a312620f9c"
+  },
   "architecture.pdf": {
     "docs/architecture/containers.md": "cef45bc3cf317ccf",
     "docs/architecture/data-flow.md": "ed3151d75918142e",
@@ -32,7 +35,7 @@
     "python/README.md": "c95abd0f2c65d22f"
   },
   "readme.pdf": {
-    "README.md": "cba678131a0e1009"
+    "README.md": "78532d3bbe32ccd8"
   },
   "reports.pdf": {
     "reports/README.md": "cd04b8b98fa83cd5"

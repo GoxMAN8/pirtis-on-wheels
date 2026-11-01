@@ -36,6 +36,7 @@ MANIFEST = OUT / "SOURCES.json"
 # output name -> (title, the files it prints, in order)
 DOCS = {
     "readme.pdf": ("Pirtis on Wheels: the receptionist", ["README.md"]),
+    "against-the-brief.pdf": ("Against the brief", ["docs/against-the-brief.md"]),
     "using-the-app.pdf": ("Using the app", ["docs/using-the-app.md"]),
     "tester-guide.pdf": ("Tester guide: the caller simulator", ["docs/guide-caller.md"]),
     "admin-guide.pdf": ("Admin guide: the admin console", ["docs/guide-admin.md"]),

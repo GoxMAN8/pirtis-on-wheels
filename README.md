@@ -2,7 +2,8 @@
 
 > **Reviewing our solution?** It is in Python: skip to
 > [Our solution](#our-solution-the-python-receptionist) and its
-> [core technical decisions](#core-technical-decisions).
+> [core technical decisions](#core-technical-decisions). How it meets the brief, point by
+> point: [docs/against-the-brief.md](docs/against-the-brief.md).
 
 A take-home for AI engineers: build the phone receptionist for a mobile sauna rental. One task, one set of fixtures, one implementation per language.
 
@@ -278,6 +279,7 @@ nightly gate job, and three alerts. One `make` command per step; see
 
 | Document | What it holds |
 |---|---|
+| [docs/against-the-brief.md](docs/against-the-brief.md) | the take-home's brief, requirement by requirement: a verdict and the evidence for each, the open risks, and what to do before submitting |
 | [SPEC.md](SPEC.md) | the design: constraints, architecture, rules and where each is enforced, voice UX, the frozen gate and every result, the data model, monitoring, the improvement loop, known limits, and the decision and change logs |
 | [docs/architecture/](docs/architecture/) | the diagrams of record: containers, data flow (personal data, trust boundaries, every crossing), the two critical sequences, deployment, and the [logic flow](docs/architecture/logic-flow.md): what the receptionist decides on a turn, in what order, and where the model's judgement ends |
 | [docs/evaluation.md](docs/evaluation.md) | the results as graphs and tables: reliability, the extractor, the baseline against ours, cost and latency |
