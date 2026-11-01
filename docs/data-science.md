@@ -140,7 +140,7 @@ cause of failure:
 |---|---|---|---|
 | **The rules on the held-out variants** (`make heldout-rules`, in `make check`) | each variant run through the real agent with the caller **heard right** (the source's gold reading, moved by the same transform), against the kit's checks **and** a metamorphic relation: it must decide as its source did (the same kind of decision, the same saunas named, the same actions) | none | **59/59**. Control: a wrong reading is caught in 40 of the 43 variants it changes; the 3 misses are refusals whose right answer doesn't depend on the reading |
 | **A thousand generated calls** (`agent/test_policy_fuzz.py`, in `make check`) | random groups, cars, sites, dates and sauna wishes against calendars made busier at random, straight into the policy: every offer is taken by the API as offered, nothing is written without a yes, only the caller's own bookings are read, and every refusal names its true reason | none | **1000/1000**: 400 offers, 475 refusals of all four kinds, 66 questions, 59 clashes with the caller's own booking. Control: with the rules copy switched off, it fails at call 4 |
-| **The live held-out run** (`make heldout`) | the same 59 variants with the real model and the kit's judge: hearing and wording, not only deciding | about $0.07 | **58/59** on `1c0de71d1184`: deterministic 59/59, judge 58/59. The one miss is the judge on `turnaround--noise` (the kit's hardest case, as speech-to-text writes it) |
+| **The live held-out run** (`make heldout`) | the same 59 variants with the real model and the kit's judge: hearing and wording, not only deciding | about $0.07 | **58/59** on `1c0de71d1184` and again on the final `8612d72cfa25`: deterministic 59/59, judge 58/59. The one miss is the judge on `turnaround--noise` (the kit's hardest case, as speech-to-text writes it) |
 
 So the rules hold off the development set, and on the live run every decision on all
 59 unseen calls was right; the one miss is how the judge graded one reply. Recorded as it
@@ -167,8 +167,9 @@ preference now counts only from a caller who talked about heating (D-92).
 **Status:** the numbers in §3–§5 belong to agent `bd98c5cf8006`, before the leak was
 closed. `1c0de71d1184` added the fixes from the first manual test session (D-93 to D-96),
 passed the gate and scored 58/59 held out; the current agent, `8612d72cfa25`, adds the
-thread of the call (D-98 to D-101) and passed the gate, 46/46 cases at 3 of 3 (p95 2.19 s); its
-extractor eval and held-out run are not recorded yet.
+thread of the call (D-98 to D-101) and passed the gate, 46/46 cases at 3 of 3 (p95 2.19 s), and
+scored 58/59 held out, the same as before (`reports/after-16/heldout-8612d72cfa25.txt`); its
+extractor eval is not recorded yet.
 
 ## 4. The reliability curve: pass^k
 
@@ -423,8 +424,8 @@ a boundary: [architecture/data-flow.md](architecture/data-flow.md).
   `bd98c5cf8006`. `09302402ead3` closed the prompt leak and failed the gate 45/46;
   `6c6118d087e8` fixed that case and scored 40/41 on the extractor eval (§3);
   `239ddaf571d0` fixed that one; `1c0de71d1184` passed the gate and scored 58/59 held out;
-  the final `8612d72cfa25` passed the gate (46/46) and still needs its extractor eval and
-  held-out run recorded.
+  the final `8612d72cfa25` passed the gate (46/46) and scored 58/59 held out; its
+  extractor eval is still to be recorded.
 - **Drift is watched on intents only,** without an alert.
 - **Fixtures are hand-written or promoted from the simulator,** not from real phone
   calls.
