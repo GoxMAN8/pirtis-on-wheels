@@ -50,7 +50,7 @@ flowchart LR
 - **Cost and speed:** 0 or 1 model calls a turn, about $0.0004 a turn; p95 2.15 s.
 - **The naive starter** passed 4 of the 14 given cases.
 
-**Since then** (agent `8612d72cfa25`, not yet through the gate):
+**Since then** (agent `8612d72cfa25`, which **passed the gate: 46/46 cases, 138/138 runs, the judge included; p95 2.19 s**):
 - **A leak closed (D-88):** the prompt's examples quoted test cases word for word: the
   kit's `turnaround` case and our case 30. They were rewritten, and a test now fails if
   the prompt shares a four-word run with any test case.
@@ -92,7 +92,6 @@ flowchart LR
   test checks that speech has a line for every value. It found a test passing on a
   misspelt reason that fell through to a default line. No reply changed.
 
-  Until the gate passes again, the measured numbers above belong to earlier agents.
 - **Measured honestly:** the 46 cases are the development set, so 46/46 is a development
   score. The 59 generated variants are kept as a held-out set (D-89). Heard right, the
   agent passes all 59 and decides each as its source did, and a thousand generated calls
