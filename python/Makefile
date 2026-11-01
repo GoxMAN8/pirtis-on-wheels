@@ -6,6 +6,7 @@
 #   make eval-extract          the model's understanding against gold, 3 runs per fixture
 #   make trace ID=silence      one fixture, verbose, traces kept under runs/trace
 #   make gate-job              the nightly cloud job, run here: given + red team, saved to var/
+#   make heldout               the generated variants, once, scored by transform (never tuned on)
 
 SHELL := /bin/bash
 
@@ -15,7 +16,7 @@ SUITES ?= ../fixtures ../fixtures/extra $(wildcard ../fixtures/variants)
 ID ?=
 OURS := pirtis/agent pirtis/ops pirtis/playground
 
-.PHONY: install lint format typecheck test check gate gate-job eval-extract trace playground variants variants-accept reliability calibrate
+.PHONY: install lint format typecheck test check gate gate-job eval-extract trace playground variants variants-accept reliability calibrate heldout
 
 install:
 	uv sync
@@ -85,6 +86,18 @@ variants-accept:
 	mv ../fixtures/variants-candidates/*.yaml ../fixtures/variants/
 	mv ../fixtures/variants-candidates/REVIEW.md ../fixtures/variants/REVIEW.md
 	@echo "accepted: $$(ls ../fixtures/variants/*.yaml | wc -l) variants now run in make gate"
+
+# The held-out score (pirtis/ops/heldout.py): the 59 generated variants, 3 runs each, all 3
+# must pass, reported by transform (persona, shift, noise, tow). Run it once per batch,
+# before tuning anything on it; a variant used to fix something is development data after.
+# About $0.07 of model calls plus the judge. HELDOUT=../fixtures/variants once accepted.
+HELDOUT ?= ../fixtures/variants-candidates
+heldout:
+	@rm -rf runs/heldout && mkdir -p runs/heldout
+	@set -o pipefail; name=$$(basename $(HELDOUT)); \
+	uv run harness --fixtures $(HELDOUT) --runs 3 --need 3 --trace runs/heldout/$$name \
+		| tee runs/heldout/$$name.txt; \
+	uv run python -m pirtis.ops.heldout --dir runs/heldout --json runs/heldout/summary.json
 
 # pass^k for k = 1..5 on every suite (variant candidates included), from 5 runs of each case.
 # A measurement, not the gate: about $0.30 of model calls with the judge.
