@@ -1,0 +1,6 @@
+GATE: 46/46 cases passed all 3 runs (138 runs)
+  extra     32/32 cases  deterministic 32/32  judge 32/32  model calls 90 (0 on 6 runs)  tokens 188805/11575  ≈ $0.0353  p50 1.76s p95 2.11s
+  fixtures  14/14 cases  deterministic 14/14  judge 14/14  model calls 33 (0 on 9 runs)  tokens 71916/4563  ≈ $0.0135  p50 1.88s p95 2.35s
+  total     46/46 cases  deterministic 46/46  judge 46/46  model calls 123 (0 on 15 runs)  tokens 260721/16138  ≈ $0.0488  p50 1.82s p95 2.19s
+  (cost is the agent's model calls only; the judge's calls are not traced)
+saved gate run 8612d72cfa25 20261101T173636Z: 46/46 cases passing all 3 runs, passed=True

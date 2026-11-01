@@ -341,6 +341,7 @@ blocks deployment.
 | 2026-10-31 | **ours: the final agent (bd98c5cf8006)** | **all 46 cases, 3 runs, 3 must pass** | **46/46 cases, 138/138 runs; deterministic 46/46, judge 46/46**; p50 1.74 s, p95 2.15 s | 123 (0 on 15 runs) | 260,844 / 16,182 |
 | 2026-11-01 | ours, the prompt leak closed (09302402ead3) | all 46 cases, 3 runs, 3 must pass | **FAILED 45/46 cases**: deterministic 46/46, judge 45/46 (price-before-identification: the model recorded no sauna once its words left the prompt; D-91). `turnaround` 3/3; p50 1.60 s, p95 1.89 s | 123 (0 on 15 runs) | 260,721 / 16,172 |
 | 2026-11-01 | **ours, the first live held-out run (1c0de71d1184)** | the 59 generated variants, never tuned on, 3 runs, 3 must pass | **58/59 cases: deterministic 59/59, judge 58/59** (turnaround--noise, on the judge); by transform: noise 13/14, persona 16/16, shift 19/19, tow 10/10. Recorded as it came, not tuned on | — | — |
+| 2026-11-01 | **ours: the final agent, the thread of the call (8612d72cfa25)** | **all 46 cases, 3 runs, 3 must pass** | **46/46 cases, 138/138 runs; deterministic 46/46, judge 46/46**; p50 1.82 s, p95 2.19 s, ≈ $0.049 for the run. Output in `reports/after-16/gate-8612d72cfa25.txt` | 123 (0 on 15 runs) | 260,721 / 16,138 |
 
 At the Phase 6 gate, model turns took p50 1.54 s and p95 1.77 s (max 1.84 s), with
 about 1.7k prompt tokens each. After understanding v2 they take p50 1.76 s and p95
@@ -637,8 +638,8 @@ extractor eval and a gate run.
   14 written as speech-to-text hears a call, are the held-out set. Heard right, the agent
   passes all 59 at zero tokens (D-97); the live run scored 58/59, every decision right and
   one reply (turnaround--noise) graded down by the judge. One batch, run once.
-- Agent `8612d72cfa25` (the thread of the call, D-98 to D-101) has not been through the
-  extractor eval, the gate or a held-out run yet; `1c0de71d1184` before it passed the gate
+- Agent `8612d72cfa25` (the thread of the call, D-98 to D-101) passed the gate, 46/46
+  cases at 3 of 3; its extractor eval and held-out run are not recorded yet. `1c0de71d1184` before it passed the gate
   and scored 58/59 held out; the measured numbers belong to `bd98c5cf8006`. On the way: `09302402ead3`, the first
   without the prompt leak (D-88), failed the gate 45/46 on case 30 (D-91), and
   `6c6118d087e8` scored 40/41 on the extractor eval (D-92).
@@ -678,8 +679,8 @@ extractor eval and a gate run.
   not seen by the next call (each call has its own API, as each fixture does).
 
 **Next steps:**
-- record the extractor eval and gate numbers for `1c0de71d1184` (it passed the gate to
-  deploy; the figures weren't kept); a fresh variant batch (`make variants`) before any
+- record the extractor eval and held-out numbers for `8612d72cfa25` (it passed the gate,
+  46/46); a fresh variant batch (`make variants`) before any
   further tuning, since this one has now been seen
 - run the reviewer (`make review`) on a schedule in Azure, beside the nightly gate
 - real telephony: call automation and streaming speech in front of `decide`, with a
