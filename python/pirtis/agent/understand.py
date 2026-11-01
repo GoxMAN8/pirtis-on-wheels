@@ -101,16 +101,16 @@ class CallState(BaseModel):
     )
     unit_quote: str | None = Field(
         description="The caller's own words that name or describe the sauna they want "
-        "('the small one', 'the electric six seater'), copied exactly. Null if none."
+        "('the little one', 'the wood-fired four-seater'), copied exactly. Null if none."
     )
     unit: str | None = Field(description="The sauna the caller asked for by name or description.")
     unit_is_must: bool = Field(
-        description="True only if the caller said they cannot take another sauna: 'it has to "
-        "be that one', or a health reason. Naming or wanting a sauna is false."
+        description="True only if the caller said they cannot take another sauna: 'nothing "
+        "else will do', or a health reason. Naming or wanting a sauna is false."
     )
     heater_reason: str | None = Field(
         description="The caller's reason for wanting or avoiding a heater, in their words "
-        "(e.g. 'the wood smoke sets off my asthma'). Null otherwise."
+        "(e.g. 'electric heat gives me a headache'). Null otherwise."
     )
     heater_pref: str | None = Field(
         description="The heater type the caller wants, if they said ('the wood one'). If "
@@ -387,11 +387,12 @@ Numbers: record a number only if the caller said one. "The small one" names a sa
 number of people.
 The towing capacity must come from a number the caller said. "It's fine" or "we towed a \
 caravan" is not a number.
-The sauna: record one only if the caller named or described it ("the big one", "the electric \
-six seater"). Never choose one for them. It is a must only if they said they cannot take \
-another, for example "it has to be that one" or a health reason; wanting one is not a must.
+The sauna: record one only if the caller named or described it ("the largest", "the \
+wood-fired four-seater"). Never choose one for them. It is a must only if they said they \
+cannot take another, for example "nothing else will do" or a health reason; wanting one is \
+not a must.
 Heater: record the kind of heater the caller wants. When they say one kind is a problem \
-for them (its smoke, their asthma), they want the other kind.
+for them (a headache, a cough, the smell), they want the other kind.
 Names: copy the name exactly as said, keeping letters like ė, ž, š, and join spelled-out \
 letters. A first name alone is recorded as said.
 """
