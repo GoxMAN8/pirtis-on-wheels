@@ -149,6 +149,7 @@ function listen() {
   heard = "";
   showError("");
   Object.assign(mic, { want: true, live: false, latched: false, cancelled: false, startedAt: 0, restarts: 0, error: "" });
+  mic.forName = nameTurn(); // a name is checked before it is sent, whatever the setting
   session();
   setMic("starting");
   return true;
@@ -201,10 +202,12 @@ function finish() {
   setMic("idle");
   if (!text) {
     $("interim").textContent = mic.cancelled || FATAL[mic.error] ? "" : "Didn't catch anything. Tap and speak again, or type below.";
-  } else if ($("review").checked) {
+  } else if ($("review").checked || mic.forName) {
     pendingCutIn = cutIn;
     $("text").value = text;
-    $("interim").textContent = "Check what was heard, fix any word, then press Say it.";
+    $("interim").textContent = mic.forName
+      ? "Check your name as it was heard, fix any letter, then press Say it."
+      : "Check what was heard, fix any word, then press Say it.";
     $("text").focus();
     $("text").setSelectionRange(text.length, text.length);
   } else {
@@ -285,8 +288,8 @@ if (!Recognition) {
   $("send").classList.add("primary");
 } else {
   try {
-    $("review").checked = localStorage.getItem(REVIEW_KEY) === "1";
-  } catch { /* storage blocked: the option starts off */ }
+    $("review").checked = localStorage.getItem(REVIEW_KEY) !== "0";
+  } catch { /* storage blocked: the option starts on */ }
   $("review").addEventListener("change", () => {
     try { localStorage.setItem(REVIEW_KEY, $("review").checked ? "1" : "0"); } catch { /* not kept */ }
   });
@@ -468,6 +471,7 @@ function render(view) {
   S.spoken = ours.length;
 
   renderLineRate(view);
+  renderNameChip(view);
   armSilence();
   renderCard(view.card);
   renderTranscript(view);
@@ -577,6 +581,20 @@ function stepFor(item, steps) {
   let found = null;
   for (const s of steps) if (s.at <= item.start) found = s;
   return found;
+}
+
+// when the receptionist asks for the caller's name, offer the persona's own, spelled right:
+// the browser's recogniser is weakest exactly there
+function renderNameChip(view) {
+  const p = personaFor(view.phone);
+  const box = $("name-chip");
+  const show = view.status === "open" && p && p.kind === "customer" && nameTurn();
+  box.hidden = !show;
+  if (!show) return;
+  clear(box, el("button", {
+    class: "btn", type: "button",
+    onclick: () => { $("text").value = `It's ${p.label}.`; $("text").focus(); armSilence(); },
+  }, "Use my name: ", el("strong", { text: p.label })));
 }
 
 function renderLineRate(view) {

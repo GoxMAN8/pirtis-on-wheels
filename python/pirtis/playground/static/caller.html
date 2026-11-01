@@ -61,6 +61,7 @@
           <p id="mic-hint" class="mic-hint">Tap, speak, then tap again to send. Or hold it while you speak.</p>
         </div>
 
+        <div id="name-chip" class="name-chip" hidden></div>
         <form id="say" class="say">
           <label class="visually-hidden" for="text">What you say</label>
           <input id="text" class="text" autocomplete="off" maxlength="500" placeholder="Or type what you'd say">
@@ -69,7 +70,7 @@
         <div class="controls">
           <label class="toggle"><input type="checkbox" id="speak" checked> Speak replies</label>
           <label class="toggle" id="lt-wrap" title="When the receptionist asks for your full name, the browser listens in Lithuanian for that answer, so letters like ė and ū survive"><input type="checkbox" id="lt-names" checked> Lithuanian for names</label>
-          <label class="toggle" id="review-wrap" title="What the browser heard goes into the box above, so you can fix a misheard word before the receptionist gets it"><input type="checkbox" id="review"> Check speech before sending</label>
+          <label class="toggle" id="review-wrap" title="What the browser heard goes into the box above, so you can fix a misheard word before the receptionist gets it"><input type="checkbox" id="review" checked> Check speech before sending</label>
           <span class="end-actions">
             <button class="btn" id="rate-open" type="button" hidden>Rate this call</button>
             <button class="btn hang" id="hangup" type="button">Hang up</button>

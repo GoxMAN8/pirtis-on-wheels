@@ -28,11 +28,13 @@ python && make playground`, then open <http://127.0.0.1:8000>; no sign-in.
      name, the browser listens in Lithuanian for that one answer, so "Eglė Butkutė" keeps
      its letters; everything else is heard in English. Say just the name on that turn. A
      browser that can't recognise Lithuanian (Safari may not) quietly uses English.
-   - **Check speech before sending:** tick it and what the browser heard goes into the
-     box instead of straight to the receptionist. Fix any misheard word, then press
-     *Say it*. Use it for names: the browser often drops Lithuanian letters ("Egle" for
-     "Eglė"), and then the receptionist can't find the customer. The choice is
-     remembered.
+   - **Check speech before sending** (on by default): what the browser heard goes into the
+     box instead of straight to the receptionist. Fix any word, then press *Say it*. Untick
+     it to send speech at once; the choice is remembered.
+   - **Your name is always checked:** when the receptionist asks for your full name, what
+     you said waits in the box even with the option off, and a **Use my name** button
+     fills in your persona's name, spelled right. The browser often drops Lithuanian
+     letters ("Egle" for "Eglė"), and then the receptionist can't find you.
    - **Replies are spoken aloud;** untick *Speak replies* to silence them. Your own last
      line stays above the receptionist's answer, and the answer dims while the next one
      is on its way.
